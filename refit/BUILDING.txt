@@ -1,0 +1,34 @@
+
+ Building rEFIt
+================
+
+To build the rEFIt EFI components, you'll need the EFI Application
+Toolkit from Intel. It is available under a BSD license and can be
+downloaded from
+<http://www.intel.com/technology/efi/toolkit_overview.htm>.
+
+After installing the Toolkit, edit the 'build.cmd' script at the root
+of the Toolkit directory tree. Set 'SDK_INSTALL_DIR' to the correct
+path for the Toolkit and change 'EFI_APPLICATION_COMPATIBILITY' to
+'EFI_APP_110'.
+
+Copy the outer 'refit' directory with the source into the Toolkit's
+root directory. To build just the rEFIt components, follow these
+instructions:
+
+ * Open a command prompt window that has the paths set for the Visual
+   Studio tools. (Visual Studio installs a Start Menu item for this.)
+
+ * Change to the Toolkit's root directory and run 'build bios32'.
+
+ * Change to the 'refit' directory and run 'nmake -f refit.mak'.
+
+After a successful build, the 'refit.efi' file (and others) can be
+found in the 'build\bios32\bin' directory.
+
+To build all rEFIt components as part of a complete build, edit the
+main 'makefile' appropriately. It should also be possible to build
+rEFIt for the IA64 architecture, but this has not been tested at all.
+
+
+EOF
