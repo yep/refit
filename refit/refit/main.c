@@ -186,6 +186,17 @@ void scan_volumes(void)
             MenuAddEntry(&main_menu, &entry_boot);
         }
         
+        // check for Microsoft boot loader/menu
+        StrCpy(FileName, L"\\EFI\\Microsoft\\Boot\\Bootmgfw.efi");
+        if (RootDir->Open(RootDir, &BootFile, FileName, EFI_FILE_MODE_READ, 0) == EFI_SUCCESS) {
+            Print(L"  - Microsoft boot menu found\n");
+            BootFile->Close(BootFile);
+            
+            entry_boot.Title = PoolPrint(L"Boot Microsoft boot menu from %s", VolName);
+            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
+            MenuAddEntry(&main_menu, &entry_boot);
+        }
+        
         // scan the root directory for EFI executables
         DirIterOpen(RootDir, NULL, &DirIter);
         while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
@@ -234,6 +245,11 @@ void scan_volumes(void)
             // look through contents of that directory
             DirIterOpen(EfiDirIter.DirHandle, EfiDirEntry->FileName, &DirIter);
             while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
+	        if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0)
+                    continue;   // skip this
+                if (StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
+                    continue;   // skip this
+                
                 SPrint(FileName, 255, L"\\EFI\\%s\\%s", EfiDirEntry->FileName, DirEntry->FileName);
                 entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+5, VolName);
                 entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
@@ -249,54 +265,6 @@ void scan_volumes(void)
             Print(L"Error scanning the EFI directory.\n");
         }
         
-        /*
-        // check for other boot loaders (EFI directory)
-        Status = RootDir->Open(RootDir, &EfiDir, L"EFI", EFI_FILE_MODE_READ, 0);
-        if (Status == EFI_SUCCESS) {
-            DirEntry = NULL;
-            for (;;) {
-                Status = DirNextEntry(EfiDir, &DirEntry, 1);
-                if (EFI_ERROR(Status)) {
-                    Print(L"   ...error during dir scan\n");
-                    break;
-                }
-                if (DirEntry == NULL)  // end of listing
-                    break;
-                
-                if (StriCmp(DirEntry->FileName, L"TOOLS") == 0)
-                    continue;   // skip this, doesn't contain boot loaders
-                if (StriCmp(DirEntry->FileName, L"REFIT") == 0)
-                    continue;   // skip ourselves
-                Print(L"  - Directory EFI\\%s found\n", DirEntry->FileName);
-                
-                // look through contents of that directory
-                Status = EfiDir->Open(EfiDir, &SubDir, DirEntry->FileName, EFI_FILE_MODE_READ, 0);
-                if (Status == EFI_SUCCESS) {
-                    SubDirEntry = NULL;
-                    for (;;) {
-                        Status = DirNextEntry(SubDir, &SubDirEntry, 0);
-                        if (EFI_ERROR(Status)) {
-                            Print(L"   ...error during dir scan\n");
-                            break;
-                        }
-                        if (SubDirEntry == NULL)  // end of listing
-                            break;
-                        if (StriCmp(SubDirEntry->FileName + (StrLen(SubDirEntry->FileName) - 4), L".EFI") == 0) {
-                            SPrint(FileName, 255, L"\\EFI\\%s\\%s", DirEntry->FileName, SubDirEntry->FileName);
-                            entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+5, VolName);
-                            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-                            MenuAddEntry(&main_menu, &entry_boot);
-                        }
-                        
-                    }
-                    SubDir->Close(SubDir);
-                }
-            }
-            
-            EfiDir->Close(EfiDir);
-        }
-        */
-        
         RootDir->Close(RootDir);
         FreePool(VolName);
     }
@@ -310,7 +278,6 @@ EFIAPI
 RefitMain (IN EFI_HANDLE           ImageHandle,
            IN EFI_SYSTEM_TABLE     *SystemTable)
 {
-    UINTN i;
     REFIT_MENU_ENTRY *chosenEntry;
     BOOLEAN mainLoopRunning = TRUE;
     
@@ -331,11 +298,6 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     MenuAddEntry(&main_menu, &entry_shell);
     MenuAddEntry(&main_menu, &entry_exit);
     MenuAddEntry(&main_menu, &entry_reset);
-    
-    //for (i = 0; i < 70; i++) {
-    //    entry_dummy.Title = PoolPrint(L"Dummy entry %d", i+1);
-    //    MenuAddEntry(&main_menu, &entry_dummy);
-    //}
     
     while (mainLoopRunning) {
         MenuRun(&main_menu, &chosenEntry);
