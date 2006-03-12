@@ -54,6 +54,7 @@ void run_tool(IN CHAR16 *RelativeFilePath)
     EFI_DEVICE_PATH         *DevicePath;
     CHAR16                  *DevicePathAsString;
     CHAR16                  FileName[256];
+    CHAR16                  ErrorInfo[256];
     UINTN                   i;
     EFI_HANDLE              ShellHandle;
     
@@ -75,20 +76,18 @@ void run_tool(IN CHAR16 *RelativeFilePath)
     // load the image into memory
     Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ShellHandle);
     FreePool(DevicePath);
-    if (EFI_ERROR(Status)) {
-        Print(L"Can not load the file %s\n", FileName);
+    SPrint(ErrorInfo, 255, L"while loading %s", FileName);
+    if (CheckError(Status, ErrorInfo))
         goto bailout;
-    }
     
     // turn control over to the image
     ScreenLeave(0);
     BS->StartImage(ShellHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
     ScreenReinit();
-    return;
     
 bailout:
-    ScreenWaitForKey();
+    WaitAfterError();
 }
 
 void start_shell(void)
@@ -109,10 +108,8 @@ void chainload(VOID *UserData)
     
     // load the image into memory
     Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
-    if (EFI_ERROR(Status)) {
-        Print(L"Can not load the boot loader image\n");
+    if (CheckError(Status, L"while loading the OS boot loader"))
         goto bailout;
-    }
     
     // turn control over to the image
     ScreenLeave(0);
@@ -120,10 +117,9 @@ void chainload(VOID *UserData)
     BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
     ScreenReinit();
-    return;
     
 bailout:
-    ScreenWaitForKey();
+    WaitAfterError();
 }
 
 void scan_volumes(void)
@@ -150,17 +146,16 @@ void scan_volumes(void)
     Status = LibLocateHandle(ByProtocol, &FileSystemProtocol, NULL, &HandleCount, &Handles);
     if (Status == EFI_NOT_FOUND)
         return;  // no filesystems. strange, but true...
-    if (EFI_ERROR(Status)) {
-        Print(L"Can't list file system handles.\n");
+    if (CheckError(Status, L"while listing all file systems"))
         return;
-    }
     // iterate over the filesystem handles
     for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
         DeviceHandle = Handles[HandleIndex];
         
         RootDir = LibOpenRoot(DeviceHandle);
         if (RootDir == NULL) {
-            Print(L"Can't open volume.\n");
+            Print(L"Error: Can't open volume.\n");
+            // TODO: signal that we had an error
             continue;
         }
         
@@ -211,9 +206,7 @@ void scan_volumes(void)
             MenuAddEntry(&main_menu, &entry_boot);
         }
         Status = DirIterClose(&DirIter);
-        if (EFI_ERROR(Status)) {
-            Print(L"Error scanning the root directory.\n");
-        }
+        CheckError(Status, L"while scanning the root directory");
         
         // scan the elilo directory (as used on gimli's Live CD)
         DirIterOpen(RootDir, L"elilo", &DirIter);
@@ -229,9 +222,8 @@ void scan_volumes(void)
             MenuAddEntry(&main_menu, &entry_boot);
         }
         Status = DirIterClose(&DirIter);
-        if (EFI_ERROR(Status) && Status != EFI_NOT_FOUND) {
-            Print(L"Error scanning the elilo directory.\n");
-        }
+        if (Status != EFI_NOT_FOUND)
+            CheckError(Status, L"while scanning the elilo directory");
         
         // scan subdirectories of the EFI directory (as per the standard)
         DirIterOpen(RootDir, L"EFI", &EfiDirIter);
@@ -256,14 +248,11 @@ void scan_volumes(void)
                 MenuAddEntry(&main_menu, &entry_boot);
             }
             Status = DirIterClose(&DirIter);
-            if (EFI_ERROR(Status)) {
-                Print(L"Error scanning directories.\n");
-            }
+            CheckError(Status, L"while scanning an EFI sub-directory");
         }
         Status = DirIterClose(&EfiDirIter);
-        if (EFI_ERROR(Status) && Status != EFI_NOT_FOUND) {
-            Print(L"Error scanning the EFI directory.\n");
-        }
+        if (Status != EFI_NOT_FOUND)
+            CheckError(Status, L"while scanning the EFI directory");
         
         RootDir->Close(RootDir);
         FreePool(VolName);
@@ -278,6 +267,7 @@ EFIAPI
 RefitMain (IN EFI_HANDLE           ImageHandle,
            IN EFI_SYSTEM_TABLE     *SystemTable)
 {
+    EFI_STATUS Status;
     REFIT_MENU_ENTRY *chosenEntry;
     BOOLEAN mainLoopRunning = TRUE;
     
@@ -287,13 +277,12 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     ScreenHeader(L"rEFIt - Initializing...");
     
     SelfImageHandle = ImageHandle;
-    if (BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID*)&SelfLoadedImage) != EFI_SUCCESS) {
-        Print(L"Can not retrieve a LoadedImageProtocol handle for ImageHandle\n");
-        return EFI_SUCCESS;  // TODO: appropriate error code
-    }
+    Status = BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID*)&SelfLoadedImage);
+    if (CheckFatalError(Status, L"while getting a LoadedImageProtocol handle"))
+        return EFI_LOAD_ERROR;
     
     scan_volumes();
-    ScreenWaitForKey();   // TEMP: to see the messages
+    WaitAfterError();
     
     MenuAddEntry(&main_menu, &entry_shell);
     MenuAddEntry(&main_menu, &entry_exit);

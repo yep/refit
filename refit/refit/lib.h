@@ -65,6 +65,10 @@ typedef struct {
 
 /* lib functions */
 
+BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
+BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
+VOID WaitAfterError(VOID);
+
 //TODO:  VOID PrintError(IN EFI_STATUS Status, IN CHAR16 *fmt, ...);
 //  (use StatusToString())
 

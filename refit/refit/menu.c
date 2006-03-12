@@ -37,6 +37,7 @@
 #include "lib.h"
 
 #define ATTR_BASIC (EFI_LIGHTGRAY | EFI_BACKGROUND_BLACK)
+#define ATTR_ERROR (EFI_YELLOW | EFI_BACKGROUND_BLACK)
 #define ATTR_BANNER (EFI_WHITE | EFI_BACKGROUND_BLUE)
 #define ATTR_CHOICE_BASIC ATTR_BASIC
 #define ATTR_CHOICE_CURRENT (EFI_WHITE | EFI_BACKGROUND_GREEN)
@@ -47,6 +48,7 @@ static UINTN screen_height;
 static CHAR16 *BlankLine;
 static CHAR16 arrowUp[2] = { ARROW_UP, 0 };
 static CHAR16 arrowDown[2] = { ARROW_DOWN, 0 };
+static BOOLEAN haveError = FALSE;
 
 
 EFI_GUID gEfiConsoleControlProtocolGuid = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
@@ -139,6 +141,8 @@ VOID ScreenHeader(IN CHAR16 *Title)
     // reposition cursor
     ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
     ST->ConOut->SetCursorPosition(ST->ConOut, 0, 4);
+
+    haveError = FALSE;
 }
 
 VOID ScreenWaitForKey(VOID)
@@ -150,6 +154,48 @@ VOID ScreenWaitForKey(VOID)
     BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
     ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
     Print(L"\n");
+}
+
+
+BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where)
+{
+    CHAR16 ErrorName[64];
+    
+    if (!(EFI_ERROR(Status)))
+        return FALSE;
+    
+    StatusToString(ErrorName, Status);
+    ST->ConOut->SetAttribute(ST->ConOut, ATTR_ERROR);
+    Print(L"Fatal Error: %s %s\n", ErrorName, where);
+    ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
+    haveError = TRUE;
+    
+    //BS->Exit(ImageHandle, ExitStatus, ExitDataSize, ExitData);
+    
+    return TRUE;
+}
+
+BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where)
+{
+    CHAR16 ErrorName[64];
+    
+    if (!(EFI_ERROR(Status)))
+        return FALSE;
+    
+    StatusToString(ErrorName, Status);
+    ST->ConOut->SetAttribute(ST->ConOut, ATTR_ERROR);
+    Print(L"Error: %s %s\n", ErrorName, where);
+    ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
+    haveError = TRUE;
+    
+    return TRUE;
+}
+
+VOID WaitAfterError(VOID)
+{
+    if (haveError)
+        ScreenWaitForKey();
+    haveError = FALSE;
 }
 
 
