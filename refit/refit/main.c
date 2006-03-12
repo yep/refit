@@ -39,11 +39,10 @@
 static EFI_HANDLE SelfImageHandle;
 static EFI_LOADED_IMAGE *SelfLoadedImage;
 
-static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, NULL };
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to EFI Boot Manager Menu", 1, NULL };
+static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", 1, NULL };
 static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", 2, NULL };
-
-static REFIT_MENU_ENTRY entry_dummy   = { L"This is a dummy entry", 77, NULL };
+static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, NULL };
+static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", 4, NULL };
 
 static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, 0, NULL };
 
@@ -94,6 +93,15 @@ void start_shell(void)
 {
     ScreenHeader(L"rEFIt - EFI Shell");
     run_tool(L"\\apps\\shell.efi");
+}
+
+void about_refit(void)
+{
+    ScreenHeader(L"rEFIt - About");
+    Print(L"rEFIt Version 0.2\n\n");
+    Print(L"Copyright (c) 2006 Christoph Pfisterer\n");
+    Print(L"Portions Copyright (c) Intel Corporation and others\n\n");
+    ScreenWaitForKey();
 }
 
 void chainload(VOID *UserData)
@@ -285,6 +293,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     WaitAfterError();
     
     MenuAddEntry(&main_menu, &entry_shell);
+    MenuAddEntry(&main_menu, &entry_about);
     MenuAddEntry(&main_menu, &entry_exit);
     MenuAddEntry(&main_menu, &entry_reset);
     
@@ -304,6 +313,10 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
                 
             case 3:   // Start Shell
                 start_shell();
+                break;
+                
+            case 4:   // About rEFIt
+                about_refit();
                 break;
                 
             case 8:   // Boot OS via .EFI loader
