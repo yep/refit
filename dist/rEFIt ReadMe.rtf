@@ -43,9 +43,9 @@ If you can make an \ul additional\ulnone  HFS+ partition on your internal disk, 
 
 \f1\b Usage
 \f0\b0 \
-Hold down the \'d2Option\'d3 key while the Mac starts up, then select \'d2rEFIt\'d3 from the list of boot volumes. After rEFIt has loaded, you will get a simple text menu. It lists all Mac OS X installations and EFI boot loaders found on the available disks. There are three additional entries to start the EFI shell, exit rEFIt (dropping you back to the built-in EFI boot manager), and to reboot the system.\
+Hold down the \'d2Option\'d3 key while the Mac starts up, then select \'d2rEFIt\'d3 from the list of boot volumes. After rEFIt has loaded, you will get a simple text menu. It lists all Mac OS X installations and EFI boot loaders found on the available disks. There are additional entries to start the EFI shell, show the rEFIt version number, exit rEFIt (dropping you back to the built-in boot manager), and to reboot the system.\
 \
-You can configure your Mac to always start into the rEFIt boot menu, without holding the \'d2Option\'d3 key. This is done with the \'d2--setBoot\'d3 option to the \'d2bless\'d3 command. See the manual page for \'d2bless\'d3 for details.\
+You can configure your Mac to always start into the rEFIt boot menu, without holding the \'d2Option\'d3 key. This is done with the \'d2--setBoot\'d3 option to the \'d2bless\'d3 command. The \'d2enable-always.sh\'d3 script uses this option; that\'d5s the only difference from \'d2enable.sh\'d3.\
 \
 
 \f1\b Adding Linux with elilo
@@ -130,6 +130,23 @@ dhclient.efi\
 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
+\f1\b \cf0 Version History\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0\b0 \cf0 \
+Version 0.2:\
+\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
+\cf0 \'a5	Scan more folders for potential boot loaders.\
+\'a5	Updated the EFI Shell with a version that includes all built-in commands.\
+\'a5	Improved error handling.\
+\'a5	Lots of under-the-hood improvements.\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
+Version 0.1:\
+First public release.\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
 \f1\b \cf0 Future Possibilities
 \f0\b0 \
 Here are some ideas how rEFIt might evolve in the future:\
@@ -153,7 +170,9 @@ rEFIt is distributed in the hope that it will be useful. EFI is a powerful envir
 
 \f1\b Credits
 \f0\b0 \
-The rEFIt boot menu was written by Christoph Pfisterer <chrisp@users.sourceforge.net>. Other components in this distribution are taken from the TianoCore project and Intel\'d5s EFI application development kit, both distributed under a BSD-style license. See the \'d2rEFIt License\'d3 document for details.\
+The rEFIt boot menu was written by Christoph Pfisterer <chrisp@users.sourceforge.net>. Other components in this distribution are taken from the {\field{\*\fldinst{HYPERLINK "http://www.tianocore.org/"}}{\fldrslt TianoCore}} project and Intel\'d5s {\field{\*\fldinst{HYPERLINK "http://www.intel.com/technology/efi/toolkit_overview.htm"}}{\fldrslt EFI Application Toolkit}}, both distributed under a BSD-style license. See the \'d2rEFIt License\'d3 document for details.\
+\
+The rEFIt project website is at {\field{\*\fldinst{HYPERLINK "http://refit.sourceforge.net/"}}{\fldrslt http://refit.sourceforge.net/}}.\
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\qc\pardirnatural
 \cf0 Have fun!\
