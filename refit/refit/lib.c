@@ -36,34 +36,18 @@
 
 #include "lib.h"
 
-/*
-EFI_STATUS lib_locate_handle(IN EFI_GUID *Protocol, OUT UINTN *HandleCount, OUT EFI_HANDLE **HandleArray)
+BOOLEAN FileExists(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath)
 {
-    EFI_STATUS status;
-    UINTN bufferSize = 16 * sizeof(EFI_HANDLE);
-    EFI_HANDLE *buffer;
+    EFI_STATUS  Status;
+    EFI_FILE    *TestFile;
     
-    buffer = AllocatePool(bufferSize);
-    status = BS->LocateHandle(ByProtocol, Protocol, NULL, &bufferSize, buffer);
-    if (status == EFI_BUFFER_TOO_SMALL) {
-        FreePool(buffer);
-        buffer = AllocatePool(bufferSize);  // was changed by the call to an appropriate size
-        status = BS->LocateHandle(ByProtocol, Protocol, NULL, &bufferSize, buffer);
+    Status = BaseDir->Open(BaseDir, &TestFile, RelativePath, EFI_FILE_MODE_READ, 0);
+    if (Status == EFI_SUCCESS) {
+        TestFile->Close(TestFile);
+        return TRUE;
     }
-    
-    if (status == EFI_SUCCESS) {
-        *HandleCount = bufferSize / sizeof(EFI_HANDLE);
-        *HandleArray = buffer;
-    } else if (status == EFI_NOT_FOUND) {
-        *HandleCount = 0;
-        *HandleArray = buffer;
-        status = EFI_SUCCESS;
-    } else {
-        FreePool(buffer);
-    }
-    return status;
+    return FALSE;
 }
-*/
 
 EFI_STATUS DirNextEntry(IN EFI_FILE *Directory, IN OUT EFI_FILE_INFO **DirEntry, IN UINTN FilterMode)
 {

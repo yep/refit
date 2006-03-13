@@ -130,6 +130,40 @@ bailout:
     WaitAfterError();
 }
 
+void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
+{
+    EFI_STATUS              Status;
+    REFIT_DIR_ITER          DirIter;
+    EFI_FILE_INFO           *DirEntry;
+    CHAR16                  FileName[256];
+    REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL };
+    
+    // look through contents of the directory
+    DirIterOpen(RootDir, Path, &DirIter);
+    while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
+        if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0)
+            continue;   // skip this
+        if (StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
+            continue;   // skip this
+        
+        if (Path)
+            SPrint(FileName, 255, L"\\%s\\%s", Path, DirEntry->FileName);
+        else
+            SPrint(FileName, 255, L"\\%s", DirEntry->FileName);
+        entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+1, VolName);
+        entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
+        MenuAddEntry(&main_menu, &entry_boot);
+    }
+    Status = DirIterClose(&DirIter);
+    if (Status != EFI_NOT_FOUND) {
+        if (Path)
+            SPrint(FileName, 255, L"while scanning the %s directory", Path);
+        else
+            StrCpy(FileName, L"while scanning the root directory");
+        CheckError(Status, FileName);
+    }
+}
+
 void scan_volumes(void)
 {
     EFI_STATUS              Status;
@@ -140,11 +174,8 @@ void scan_volumes(void)
     EFI_FILE                *RootDir;
     EFI_FILE_SYSTEM_INFO    *FileSystemInfoPtr;
     CHAR16                  *VolName;
-    REFIT_DIR_ITER          DirIter;
-    EFI_FILE_INFO           *DirEntry;
     REFIT_DIR_ITER          EfiDirIter;
     EFI_FILE_INFO           *EfiDirEntry;
-    EFI_FILE                *BootFile;
     CHAR16                  FileName[256];
     REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL };
     
@@ -180,9 +211,8 @@ void scan_volumes(void)
         
         // check for Mac OS X boot loader
         StrCpy(FileName, L"\\System\\Library\\CoreServices\\boot.efi");
-        if (RootDir->Open(RootDir, &BootFile, FileName, EFI_FILE_MODE_READ, 0) == EFI_SUCCESS) {
+        if (FileExists(RootDir, FileName)) {
             Print(L"  - Mac OS X boot file found\n");
-            BootFile->Close(BootFile);
             
             entry_boot.Title = PoolPrint(L"Boot Mac OS X from %s", VolName);
             entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
@@ -191,9 +221,8 @@ void scan_volumes(void)
         
         // check for Microsoft boot loader/menu
         StrCpy(FileName, L"\\EFI\\Microsoft\\Boot\\Bootmgfw.efi");
-        if (RootDir->Open(RootDir, &BootFile, FileName, EFI_FILE_MODE_READ, 0) == EFI_SUCCESS) {
+        if (FileExists(RootDir, FileName)) {
             Print(L"  - Microsoft boot menu found\n");
-            BootFile->Close(BootFile);
             
             entry_boot.Title = PoolPrint(L"Boot Microsoft boot menu from %s", VolName);
             entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
@@ -201,37 +230,11 @@ void scan_volumes(void)
         }
         
         // scan the root directory for EFI executables
-        DirIterOpen(RootDir, NULL, &DirIter);
-        while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
-            if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0)
-                continue;   // skip this
-            if (StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
-                continue;   // skip this
-            
-            SPrint(FileName, 255, L"\\%s", DirEntry->FileName);
-            entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+1, VolName);
-            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-            MenuAddEntry(&main_menu, &entry_boot);
-        }
-        Status = DirIterClose(&DirIter);
-        CheckError(Status, L"while scanning the root directory");
-        
-        // scan the elilo directory (as used on gimli's Live CD)
-        DirIterOpen(RootDir, L"elilo", &DirIter);
-        while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
-            if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0)
-                continue;   // skip this
-            if (StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
-                continue;   // skip this
-            
-            SPrint(FileName, 255, L"\\elilo\\%s", DirEntry->FileName);
-            entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+1, VolName);
-            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-            MenuAddEntry(&main_menu, &entry_boot);
-        }
-        Status = DirIterClose(&DirIter);
-        if (Status != EFI_NOT_FOUND)
-            CheckError(Status, L"while scanning the elilo directory");
+        scan_dir(RootDir, NULL, DeviceHandle, VolName);
+        // scan the elilo directory (as used on gimli's first Live CD)
+        scan_dir(RootDir, L"elilo", DeviceHandle, VolName);
+        // scan the boot directory
+        scan_dir(RootDir, L"boot", DeviceHandle, VolName);
         
         // scan subdirectories of the EFI directory (as per the standard)
         DirIterOpen(RootDir, L"EFI", &EfiDirIter);
@@ -242,21 +245,8 @@ void scan_volumes(void)
                 continue;   // skip ourselves
             Print(L"  - Directory EFI\\%s found\n", EfiDirEntry->FileName);
             
-            // look through contents of that directory
-            DirIterOpen(EfiDirIter.DirHandle, EfiDirEntry->FileName, &DirIter);
-            while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
-	        if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0)
-                    continue;   // skip this
-                if (StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
-                    continue;   // skip this
-                
-                SPrint(FileName, 255, L"\\EFI\\%s\\%s", EfiDirEntry->FileName, DirEntry->FileName);
-                entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+5, VolName);
-                entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-                MenuAddEntry(&main_menu, &entry_boot);
-            }
-            Status = DirIterClose(&DirIter);
-            CheckError(Status, L"while scanning an EFI sub-directory");
+            SPrint(FileName, 255, L"EFI\\%s", EfiDirEntry->FileName);
+            scan_dir(RootDir, FileName, DeviceHandle, VolName);
         }
         Status = DirIterClose(&EfiDirIter);
         if (Status != EFI_NOT_FOUND)

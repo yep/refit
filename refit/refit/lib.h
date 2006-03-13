@@ -69,6 +69,8 @@ BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
 BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
 VOID WaitAfterError(VOID);
 
+BOOLEAN FileExists(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath);
+
 EFI_STATUS DirNextEntry(IN EFI_FILE *Directory, IN OUT EFI_FILE_INFO **DirEntry, IN UINTN FilterMode);
 
 VOID DirIterOpen(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath OPTIONAL, OUT REFIT_DIR_ITER *DirIter);
