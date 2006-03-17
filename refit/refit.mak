@@ -12,7 +12,7 @@ all :
 	nmake -f refit.mak all
 	cd $(SOURCE_DIR)
 
-	cd $(SOURCE_DIR)\refit
+	cd $(SOURCE_DIR)\refitl
 	nmake -f refitl.mak all
 	cd $(SOURCE_DIR)
 
