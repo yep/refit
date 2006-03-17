@@ -1,6 +1,6 @@
 #
-# refit/refit.mak
-# Build control file for the rEFIt boot menu
+# refitl/refitl.mak
+# Build control file for the rEFIt boot menu (text-only version)
 #
 
 #
@@ -13,7 +13,8 @@
 # Set the base output name and entry point
 #
 
-BASE_NAME         = refit
+BASE_NAME         = refitl
+REAL_BASE_NAME    = refit
 IMAGE_ENTRY_POINT = RefitMain
 
 #
@@ -21,8 +22,10 @@ IMAGE_ENTRY_POINT = RefitMain
 #
 
 TARGET_APP = $(BASE_NAME)
-SOURCE_DIR = $(SDK_INSTALL_DIR)\refit\$(BASE_NAME)
+SOURCE_DIR = $(SDK_INSTALL_DIR)\refit\$(REAL_BASE_NAME)
 BUILD_DIR  = $(SDK_BUILD_DIR)\refit\$(BASE_NAME)
+
+C_FLAGS = $(C_FLAGS) /D TEXTONLY
 
 #
 # Include paths
@@ -58,9 +61,9 @@ OBJECTS = $(OBJECTS) \
 # Source file dependencies
 #
 
-$(BUILD_DIR)\main.obj : $(*B).c $(INC_DEPS)
-$(BUILD_DIR)\menu.obj : $(*B).c $(INC_DEPS)
-$(BUILD_DIR)\lib.obj  : $(*B).c $(INC_DEPS)
+$(BUILD_DIR)\main.obj : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\menu.obj : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\lib.obj  : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
 
 #
 # Handoff to master.mak

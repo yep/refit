@@ -36,6 +36,17 @@
 
 #include "lib.h"
 
+// Console defines and variables
+
+static EFI_GUID gEfiConsoleControlProtocolGuid = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
+static EFI_CONSOLE_CONTROL_PROTOCOL *ConsoleControl;
+
+static UINTN ConWidth;
+static UINTN ConHeight;
+static CHAR16 *BlankLine;
+static CHAR16 arrowUp[2] = { ARROW_UP, 0 };
+static CHAR16 arrowDown[2] = { ARROW_DOWN, 0 };
+
 #define ATTR_BASIC (EFI_LIGHTGRAY | EFI_BACKGROUND_BLACK)
 #define ATTR_ERROR (EFI_YELLOW | EFI_BACKGROUND_BLACK)
 #define ATTR_BANNER (EFI_WHITE | EFI_BACKGROUND_BLUE)
@@ -43,83 +54,240 @@
 #define ATTR_CHOICE_CURRENT (EFI_WHITE | EFI_BACKGROUND_GREEN)
 #define ATTR_SCROLLARROW (EFI_LIGHTGREEN | EFI_BACKGROUND_BLACK)
 
-static UINTN screen_width;
-static UINTN screen_height;
-static CHAR16 *BlankLine;
-static CHAR16 arrowUp[2] = { ARROW_UP, 0 };
-static CHAR16 arrowDown[2] = { ARROW_DOWN, 0 };
+static VOID SwitchToText(IN BOOLEAN CursorEnabled);
+static VOID SwitchToGraphics(VOID);
+static VOID DrawScreenHeader(IN CHAR16 *Title);
+static VOID PauseForKey(VOID);
+
+// UGA defines and variables
+
+static EFI_GUID gEfiUgaDrawProtocolGuid = EFI_UGA_DRAW_PROTOCOL_GUID;
+static EFI_UGA_DRAW_PROTOCOL *UGA;
+static UINTN UGAWidth;
+static UINTN UGAHeight;
+static BOOLEAN InGraphicsMode;
+static BOOLEAN AllowGraphicsMode;
+static BOOLEAN GraphicsScreenDirty;
+
+#ifndef TEXTONLY
+
+static EFI_UGA_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
+
+#include "image_refit_banner.h"
+#include "image_back_normal_big.h"
+#include "image_back_normal_small.h"
+#include "image_back_selected_big.h"
+#include "image_back_selected_small.h"
+
+#include "image_font.h"
+#define FONT_CELL_WIDTH (7)
+#define FONT_CELL_HEIGHT (12)
+
+#define LAYOUT_TEXT_WIDTH (512)
+#define LAYOUT_TOTAL_HEIGHT (368)
+
+static VOID BltClearScreen(VOID);
+static VOID BltImage(REFIT_IMAGE *Image, UINTN XPos, UINTN YPos);
+static VOID BltImageComposite(REFIT_IMAGE *BaseImage, REFIT_IMAGE *TopImage, UINTN XPos, UINTN YPos);
+static VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);
+
+#endif  /* !TEXTONLY */
+
+// general defines and variables
+
 static BOOLEAN haveError = FALSE;
 
+//
+// Screen handling
+//
 
-EFI_GUID gEfiConsoleControlProtocolGuid = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
-
-static VOID ScreenInitCommon(VOID)
+VOID InitScreen(VOID)
 {
-    EFI_CONSOLE_CONTROL_PROTOCOL *ConsoleControl;
-    EFI_CONSOLE_CONTROL_SCREEN_MODE currentMode;
-    
-    // switch console to text mode if necessary
-    if (BS->LocateProtocol(&gEfiConsoleControlProtocolGuid, NULL, &ConsoleControl) == EFI_SUCCESS) {
-        ConsoleControl->GetMode(ConsoleControl, &currentMode, NULL, NULL);
-        if (currentMode == EfiConsoleControlScreenGraphics) {
-            ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenText);
-        }
-    }
-    
-    // disable cursor
-    ST->ConOut->EnableCursor(ST->ConOut, FALSE);
-}
-
-VOID ScreenInit(VOID)
-{
+    EFI_STATUS Status;
+    EFI_CONSOLE_CONTROL_SCREEN_MODE CurrentMode;
+#ifndef TEXTONLY
+    UINT32 UGADepth;
+    UINT32 UGARefreshRate;
+#endif  /* !TEXTONLY */
     UINTN i;
     
-    ScreenInitCommon();
+    // get protocols
+    Status = BS->LocateProtocol(&gEfiConsoleControlProtocolGuid, NULL, &ConsoleControl);
+    if (Status != EFI_SUCCESS)
+        ConsoleControl = NULL;
+#ifndef TEXTONLY
+    Status = BS->LocateProtocol(&gEfiUgaDrawProtocolGuid, NULL, &UGA);
+    if (Status != EFI_SUCCESS)
+        UGA = NULL;
+#endif  /* !TEXTONLY */
     
-    // get size of display
-    if (ST->ConOut->QueryMode(ST->ConOut, ST->ConOut->Mode->Mode, &screen_width, &screen_height) != EFI_SUCCESS) {
-        screen_width = 80;
-        screen_height = 25;
+    // now, look at what we have and at the current mode
+    if (ConsoleControl == NULL) {
+        // no ConSplitter, assume text-only
+        InGraphicsMode = FALSE;
+        AllowGraphicsMode = FALSE;
+        
+    } else {
+        // we have a ConSplitter, check current mode
+        ConsoleControl->GetMode(ConsoleControl, &CurrentMode, NULL, NULL);
+#ifndef TEXTONLY
+        if (UGA == NULL) {
+#endif  /* !TEXTONLY */
+            // ...but no graphics. Strange, but still run in text-only mode
+            if (CurrentMode == EfiConsoleControlScreenGraphics)
+                ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenText);
+            InGraphicsMode = FALSE;
+            AllowGraphicsMode = FALSE;
+            
+#ifndef TEXTONLY
+        } else {
+            // we have everything, horray!
+            // get screen size
+            Status = UGA->GetMode(UGA, &UGAWidth, &UGAHeight, &UGADepth, &UGARefreshRate);
+            if (EFI_ERROR(Status)) {
+                // TODO: error message
+                // fall back to text mode
+                if (CurrentMode == EfiConsoleControlScreenGraphics)
+                    ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenText);
+                InGraphicsMode = FALSE;
+                AllowGraphicsMode = FALSE;
+                
+            } else {
+                InGraphicsMode = (CurrentMode == EfiConsoleControlScreenGraphics) ? TRUE : FALSE;
+                AllowGraphicsMode = TRUE;
+            }
+        }
+#endif  /* !TEXTONLY */
+    }
+    
+#ifndef TEXTONLY
+    if (AllowGraphicsMode && InGraphicsMode) {
+        // display banner during init phase
+        BltClearScreen();
+        BltImage(&image_refit_banner, (UGAWidth - image_refit_banner.Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+    }
+    GraphicsScreenDirty = FALSE;
+#endif  /* !TEXTONLY */
+    
+    if (!InGraphicsMode) {
+        // disable cursor
+        ST->ConOut->EnableCursor(ST->ConOut, FALSE);
+    }
+    
+    // get size of text console
+    if (ST->ConOut->QueryMode(ST->ConOut, ST->ConOut->Mode->Mode, &ConWidth, &ConHeight) != EFI_SUCCESS) {
+        // use default values on error
+        ConWidth = 80;
+        ConHeight = 25;
     }
     
     // make a buffer for the whole line
-    BlankLine = AllocatePool(screen_width + 1);
-    for (i = 0; i < screen_width; i++)
+    BlankLine = AllocatePool(ConWidth + 1);
+    for (i = 0; i < ConWidth; i++)
         BlankLine[i] = ' ';
-    BlankLine[i] = 0;    
-}
-
-VOID ScreenReinit(VOID)
-{
-    ScreenInitCommon();
-}
-
-VOID ScreenLeave(IN UINTN State)
-{
-    // states:
-    //  0 text, as is
-    //  1 text, blank screen
-    //  2 graphics
+    BlankLine[i] = 0;
     
-    // clear text screen if requested
-    if (State > 0) {
+    // show the banner (even when in graphics mode)
+    DrawScreenHeader(L"rEFIt - Initializing...");
+}
+
+VOID BeginTextScreen(IN CHAR16 *Title)
+{
+    DrawScreenHeader(Title);
+    SwitchToText(FALSE);
+    
+    // reset error flag
+    haveError = FALSE;
+}
+
+VOID FinishTextScreen(IN BOOLEAN WaitAlways)
+{
+    if (haveError || WaitAlways) {
+        SwitchToText(FALSE);
+        PauseForKey();
+    }
+    
+    // reset error flag
+    haveError = FALSE;
+}
+
+VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title)
+{
+    // modes:
+    //  0 text screen with header
+    //  1 graphics, blank grey
+    
+    if (!AllowGraphicsMode)
+        Mode = 0;
+    
+#ifndef TEXTONLY
+    if (Mode == 1) {
+        SwitchToGraphics();
+        BltClearScreen();
+    }
+#endif  /* !TEXTONLY */
+    
+    // NOTE: The following happens always, because we might switch back to text mode later
+    //       to show errors
+    // show the header
+    DrawScreenHeader(Title);
+    
+    if (Mode == 0)
+        SwitchToText(TRUE);
+    
+    // reset error flag
+    haveError = FALSE;
+}
+
+VOID FinishExternalScreen(VOID)
+{
+    // sync our internal state
+    if (ConsoleControl != NULL) {
+        EFI_CONSOLE_CONTROL_SCREEN_MODE CurrentMode;
+        ConsoleControl->GetMode(ConsoleControl, &CurrentMode, NULL, NULL);
+        InGraphicsMode = (CurrentMode == EfiConsoleControlScreenGraphics) ? TRUE : FALSE;
+    }
+    GraphicsScreenDirty = TRUE;
+    
+    if (haveError) {
+        SwitchToText(FALSE);
+        PauseForKey();
+    }
+    
+    // reset error flag
+    haveError = FALSE;
+}
+
+VOID TerminateScreen(VOID)
+{
+    if (!InGraphicsMode) {
+        // clear text screen
         ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
         ST->ConOut->ClearScreen(ST->ConOut);
     }
     
     // enable cursor
     ST->ConOut->EnableCursor(ST->ConOut, TRUE);
-    
-    // switch to graphics if requested
-    if (State == 2) {
-        EFI_CONSOLE_CONTROL_PROTOCOL *ConsoleControl;
-        if (BS->LocateProtocol(&gEfiConsoleControlProtocolGuid, NULL, &ConsoleControl) == EFI_SUCCESS) {
-            ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenGraphics);
-        }
+}
+
+static VOID SwitchToText(IN BOOLEAN CursorEnabled)
+{
+    if (InGraphicsMode && ConsoleControl != NULL) {
+        ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenText);
+        InGraphicsMode = FALSE;
+    }
+    ST->ConOut->EnableCursor(ST->ConOut, CursorEnabled);
+}
+
+static VOID SwitchToGraphics(VOID)
+{
+    if (!InGraphicsMode && AllowGraphicsMode) {
+        ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenGraphics);
+        InGraphicsMode = TRUE;
     }
 }
 
-VOID ScreenHeader(IN CHAR16 *Title)
+static VOID DrawScreenHeader(IN CHAR16 *Title)
 {
     UINTN y;
     
@@ -141,11 +309,9 @@ VOID ScreenHeader(IN CHAR16 *Title)
     // reposition cursor
     ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
     ST->ConOut->SetCursorPosition(ST->ConOut, 0, 4);
-
-    haveError = FALSE;
 }
 
-VOID ScreenWaitForKey(VOID)
+static VOID PauseForKey(VOID)
 {
     UINTN index;
     EFI_INPUT_KEY key;
@@ -156,6 +322,9 @@ VOID ScreenWaitForKey(VOID)
     Print(L"\n");
 }
 
+//
+// Error handling
+//
 
 BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where)
 {
@@ -191,13 +360,99 @@ BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where)
     return TRUE;
 }
 
-VOID WaitAfterError(VOID)
+//
+// Graphics functions
+//
+
+#ifndef TEXTONLY
+
+static VOID BltClearScreen(VOID)
 {
-    if (haveError)
-        ScreenWaitForKey();
-    haveError = FALSE;
+    UGA->Blt(UGA, &BackgroundPixel, EfiUgaVideoFill, 0, 0, 0, 0, UGAWidth, UGAHeight, 0);
 }
 
+static VOID BltImage(REFIT_IMAGE *Image, UINTN XPos, UINTN YPos)
+{
+    UGA->Blt(UGA, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
+             0, 0, XPos, YPos, Image->Width, Image->Height, 0);
+}
+
+static VOID BltImageComposite(REFIT_IMAGE *BaseImage, REFIT_IMAGE *TopImage, UINTN XPos, UINTN YPos)
+{
+    EFI_UGA_PIXEL *CompositeData;
+    UINTN x, y, TopOffsetX, TopOffsetY;
+    
+    CompositeData = AllocatePool(BaseImage->Width * BaseImage->Height * 4);
+    CopyMem(CompositeData, (VOID *)BaseImage->PixelData, BaseImage->Width * BaseImage->Height * 4);
+    TopOffsetX = (BaseImage->Width - TopImage->Width) >> 1;
+    TopOffsetY = (BaseImage->Height - TopImage->Height) >> 1;
+    
+    for (y = 0; y < TopImage->Height; y++) {
+        const UINT8 *BasePtr = BaseImage->PixelData + (y + TopOffsetY) * BaseImage->Width * 4 + TopOffsetX * 4;
+        const UINT8 *TopPtr = TopImage->PixelData + y * TopImage->Width * 4;
+        EFI_UGA_PIXEL *CompPtr = CompositeData + (y + TopOffsetY) * BaseImage->Width + TopOffsetX;
+        for (x = 0; x < TopImage->Width; x++) {
+            UINTN Alpha = TopPtr[3];
+            UINTN RevAlpha = 255 - Alpha;
+            CompPtr->Blue = ((UINTN)(*BasePtr++) * RevAlpha + (UINTN)(*TopPtr++) * Alpha) / 255;
+            CompPtr->Green = ((UINTN)(*BasePtr++) * RevAlpha + (UINTN)(*TopPtr++) * Alpha) / 255;
+            CompPtr->Red = ((UINTN)(*BasePtr++) * RevAlpha + (UINTN)(*TopPtr++) * Alpha) / 255;
+            BasePtr++, TopPtr++, CompPtr++;
+        }
+    }
+    
+    UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
+             0, 0, XPos, YPos, BaseImage->Width, BaseImage->Height, 0);
+    FreePool(CompositeData);
+}
+
+static VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
+{
+    UINT8 *Ptr;
+    UINT8 *FontPtr;
+    UINTN TextLength, TextWidth;
+    UINTN i, c, y;
+    UINTN LineOffset, FontLineOffset;
+    
+    // clear the buffer
+    Ptr = BackBuffer->PixelData;
+    for (i = 0; i < BackBuffer->Width * BackBuffer->Height; i++) {
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0;
+    }
+    
+    // fit the text
+    TextLength = StrLen(Text);
+    TextWidth = TextLength * FONT_CELL_WIDTH;
+    if (BackBuffer->Width < TextWidth) {
+        TextLength = BackBuffer->Width / FONT_CELL_WIDTH;
+        TextWidth = TextLength * FONT_CELL_WIDTH;
+    }
+    
+    // render it
+    Ptr = BackBuffer->PixelData + ((BackBuffer->Width - TextWidth) >> 1) * 4;
+    LineOffset = BackBuffer->Width * 4;
+    FontLineOffset = image_font.Width * 4;
+    for (i = 0; i < TextLength; i++) {
+        c = Text[i];
+        if (c < 32 || c >= 127)
+            c = 95;
+        else
+            c -= 32;
+        FontPtr = image_font_data + c * FONT_CELL_WIDTH * 4;
+        for (y = 0; y < FONT_CELL_HEIGHT; y++)
+            CopyMem(Ptr + y * LineOffset, FontPtr + y * FontLineOffset, FONT_CELL_WIDTH * 4);
+        Ptr += FONT_CELL_WIDTH * 4;
+    }
+}
+
+#endif  /* !TEXTONLY */
+
+//
+// Menu functions
+//
 
 VOID MenuAddEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry)
 {
@@ -224,13 +479,13 @@ VOID MenuFree(IN REFIT_MENU_SCREEN *Screen)
         FreePool(Screen->Entries);
 }
 
-VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+static VOID MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
     UINTN index;
     INTN i, chosenIndex, lastChosenIndex, maxIndex;
     INTN firstVisible, lastVisible, maxVisible, maxFirstVisible;
     UINTN menuWidth, itemWidth;
-    EFI_STATUS status;
+    EFI_STATUS Status;
     EFI_INPUT_KEY key;
     BOOLEAN isScrolling, paintAll, running;
     CHAR16 **DisplayStrings;
@@ -238,7 +493,7 @@ VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
     chosenIndex = 0;
     maxIndex = (INTN)Screen->EntryCount - 1;
     firstVisible = 0;
-    maxVisible = (INTN)screen_height - 5;  // includes -1 offset for "last" counting method
+    maxVisible = (INTN)ConHeight - 5;  // includes -1 offset for "last" counting method
     maxFirstVisible = maxIndex - maxVisible;
     if (maxFirstVisible < 0)
         maxFirstVisible = 0;   // non-scrolling case
@@ -246,7 +501,8 @@ VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
     running = TRUE;
     paintAll = TRUE;
     
-    ScreenHeader(Screen->Title);
+    // setup screen
+    BeginTextScreen(Screen->Title);
     
     // determine width of the menu
     menuWidth = 20;  // minimum
@@ -255,8 +511,8 @@ VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
         if (menuWidth < itemWidth)
             menuWidth = itemWidth;
     }
-    if (menuWidth > screen_width - 6)
-        menuWidth = screen_width - 6;
+    if (menuWidth > ConWidth - 6)
+        menuWidth = ConWidth - 6;
     
     // prepare strings for display
     DisplayStrings = AllocatePool(sizeof(CHAR16 *) * Screen->EntryCount);
@@ -307,8 +563,8 @@ VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
         paintAll = FALSE;
         lastChosenIndex = chosenIndex;
         
-        status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
-        if (status == EFI_NOT_READY) {
+        Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
+        if (Status == EFI_NOT_READY) {
             BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
             continue;
         }
@@ -414,6 +670,8 @@ VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
         }
     }
     
+    for (i = 0; i <= maxIndex; i++)
+        FreePool(DisplayStrings[i]);
     FreePool(DisplayStrings);
     
     if (ChosenEntry) {
@@ -422,5 +680,172 @@ VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
         else
             *ChosenEntry = Screen->Entries + chosenIndex;
     }
-    return;
+}
+
+#ifndef TEXTONLY
+
+static VOID DrawMenuEntryGraphics(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN PosX, UINTN PosY)
+{
+    REFIT_IMAGE *BackgroundImage;
+    
+    if (Entry->Row == 0) {
+        if (selected)
+            BackgroundImage = &image_back_selected_big;
+        else
+            BackgroundImage = &image_back_normal_big;
+    } else {
+        if (selected)
+            BackgroundImage = &image_back_selected_small;
+        else
+            BackgroundImage = &image_back_normal_small;
+    }
+    BltImageComposite(BackgroundImage, Entry->Image, PosX, PosY);
+}
+
+static VOID MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+{
+    UINTN row0Count, row0PosX, row0PosY, row0PosXRunning;
+    UINTN row1Count, row1PosX, row1PosY, row1PosXRunning;
+    UINTN *itemPosX;
+    UINTN index;
+    INTN i, chosenIndex, lastChosenIndex, maxIndex;
+    REFIT_IMAGE TextBuffer;
+    EFI_STATUS Status;
+    EFI_INPUT_KEY key;
+    BOOLEAN running;
+    
+    lastChosenIndex = chosenIndex = 0;
+    maxIndex = (INTN)Screen->EntryCount - 1;
+    running = TRUE;
+    
+    row0Count = 0;
+    row1Count = 0;
+    for (i = 0; i <= maxIndex; i++) {
+        if (Screen->Entries[i].Row == 0)
+            row0Count++;
+        else
+            row1Count++;
+    }
+    row0PosX = (UGAWidth + 8 - (144 + 8) * row0Count) >> 1;
+    row0PosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + 32 + 32;
+    row1PosX = (UGAWidth + 8 - (80 + 8) * row1Count) >> 1;
+    row1PosY = row0PosY + 144 + 16;
+    
+    itemPosX = AllocatePool(sizeof(UINTN) * Screen->EntryCount);
+    row0PosXRunning = row0PosX;
+    row1PosXRunning = row1PosX;
+    for (i = 0; i <= maxIndex; i++) {
+        if (Screen->Entries[i].Row == 0) {
+            itemPosX[i] = row0PosXRunning;
+            row0PosXRunning += 144 + 8;
+        } else {
+            itemPosX[i] = row1PosXRunning;
+            row1PosXRunning += 80 + 8;
+        }
+    }
+    
+    TextBuffer.Width = LAYOUT_TEXT_WIDTH;
+    TextBuffer.Height = FONT_CELL_HEIGHT;
+    TextBuffer.PixelData = AllocatePool(TextBuffer.Width * TextBuffer.Height * 4);
+    
+    // initial painting
+    if (!InGraphicsMode) {
+        SwitchToGraphics();
+        GraphicsScreenDirty = TRUE;
+    }
+    if (GraphicsScreenDirty)
+        BltClearScreen();
+    BltImage(&image_refit_banner, (UGAWidth - image_refit_banner.Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+    for (i = 0; i <= maxIndex; i++) {
+        DrawMenuEntryGraphics(&(Screen->Entries[i]), (i == chosenIndex) ? TRUE : FALSE,
+                              itemPosX[i], (Screen->Entries[i].Row == 0) ? row0PosY : row1PosY);
+    }
+    RenderText(Screen->Entries[chosenIndex].Title, &TextBuffer);
+    BltImage(&TextBuffer, (UGAWidth - TextBuffer.Width) >> 1, row1PosY + 80 + 16);
+    
+    while (running) {
+        
+        if (chosenIndex != lastChosenIndex) {
+            DrawMenuEntryGraphics(&(Screen->Entries[lastChosenIndex]), FALSE,
+                                  itemPosX[lastChosenIndex], (Screen->Entries[lastChosenIndex].Row == 0) ? row0PosY : row1PosY);
+            DrawMenuEntryGraphics(&(Screen->Entries[chosenIndex]), TRUE,
+                                  itemPosX[chosenIndex], (Screen->Entries[chosenIndex].Row == 0) ? row0PosY : row1PosY);
+            RenderText(Screen->Entries[chosenIndex].Title, &TextBuffer);
+            BltImage(&TextBuffer, (UGAWidth - TextBuffer.Width) >> 1, row1PosY + 80 + 16);
+        }
+        lastChosenIndex = chosenIndex;
+        
+        Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
+        if (Status == EFI_NOT_READY) {
+            BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
+            continue;
+        }
+        
+        switch (key.ScanCode) {
+            case 0x01:  // Arrow Up
+            case 0x04:  // Arrow Left
+                if (chosenIndex > 0) {
+                    chosenIndex --;
+                }
+                break;
+                
+            case 0x02:  // Arrow Down
+            case 0x03:  // Arrow Right
+                if (chosenIndex < maxIndex) {
+                    chosenIndex ++;
+                }
+                break;
+                
+            case 0x09:  // PageUp
+            case 0x05:  // Home
+                if (chosenIndex > 0) {
+                    chosenIndex = 0;
+                }
+                break;
+                
+            case 0x0a:  // PageDown
+            case 0x06:  // End
+                if (chosenIndex < maxIndex) {
+                    chosenIndex = maxIndex;
+                }
+                break;
+                
+            case 0x17:  // Escape
+                        // exit menu screen without selection
+                chosenIndex = -1;   // special value only valid on this exit path
+                running = FALSE;
+                break;
+                
+        }
+        switch (key.UnicodeChar) {
+            case 0x0a:
+            case 0x0d:
+            case 0x20:
+                running = FALSE;
+                break;
+        }
+    }
+    
+    FreePool(TextBuffer.PixelData);
+    FreePool(itemPosX);
+    
+    if (ChosenEntry) {
+        if (chosenIndex < 0)
+            *ChosenEntry = NULL;
+        else
+            *ChosenEntry = Screen->Entries + chosenIndex;
+    }
+    GraphicsScreenDirty = TRUE;
+}
+
+#endif  /* !TEXTONLY */
+
+VOID MenuRun(IN BOOLEAN HasGraphics, IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+{
+#ifndef TEXTONLY
+    if (HasGraphics && AllowGraphicsMode)
+        MenuRunGraphics(Screen, ChosenEntry);
+    else
+#endif  /* !TEXTONLY */
+        MenuRunText(Screen, ChosenEntry);
 }

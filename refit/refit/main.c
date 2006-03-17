@@ -36,13 +36,42 @@
 
 #include "lib.h"
 
+// images
+
+#ifdef TEXTONLY
+
+DUMMY_IMAGE(image_tool_about)
+DUMMY_IMAGE(image_tool_exit)
+DUMMY_IMAGE(image_tool_reset)
+DUMMY_IMAGE(image_tool_shell)
+
+DUMMY_IMAGE(image_os_mac)
+DUMMY_IMAGE(image_os_linux)
+DUMMY_IMAGE(image_os_win)
+DUMMY_IMAGE(image_os_unknown)
+
+#else
+
+#include "image_tool_about.h"
+#include "image_tool_exit.h"
+#include "image_tool_reset.h"
+#include "image_tool_shell.h"
+
+#include "image_os_mac.h"
+#include "image_os_linux.h"
+#include "image_os_win.h"
+#include "image_os_unknown.h"
+#endif
+
+// variables
+
 static EFI_HANDLE SelfImageHandle;
 static EFI_LOADED_IMAGE *SelfLoadedImage;
 
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", 1, NULL };
-static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", 2, NULL };
-static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, NULL };
-static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", 4, NULL };
+static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", 1, NULL, 1, &image_tool_exit };
+static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", 2, NULL, 1, &image_tool_reset };
+static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, NULL, 1, &image_tool_shell };
+static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", 4, NULL, 1, &image_tool_about };
 
 static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, 0, NULL };
 
@@ -80,37 +109,35 @@ void run_tool(IN CHAR16 *RelativeFilePath)
         goto bailout;
     
     // turn control over to the image
-    ScreenLeave(0);
     BS->StartImage(ShellHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
-    ScreenReinit();
     
 bailout:
-    WaitAfterError();
+    FinishExternalScreen();
 }
 
 void start_shell(void)
 {
-    ScreenHeader(L"rEFIt - EFI Shell");
+    BeginExternalScreen(0, L"rEFIt - EFI Shell");
     run_tool(L"\\apps\\shell.efi");
 }
 
 void about_refit(void)
 {
-    ScreenHeader(L"rEFIt - About");
+    BeginTextScreen(L"rEFIt - About");
     Print(L"rEFIt Version 0.2\n\n");
     Print(L"Copyright (c) 2006 Christoph Pfisterer\n");
-    Print(L"Portions Copyright (c) Intel Corporation and others\n\n");
-    ScreenWaitForKey();
+    Print(L"Portions Copyright (c) Intel Corporation and others\n");
+    FinishTextScreen(TRUE);
 }
 
-void chainload(VOID *UserData)
+void chainload(IN UINTN Tag, IN VOID *UserData)
 {
     EFI_STATUS              Status;
     EFI_DEVICE_PATH         *DevicePath;
     EFI_HANDLE              ChildImageHandle;
     
-    ScreenHeader(L"rEFIt - Booting OS");
+    BeginExternalScreen((Tag == 8) ? 0 : 1, L"rEFIt - Booting OS");
     
     DevicePath = (EFI_DEVICE_PATH *)UserData;
     
@@ -120,14 +147,12 @@ void chainload(VOID *UserData)
         goto bailout;
     
     // turn control over to the image
-    ScreenLeave(0);
     // TODO: re-enable the EFI watchdog timer!
     BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
-    ScreenReinit();
     
 bailout:
-    WaitAfterError();
+    FinishExternalScreen();
 }
 
 void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
@@ -136,7 +161,7 @@ void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
     REFIT_DIR_ITER          DirIter;
     EFI_FILE_INFO           *DirEntry;
     CHAR16                  FileName[256];
-    REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL };
+    REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL, 0, &image_os_unknown };
     
     // look through contents of the directory
     DirIterOpen(RootDir, Path, &DirIter);
@@ -152,6 +177,14 @@ void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
             SPrint(FileName, 255, L"\\%s", DirEntry->FileName);
         entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+1, VolName);
         entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
+        entry_boot.Tag = 8;
+        entry_boot.Image = &image_os_unknown;
+        if (StriCmp(DirEntry->FileName, L"e.efi") == 0 || StriCmp(DirEntry->FileName, L"elilo.efi") == 0)
+            entry_boot.Image = &image_os_linux;
+        else if (StriCmp(DirEntry->FileName, L"xom.efi") == 0) {
+            entry_boot.Tag = 9;
+            entry_boot.Image = &image_os_win;
+        }
         MenuAddEntry(&main_menu, &entry_boot);
     }
     Status = DirIterClose(&DirIter);
@@ -177,7 +210,7 @@ void scan_volumes(void)
     REFIT_DIR_ITER          EfiDirIter;
     EFI_FILE_INFO           *EfiDirEntry;
     CHAR16                  FileName[256];
-    REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL };
+    REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL, 0, &image_os_unknown };
     
     Print(L"Scanning for boot loaders...\n");
     
@@ -216,6 +249,18 @@ void scan_volumes(void)
             
             entry_boot.Title = PoolPrint(L"Boot Mac OS X from %s", VolName);
             entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
+            entry_boot.Tag = 9;
+            entry_boot.Image = &image_os_mac;
+            MenuAddEntry(&main_menu, &entry_boot);
+        }
+        
+        // check for XOM
+        StrCpy(FileName, L"\\System\\Library\\CoreServices\\xom.efi");
+        if (FileExists(RootDir, FileName)) {
+            entry_boot.Title = PoolPrint(L"Boot Windows XP (XoM) from %s", VolName);
+            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
+            entry_boot.Tag = 9;
+            entry_boot.Image = &image_os_win;
             MenuAddEntry(&main_menu, &entry_boot);
         }
         
@@ -226,6 +271,8 @@ void scan_volumes(void)
             
             entry_boot.Title = PoolPrint(L"Boot Microsoft boot menu from %s", VolName);
             entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
+            entry_boot.Tag = 8;
+            entry_boot.Image = &image_os_win;
             MenuAddEntry(&main_menu, &entry_boot);
         }
         
@@ -241,7 +288,7 @@ void scan_volumes(void)
         while (DirIterNext(&EfiDirIter, 1, NULL, &EfiDirEntry)) {
             if (StriCmp(EfiDirEntry->FileName, L"TOOLS") == 0)
                 continue;   // skip this, doesn't contain boot loaders
-            if (StriCmp(EfiDirEntry->FileName, L"REFIT") == 0)
+            if (StriCmp(EfiDirEntry->FileName, L"REFIT") == 0 || StriCmp(EfiDirEntry->FileName, L"REFITL") == 0)
                 continue;   // skip ourselves
             Print(L"  - Directory EFI\\%s found\n", EfiDirEntry->FileName);
             
@@ -271,8 +318,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     
     InitializeLib(ImageHandle, SystemTable);
     BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
-    ScreenInit();
-    ScreenHeader(L"rEFIt - Initializing...");
+    InitScreen();
     
     SelfImageHandle = ImageHandle;
     Status = BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID*)&SelfLoadedImage);
@@ -280,7 +326,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
         return EFI_LOAD_ERROR;
     
     scan_volumes();
-    WaitAfterError();
+    FinishTextScreen(FALSE);   // wait for user ACK when there were errors
     
     MenuAddEntry(&main_menu, &entry_shell);
     MenuAddEntry(&main_menu, &entry_about);
@@ -288,7 +334,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     MenuAddEntry(&main_menu, &entry_reset);
     
     while (mainLoopRunning) {
-        MenuRun(&main_menu, &chosenEntry);
+        MenuRun(1, &main_menu, &chosenEntry);
         
         if (chosenEntry == NULL || chosenEntry->Tag == 1)
             break;
@@ -296,7 +342,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
         switch (chosenEntry->Tag) {
             
             case 2:   // Reboot
-                ScreenLeave(1);
+                TerminateScreen();
                 RT->ResetSystem(EfiResetCold, EFI_SUCCESS, 0, NULL);
                 mainLoopRunning = FALSE;
                 break;
@@ -309,14 +355,15 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
                 about_refit();
                 break;
                 
-            case 8:   // Boot OS via .EFI loader
-                chainload(chosenEntry->UserData);
+            case 8:   // Boot OS via .EFI loader, text mode
+            case 9:   // Boot OS via .EFI loader, graphics mode
+                chainload(chosenEntry->Tag, chosenEntry->UserData);
                 break;
                 
         }
     }
     
     // clear screen completely
-    ScreenLeave(1);
+    TerminateScreen();
     return EFI_SUCCESS;
 }

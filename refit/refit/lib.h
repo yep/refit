@@ -42,9 +42,18 @@
 /* menu structures */
 
 typedef struct {
+    const UINT8 *PixelData;
+    UINTN Width, Height;
+} REFIT_IMAGE;
+
+#define DUMMY_IMAGE(name) static REFIT_IMAGE name = { NULL, 0, 0 };
+
+typedef struct {
     CHAR16 *Title;
     UINTN Tag;
     VOID *UserData;
+    UINTN Row;
+    REFIT_IMAGE *Image;
 } REFIT_MENU_ENTRY;
 
 typedef struct {
@@ -65,10 +74,6 @@ typedef struct {
 
 /* lib functions */
 
-BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
-BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
-VOID WaitAfterError(VOID);
-
 BOOLEAN FileExists(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath);
 
 EFI_STATUS DirNextEntry(IN EFI_FILE *Directory, IN OUT EFI_FILE_INFO **DirEntry, IN UINTN FilterMode);
@@ -79,16 +84,18 @@ EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter);
 
 /* menu functions */
 
-VOID ScreenInit(VOID);
-VOID ScreenReinit(VOID);
-VOID ScreenLeave(IN UINTN State);
+VOID InitScreen(VOID);
+VOID BeginTextScreen(IN CHAR16 *Title);
+VOID FinishTextScreen(IN BOOLEAN WaitAlways);
+VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title);
+VOID FinishExternalScreen(VOID);
+VOID TerminateScreen(VOID);
 
-VOID ScreenHeader(IN CHAR16 *Title);
-
-VOID ScreenWaitForKey(VOID);
+BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
+BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
 
 VOID MenuAddEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry);
 VOID MenuFree(IN REFIT_MENU_SCREEN *Screen);
-VOID MenuRun(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
+VOID MenuRun(IN BOOLEAN HasGraphics, IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
 
 /* EOF */

@@ -12,6 +12,10 @@ all :
 	nmake -f refit.mak all
 	cd $(SOURCE_DIR)
 
+	cd $(SOURCE_DIR)\refit
+	nmake -f refitl.mak all
+	cd $(SOURCE_DIR)
+
 	cd $(SOURCE_DIR)\ebounce
 	nmake -f ebounce.mak all
 	cd $(SOURCE_DIR)
