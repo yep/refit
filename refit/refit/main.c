@@ -166,9 +166,9 @@ void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
     // look through contents of the directory
     DirIterOpen(RootDir, Path, &DirIter);
     while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
-        if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0)
-            continue;   // skip this
-        if (StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
+        if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0 ||
+            StriCmp(DirEntry->FileName, L"ebounce.efi") == 0 ||
+            StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
             continue;   // skip this
         
         if (Path)
@@ -179,8 +179,11 @@ void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
         entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
         entry_boot.Tag = 8;
         entry_boot.Image = &image_os_unknown;
-        if (StriCmp(DirEntry->FileName, L"e.efi") == 0 || StriCmp(DirEntry->FileName, L"elilo.efi") == 0)
+        if (StriCmp(DirEntry->FileName, L"e.efi") == 0 ||
+	    StriCmp(DirEntry->FileName, L"elilo.efi") == 0)
             entry_boot.Image = &image_os_linux;
+        else if (StriCmp(DirEntry->FileName, L"Bootmgfw.efi") == 0)
+            entry_boot.Image = &image_os_win;
         else if (StriCmp(DirEntry->FileName, L"xom.efi") == 0) {
             entry_boot.Tag = 9;
             entry_boot.Image = &image_os_win;
