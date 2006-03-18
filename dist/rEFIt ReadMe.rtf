@@ -7,7 +7,7 @@
 \f0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\qc\pardirnatural
 
-\f1\b\fs36 \cf0 rEFIt 0.2 ReadMe
+\f1\b\fs36 \cf0 rEFIt 0.3 ReadMe
 \f0\b0\fs28 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 \cf0 \
@@ -31,24 +31,31 @@ If you have downloaded the .tar.gz distribution:\
 Copy the contents of the refit-bin-0.2 folder to the new partition. The file \'d2rEFIt.icns\'d3 contains an icon that you can use for the volume\'d5s icon.\
 \
 To make the partition bootable:\
-Open a Terminal window and navigate to the \'d2refit\'d3 folder inside the \'d2efi\'d3 folder. Run \'d2./enable.sh\'d3 to make the partition bootable. You must do this under Mac OS X on an Intel-based Macintosh, and will need your administrator password.\
+Open a Terminal window and navigate to the \'d2refit\'d3 folder inside the \'d2efi\'d3 folder. Run \'d2./enable.sh\'d3 to make the partition bootable. You must do this under Mac OS X on an Intel-based Macintosh, and you will need your administrator password.\
 \
 
 \f1\b Setup using the internal disk
 \f0\b0 \
-If you can make an \ul additional\ulnone  HFS+ partition on your internal disk, you can use that to install rEFIt. The procedure is the same as above for external disks. 
-\f1\b Warning:
-\f0\b0  Do not install rEFIt on your Mac OS X volume; you may loose your ability to boot Mac OS X.\
+You can also install rEFIt on the internal disk, either on a separate HFS+ partition or on the Mac OS X partition. The procedure is the same as above for external disks.\
+\
+If you install rEFIt on your Mac OS X partition, you loose the ability to select that volume in the built-in volume chooser to boot directly into Mac OS X. In case something goes wrong, you can disable rEFIt by selecting the volume in the \'d2Startup Disk\'d3 preference pane and clicking \'d2Restart\'d3. (You can do this from the Mac OS X install disk if necessary.)\
 \
 
 \f1\b Usage
 \f0\b0 \
-Hold down the \'d2Option\'d3 key while the Mac starts up, then select \'d2rEFIt\'d3 from the list of boot volumes. After rEFIt has loaded, you will get a simple text menu. It lists all Mac OS X installations and EFI boot loaders found on the available disks. There are additional entries to start the EFI shell, show the rEFIt version number, exit rEFIt (dropping you back to the built-in boot manager), and to reboot the system.\
+Hold down the \'d2Option\'d3 key while the Mac starts up, then select \'d2rEFIt\'d3 from the list of boot volumes. After rEFIt has loaded, you will get a graphical menu. It lists all Mac OS X installations and EFI boot loaders found on the available disks. There are additional entries to start the EFI shell, show the rEFIt version number, exit rEFIt (dropping you back to the built-in boot manager), and to reboot the system.\
 \
-You can configure your Mac to always start into the rEFIt boot menu, without holding the \'d2Option\'d3 key. This is done with the \'d2--setBoot\'d3 option to the \'d2bless\'d3 command. The \'d2enable-always.sh\'d3 script uses this option; that\'d5s the only difference from \'d2enable.sh\'d3.\
+You can configure your Mac to always start into the rEFIt boot menu, without holding the \'d2Option\'d3 key. This is done with the \'d2--setBoot\'d3 option to the \'d2bless\'d3 command. The \'d2enable-always.sh\'d3 script uses this option; that\'d5s the only difference from \'d2enable.sh\'d3. (Note: If you install rEFIt on the Mac OS X volume, you\'d5ll get this behaviour automatically.)\
 \
 
-\f1\b Adding Linux with elilo
+\f1\b Using the text-only version\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0\b0 \cf0 Starting with version 0.3, the rEFIt distribution contains an alternative version of the boot menu that operates in text mode only, like previous versions of rEFIt did. It is in the \'d2efi/refitl\'d3 folder and has its own \'d2enable.sh\'d3 script. Simply use the \'d2enable.sh\'d3 script for the version you prefer.\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f1\b \cf0 Adding Linux with elilo
 \f0\b0 \
 To boot Linux through rEFIt, add a folder inside the \'d2efi\'d3 folder. Copy the following files there:\
 \pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
@@ -65,7 +72,7 @@ Make sure that elilo.conf uses relative paths for the \'d2image=\'d3 and \'d2ini
 \f1\b \cf0 What\'d5s in the distribution\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f0\b0 \cf0 The rEFIt distribution also contains a current version of the EFI shell from the TianoCore project and some additional tools. Here\'d5s a list of the tools available in the /efi/tools folder:\
+\f0\b0 \cf0 The rEFIt distribution contains a current version of the EFI shell from the TianoCore project and some additional tools. Here\'d5s a list of the tools available in the /efi/tools folder:\
 \
 dhclient.efi\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
@@ -134,6 +141,12 @@ dhclient.efi\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0 \cf0 \
+Version 0.3:\
+\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
+\cf0 \'a5	Graphical boot menu.\
+\'a5	Added detection of the \'d2XpOnMac\'d3 bootloader (xom.efi).\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
 Version 0.2:\
 \pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
 \cf0 \'a5	Scan more folders for potential boot loaders.\
@@ -154,7 +167,7 @@ Here are some ideas how rEFIt might evolve in the future:\
 \cf0 \'a5	Port GNU parted to the EFI environment. GNU parted is a disk partitioning tool capable of resizing most common file system types without losing data.\
 \'a5	Add menu entries to configure the network.\
 \'a5	Make EFI drivers for various file systems like ext2 (the code in grub should be a good starting point) to make them accessible in EFI space.\
-\'a5	Add a CSM (i.e. legacy BIOS emulation) and appropriate boot loaders to boot other operating systems (e.g. MS Windows XP).\
+\'a5	Add a CSM (i.e. legacy BIOS emulation) and appropriate boot loaders to boot other operating systems (e.g. MS Windows XP) to the distribution.\
 \'a5	Add various diagnostics to the boot menu.\
 \'a5	Make the boot menu configurable, e.g. with a default entry and a timeout.\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
