@@ -125,7 +125,7 @@ void start_shell(void)
 void about_refit(void)
 {
     BeginTextScreen(L"rEFIt - About");
-    Print(L"rEFIt Version 0.2\n\n");
+    Print(L"rEFIt Version 0.3\n\n");
     Print(L"Copyright (c) 2006 Christoph Pfisterer\n");
     Print(L"Portions Copyright (c) Intel Corporation and others\n");
     FinishTextScreen(TRUE);
