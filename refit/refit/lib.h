@@ -61,6 +61,8 @@ typedef struct {
     UINTN EntryCount;
     UINTN AllocatedEntryCount;
     REFIT_MENU_ENTRY *Entries;
+    UINTN TimeoutSeconds;
+    CHAR16 *TimeoutText;
 } REFIT_MENU_SCREEN;
 
 /* dir scan structure */

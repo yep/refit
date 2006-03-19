@@ -487,13 +487,25 @@ static VOID MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Cho
     UINTN menuWidth, itemWidth;
     EFI_STATUS Status;
     EFI_INPUT_KEY key;
+    BOOLEAN HaveTimeout;
+    UINTN TimeoutCountdown;
+    CHAR16 *TimeoutMessage;
     BOOLEAN isScrolling, paintAll, running;
     CHAR16 **DisplayStrings;
     
     chosenIndex = 0;
     maxIndex = (INTN)Screen->EntryCount - 1;
+    
+    if (Screen->TimeoutSeconds > 0) {
+        HaveTimeout = TRUE;
+        TimeoutCountdown = Screen->TimeoutSeconds * 10;
+    } else
+        HaveTimeout = FALSE;
+    
     firstVisible = 0;
     maxVisible = (INTN)ConHeight - 5;  // includes -1 offset for "last" counting method
+    if (HaveTimeout)
+        maxVisible -= 2;
     maxFirstVisible = maxIndex - maxVisible;
     if (maxFirstVisible < 0)
         maxFirstVisible = 0;   // non-scrolling case
@@ -563,10 +575,32 @@ static VOID MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Cho
         paintAll = FALSE;
         lastChosenIndex = chosenIndex;
         
+        if (HaveTimeout) {
+            TimeoutMessage = PoolPrint(L"%s in %d seconds  ", Screen->TimeoutText, (TimeoutCountdown + 5) / 10);
+            ST->ConOut->SetAttribute(ST->ConOut, ATTR_ERROR);
+            ST->ConOut->SetCursorPosition(ST->ConOut, 3, ConHeight - 1);
+            ST->ConOut->OutputString(ST->ConOut, TimeoutMessage);
+            FreePool(TimeoutMessage);
+        }
+        
         Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
         if (Status == EFI_NOT_READY) {
-            BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
+            if (HaveTimeout && TimeoutCountdown == 0) {
+                // timeout expired
+                break;
+            } else if (HaveTimeout) {
+                BS->Stall(100000);
+                TimeoutCountdown--;
+            } else
+                BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
             continue;
+        }
+        if (HaveTimeout) {
+            // the user pressed a key, cancel the timeout
+            ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
+            ST->ConOut->SetCursorPosition(ST->ConOut, 0, ConHeight - 1);
+            ST->ConOut->OutputString(ST->ConOut, BlankLine + 1);
+            HaveTimeout = FALSE;
         }
         
         switch (key.ScanCode) {
@@ -712,11 +746,19 @@ static VOID MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY *
     REFIT_IMAGE TextBuffer;
     EFI_STATUS Status;
     EFI_INPUT_KEY key;
+    BOOLEAN HaveTimeout;
+    UINTN TimeoutCountdown;
+    CHAR16 *TimeoutMessage;
     BOOLEAN running;
     
     lastChosenIndex = chosenIndex = 0;
     maxIndex = (INTN)Screen->EntryCount - 1;
     running = TRUE;
+    if (Screen->TimeoutSeconds > 0) {
+        HaveTimeout = TRUE;
+        TimeoutCountdown = Screen->TimeoutSeconds * 10;
+    } else
+        HaveTimeout = FALSE;
     
     row0Count = 0;
     row1Count = 0;
@@ -775,10 +817,30 @@ static VOID MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY *
         }
         lastChosenIndex = chosenIndex;
         
+        if (HaveTimeout) {
+            TimeoutMessage = PoolPrint(L"%s in %d seconds", Screen->TimeoutText, (TimeoutCountdown + 5) / 10);
+            RenderText(TimeoutMessage, &TextBuffer);
+            BltImage(&TextBuffer, (UGAWidth - TextBuffer.Width) >> 1, row1PosY + 80 + 16 + 16);
+            FreePool(TimeoutMessage);
+        }
+        
         Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
         if (Status == EFI_NOT_READY) {
-            BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
+            if (HaveTimeout && TimeoutCountdown == 0) {
+                // timeout expired
+                break;
+            } else if (HaveTimeout) {
+                BS->Stall(100000);
+                TimeoutCountdown--;
+            } else
+                BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
             continue;
+        }
+        if (HaveTimeout) {
+            // the user pressed a key, cancel the timeout
+            RenderText(L"", &TextBuffer);
+            BltImage(&TextBuffer, (UGAWidth - TextBuffer.Width) >> 1, row1PosY + 80 + 16 + 16);
+            HaveTimeout = FALSE;
         }
         
         switch (key.ScanCode) {

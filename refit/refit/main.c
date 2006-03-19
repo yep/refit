@@ -73,7 +73,7 @@ static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", 2, NULL, 1, &imag
 static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, NULL, 1, &image_tool_shell };
 static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", 4, NULL, 1, &image_tool_about };
 
-static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, 0, NULL };
+static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, 0, NULL, 20, L"Automatic boot" };
 
 
 void run_tool(IN CHAR16 *RelativeFilePath)
@@ -125,7 +125,7 @@ void start_shell(void)
 void about_refit(void)
 {
     BeginTextScreen(L"rEFIt - About");
-    Print(L"rEFIt Version 0.3\n\n");
+    Print(L"rEFIt Version 0.4\n\n");
     Print(L"Copyright (c) 2006 Christoph Pfisterer\n");
     Print(L"Portions Copyright (c) Intel Corporation and others\n");
     FinishTextScreen(TRUE);
@@ -364,6 +364,8 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
                 break;
                 
         }
+        
+        main_menu.TimeoutSeconds = 0;
     }
     
     // clear screen completely
