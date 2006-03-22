@@ -36,6 +36,55 @@
 
 #include "lib.h"
 
+//
+// list functions
+//
+
+VOID CreateList(OUT VOID ***ListPtr, OUT UINTN *ElementCount, IN UINTN InitialElementCount)
+{
+    UINTN AllocateCount;
+    
+    *ElementCount = InitialElementCount;
+    if (*ElementCount > 0) {
+        AllocateCount = (*ElementCount + 7) & ~7;   // next multiple of 8
+        *ListPtr = AllocatePool(sizeof(VOID *) * AllocateCount);
+    } else {
+        *ListPtr = NULL;
+    }
+}
+
+VOID AddListElement(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount, IN VOID *NewElement)
+{
+    UINTN AllocateCount;
+    
+    if ((*ElementCount & 7) == 0) {
+        AllocateCount = *ElementCount + 8;
+        if (*ElementCount == 0)
+            *ListPtr = AllocatePool(sizeof(VOID *) * AllocateCount);
+        else
+            *ListPtr = ReallocatePool(*ListPtr, sizeof(VOID *) * (*ElementCount), sizeof(VOID *) * AllocateCount);
+    }
+    (*ListPtr)[*ElementCount] = NewElement;
+    (*ElementCount)++;
+}
+
+VOID FreeList(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount)
+{
+    UINTN i;
+    
+    if (*ElementCount > 0) {
+        for (i = 0; i < *ElementCount; i++) {
+            // TODO: call a user-provided routine for each element here
+            FreePool((*ListPtr)[i]);
+        }
+        FreePool(*ListPtr);
+    }
+}
+
+//
+// file and dir functions
+//
+
 BOOLEAN FileExists(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath)
 {
     EFI_STATUS  Status;
