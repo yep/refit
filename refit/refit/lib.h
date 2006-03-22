@@ -116,13 +116,12 @@ VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title);
 VOID FinishExternalScreen(VOID);
 VOID TerminateScreen(VOID);
 
-VOID SwitchToGraphicsAndClear(VOID);
-
 BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
 BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
 
 #ifndef TEXTONLY
-VOID BltClearScreen(VOID);
+VOID SwitchToGraphicsAndClear(VOID);
+VOID BltClearScreen(IN BOOLEAN ShowBanner);
 VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
 VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);

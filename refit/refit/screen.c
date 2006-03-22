@@ -138,13 +138,12 @@ VOID InitScreen(VOID)
 #endif  /* !TEXTONLY */
     }
     
+    GraphicsScreenDirty = TRUE;
 #ifndef TEXTONLY
     if (AllowGraphicsMode && InGraphicsMode) {
         // display banner during init phase
-        BltClearScreen();
-        BltImage(&image_refit_banner, (UGAWidth - image_refit_banner.Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+        BltClearScreen(TRUE);
     }
-    GraphicsScreenDirty = FALSE;
 #endif  /* !TEXTONLY */
     
     if (!InGraphicsMode) {
@@ -160,7 +159,7 @@ VOID InitScreen(VOID)
     }
     
     // make a buffer for the whole line
-    BlankLine = AllocatePool(ConWidth + 1);
+    BlankLine = AllocatePool((ConWidth + 1) * sizeof(CHAR16));
     for (i = 0; i < ConWidth; i++)
         BlankLine[i] = ' ';
     BlankLine[i] = 0;
@@ -201,7 +200,7 @@ VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title)
 #ifndef TEXTONLY
     if (Mode == 1) {
         SwitchToGraphics();
-        BltClearScreen();
+        BltClearScreen(FALSE);
     }
 #endif  /* !TEXTONLY */
     
@@ -262,22 +261,8 @@ static VOID SwitchToGraphics(VOID)
     if (!InGraphicsMode && AllowGraphicsMode) {
         ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenGraphics);
         InGraphicsMode = TRUE;
-    }
-}
-
-VOID SwitchToGraphicsAndClear(VOID)
-{
-    SwitchToGraphics();
-    BltClearScreen();
-    
-    /* old code:
-    if (!InGraphicsMode) {
-        SwitchToGraphics();
         GraphicsScreenDirty = TRUE;
     }
-    if (GraphicsScreenDirty)
-        BltClearScreen();
-    */
 }
 
 static VOID DrawScreenHeader(IN CHAR16 *Title)
@@ -359,16 +344,26 @@ BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where)
 
 #ifndef TEXTONLY
 
-VOID BltClearScreen(VOID)
+VOID SwitchToGraphicsAndClear(VOID)
+{
+    SwitchToGraphics();
+    if (GraphicsScreenDirty)
+        BltClearScreen(TRUE);
+}
+
+VOID BltClearScreen(IN BOOLEAN ShowBanner)
 {
     UGA->Blt(UGA, &BackgroundPixel, EfiUgaVideoFill, 0, 0, 0, 0, UGAWidth, UGAHeight, 0);
-    BltImage(&image_refit_banner, (UGAWidth - image_refit_banner.Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+    if (ShowBanner)
+        BltImage(&image_refit_banner, (UGAWidth - image_refit_banner.Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+    GraphicsScreenDirty = FALSE;
 }
 
 VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
 {
     UGA->Blt(UGA, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
              0, 0, XPos, YPos, Image->Width, Image->Height, 0);
+    GraphicsScreenDirty = TRUE;
 }
 
 VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos)
@@ -398,6 +393,7 @@ VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN U
     UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
              0, 0, XPos, YPos, BaseImage->Width, BaseImage->Height, 0);
     FreePool(CompositeData);
+    GraphicsScreenDirty = TRUE;
 }
 
 VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)

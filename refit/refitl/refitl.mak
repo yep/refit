@@ -55,15 +55,17 @@ all : dirs $(LIBS) $(OBJECTS)
 OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\main.obj \
     $(BUILD_DIR)\menu.obj \
+    $(BUILD_DIR)\screen.obj \
     $(BUILD_DIR)\lib.obj  \
 
 #
 # Source file dependencies
 #
 
-$(BUILD_DIR)\main.obj : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
-$(BUILD_DIR)\menu.obj : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
-$(BUILD_DIR)\lib.obj  : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\main.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\menu.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\screen.obj     : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\lib.obj        : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
 
 #
 # Handoff to master.mak
