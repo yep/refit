@@ -54,6 +54,11 @@
 #define FONT_CELL_WIDTH (7)
 #define FONT_CELL_HEIGHT (12)
 
+#define MENU_EXIT_ENTER   (1)
+#define MENU_EXIT_ESCAPE  (2)
+#define MENU_EXIT_DETAILS (3)
+#define MENU_EXIT_TIMEOUT (4)
+
 /* menu structures */
 
 typedef struct {
@@ -131,6 +136,6 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);
 
 VOID MenuAddEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry);
 VOID MenuFree(IN REFIT_MENU_SCREEN *Screen);
-VOID MenuRun(IN BOOLEAN HasGraphics, IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
+UINTN MenuRun(IN BOOLEAN HasGraphics, IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
 
 /* EOF */

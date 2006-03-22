@@ -318,6 +318,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     EFI_STATUS Status;
     REFIT_MENU_ENTRY *chosenEntry;
     BOOLEAN mainLoopRunning = TRUE;
+    UINTN MenuExit;
     
     InitializeLib(ImageHandle, SystemTable);
     BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
@@ -337,9 +338,9 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     MenuAddEntry(&main_menu, &entry_reset);
     
     while (mainLoopRunning) {
-        MenuRun(1, &main_menu, &chosenEntry);
+        MenuExit = MenuRun(1, &main_menu, &chosenEntry);
         
-        if (chosenEntry == NULL || chosenEntry->Tag == 1)
+        if (MenuExit == MENU_EXIT_ESCAPE || chosenEntry->Tag == 1)
             break;
         
         switch (chosenEntry->Tag) {
