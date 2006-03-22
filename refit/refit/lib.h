@@ -39,6 +39,21 @@
 
 #include "ConsoleControl.h"
 
+/* defines */
+
+#define ATTR_BASIC (EFI_LIGHTGRAY | EFI_BACKGROUND_BLACK)
+#define ATTR_ERROR (EFI_YELLOW | EFI_BACKGROUND_BLACK)
+#define ATTR_BANNER (EFI_WHITE | EFI_BACKGROUND_BLUE)
+#define ATTR_CHOICE_BASIC ATTR_BASIC
+#define ATTR_CHOICE_CURRENT (EFI_WHITE | EFI_BACKGROUND_GREEN)
+#define ATTR_SCROLLARROW (EFI_LIGHTGREEN | EFI_BACKGROUND_BLACK)
+
+#define LAYOUT_TEXT_WIDTH (512)
+#define LAYOUT_TOTAL_HEIGHT (368)
+
+#define FONT_CELL_WIDTH (7)
+#define FONT_CELL_HEIGHT (12)
+
 /* menu structures */
 
 typedef struct {
@@ -84,7 +99,15 @@ VOID DirIterOpen(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath OPTIONAL, OUT REF
 BOOLEAN DirIterNext(IN OUT REFIT_DIR_ITER *DirIter, IN UINTN FilterMode, IN CHAR16 *FilePattern OPTIONAL, OUT EFI_FILE_INFO **DirEntry);
 EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter);
 
-/* menu functions */
+/* screen functions */
+
+extern UINTN ConWidth;
+extern UINTN ConHeight;
+extern CHAR16 *BlankLine;
+
+extern UINTN UGAWidth;
+extern UINTN UGAHeight;
+extern BOOLEAN AllowGraphicsMode;
 
 VOID InitScreen(VOID);
 VOID BeginTextScreen(IN CHAR16 *Title);
@@ -93,8 +116,19 @@ VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title);
 VOID FinishExternalScreen(VOID);
 VOID TerminateScreen(VOID);
 
+VOID SwitchToGraphicsAndClear(VOID);
+
 BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
 BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
+
+#ifndef TEXTONLY
+VOID BltClearScreen(VOID);
+VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
+VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
+VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);
+#endif  /* !TEXTONLY */
+
+/* menu functions */
 
 VOID MenuAddEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry);
 VOID MenuFree(IN REFIT_MENU_SCREEN *Screen);
