@@ -36,37 +36,6 @@
 
 #include "lib.h"
 
-// images
-
-#ifdef TEXTONLY
-
-DUMMY_IMAGE(image_tool_about)
-DUMMY_IMAGE(image_tool_exit)
-DUMMY_IMAGE(image_tool_reset)
-
-DUMMY_IMAGE(image_tool_shell)
-
-DUMMY_IMAGE(image_os_mac)
-DUMMY_IMAGE(image_os_linux)
-DUMMY_IMAGE(image_os_win)
-DUMMY_IMAGE(image_os_unknown)
-
-#else
-
-#include "image_tool_about.h"
-#include "image_tool_exit.h"
-#include "image_tool_reset.h"
-
-#include "image_tool_shell.h"
-
-#include "image_os_mac.h"
-#include "image_os_linux.h"
-#include "image_os_win.h"
-#include "image_os_unknown.h"
-#endif
-
-REFIT_IMAGE *IcnsTest;
-
 // types
 
 typedef struct {
@@ -85,12 +54,9 @@ typedef struct {
 #define TAG_LOADER (4)
 #define TAG_TOOL   (5)
 
-static EFI_HANDLE SelfImageHandle;
-static EFI_LOADED_IMAGE *SelfLoadedImage;
-
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, &image_tool_exit };
-static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, &image_tool_reset };
-static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, &image_tool_about };
+static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, NULL };
+static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL };
+static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL };
 
 static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, NULL, 20, L"Automatic boot" };
 
@@ -151,23 +117,28 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     Entry->me.Title = PoolPrint(L"Boot %s from %s", LoaderTitle, VolName);
     Entry->me.Tag = TAG_LOADER;
     Entry->me.Row = 0;
-    Entry->me.Image = &image_os_unknown;
+    Entry->me.Image = NULL;
     Entry->LoaderPath = StrDuplicate(LoaderPath);
     Entry->VolName = StrDuplicate(VolName);
     Entry->DevicePath = FileDevicePath(DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = FALSE;
     
+    // TODO: check for a file <loader-basename>.icns and load that as the image
+    
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
-        Entry->me.Image = IcnsTest; //&image_os_mac;
+        Entry->me.Image = BuiltinIcon(0);  // os_mac
         Entry->UseGraphicsMode = TRUE;
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
-        Entry->me.Image = &image_os_linux;
+        Entry->me.Image = BuiltinIcon(1);  // os_linux
     } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
-        Entry->me.Image = &image_os_win;
+        Entry->me.Image = BuiltinIcon(2);  // os_win
     } else if (StriCmp(FileName, L"xom.efi") == 0) {
-        Entry->me.Image = &image_os_win;
+        Entry->me.Image = BuiltinIcon(2);  // os_win
         Entry->UseGraphicsMode = TRUE;
+    }
+    if (Entry->me.Image == NULL) {
+        Entry->me.Image = BuiltinIcon(3);  // os_unknown
     }
     
     MenuAddEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
@@ -255,6 +226,10 @@ static void loader_scan(void)
             Print(L"  GetInfo failed\n");
             VolName = StrDuplicate(L"Unnamed Volume");
         }
+        
+        // get volume icon
+        // FUTURE:
+        //VolBadge = LoadIcns(RootDir, L".VolumeIcon.icns", 32);
         
         // check for Mac OS X boot loader
         StrCpy(FileName, MACOSX_LOADER_PATH);
@@ -359,40 +334,15 @@ static void free_tool_entry(IN LOADER_ENTRY *Entry)
 static void tool_scan(void)
 {
     //EFI_STATUS              Status;
-    EFI_FILE                *RootDir;
-    CHAR16                  *DevicePathAsString;
-    CHAR16                  BaseDirectory[256];
     CHAR16                  FileName[256];
-    UINTN                   i;
     
     Print(L"Scanning for tools...\n");
     
-    // open volume for probing
-    RootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
-    if (RootDir == NULL) {
-        Print(L"Error: Can't open volume.\n");
-        // TODO: signal that we had an error
-        return;
-    }
-    
-    // find the current directory
-    DevicePathAsString = DevicePathToStr(SelfLoadedImage->FilePath);
-    if (DevicePathAsString != NULL) {
-        StrCpy(BaseDirectory, DevicePathAsString);
-        FreePool(DevicePathAsString);
-        for (i = StrLen(BaseDirectory); i > 0 && BaseDirectory[i] != '\\'; i--) ;
-        BaseDirectory[i] = 0;
-    } else
-        BaseDirectory[0] = 0;
-    
     // look for the EFI shell
-    SPrint(FileName, 255, L"%s\\apps\\shell.efi", BaseDirectory);
-    if (FileExists(RootDir, FileName)) {
-        add_tool_entry(FileName, L"EFI Shell", &image_tool_shell, FALSE);
+    SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
+    if (FileExists(SelfRootDir, FileName)) {
+        add_tool_entry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
     }
-    
-    // done!
-    RootDir->Close(RootDir);
 }
 
 
@@ -402,31 +352,29 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
            IN EFI_SYSTEM_TABLE     *SystemTable)
 {
     EFI_STATUS Status;
-    REFIT_MENU_ENTRY *chosenEntry;
     BOOLEAN mainLoopRunning = TRUE;
+    REFIT_MENU_ENTRY *chosenEntry;
     UINTN MenuExit;
     UINTN i;
     
     InitializeLib(ImageHandle, SystemTable);
-    BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
+    Status = InitRefitLib(ImageHandle);
+    if (EFI_ERROR(Status))
+        return Status;
     InitScreen();
     
-    SelfImageHandle = ImageHandle;
-    Status = BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID*)&SelfLoadedImage);
-    if (CheckFatalError(Status, L"while getting a LoadedImageProtocol handle"))
-        return EFI_LOAD_ERROR;
-    
-    
-    IcnsTest = LoadIcns(LibOpenRoot(SelfLoadedImage->DeviceHandle), L"\\efi\\refit\\Internal.icns", 128);
-    
+    BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
     
     // scan for loaders and tools, add them to the menu
     loader_scan();
     tool_scan();
     
     // fixed other menu entries
+    entry_about.Image = BuiltinIcon(4);
     MenuAddEntry(&main_menu, &entry_about);
+    entry_exit.Image = BuiltinIcon(5);
     MenuAddEntry(&main_menu, &entry_exit);
+    entry_reset.Image = BuiltinIcon(6);
     MenuAddEntry(&main_menu, &entry_reset);
     
     // wait for user ACK when there were errors

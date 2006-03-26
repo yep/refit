@@ -39,6 +39,44 @@
 #ifndef TEXTONLY
 
 //
+// well-known icons
+//
+
+typedef struct {
+    REFIT_IMAGE *Image;
+    CHAR16 *Path;
+    UINTN PixelSize;
+} BUILTIN_ICON;
+
+BUILTIN_ICON Builtins[] = {
+    { NULL, L"\\icons\\os_mac.icns", 128 },
+    { NULL, L"\\icons\\os_linux.icns", 128 },
+    { NULL, L"\\icons\\os_win.icns", 128 },
+    { NULL, L"\\icons\\os_unknown.icns", 128 },
+    { NULL, L"\\icons\\func_about.icns", 48 },
+    { NULL, L"\\icons\\func_exit.icns", 48 },
+    { NULL, L"\\icons\\func_reset.icns", 48 },
+    { NULL, L"\\icons\\tool_shell.icns", 48 },
+};
+#define BUILTIN_COUNT (8)
+
+REFIT_IMAGE * BuiltinIcon(IN UINTN Id)
+{
+    CHAR16 *FullPath;
+    
+    if (Id >= BUILTIN_COUNT)
+        return NULL;
+    
+    if (Builtins[Id].Image == NULL) {
+        FullPath = PoolPrint(L"%s%s", SelfDirPath, Builtins[Id].Path);
+        Builtins[Id].Image = LoadIcnsFallback(SelfDir, FullPath, Builtins[Id].PixelSize);
+        FreePool(FullPath);
+    }
+    
+    return Builtins[Id].Image;
+}
+
+//
 // Decompress pixel data
 //
 
@@ -92,8 +130,10 @@ REFIT_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN
     REFIT_IMAGE     *Image;
     
     Status = BaseDir->Open(BaseDir, &IconFile, FileName, EFI_FILE_MODE_READ, 0);
-    if (CheckError(Status, L"while loading an icon"))
+    if (CheckError(Status, L"while loading an icon")) {
+        Print(L" Path: '%s'  Size: %d\n", FileName, PixelSize);
         return NULL;
+    }
     
     IconFileInfo = LibFileInfo(IconFile);
     if (IconFileInfo == NULL) {
@@ -252,6 +292,41 @@ REFIT_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN
     return Image;
 }
 
+REFIT_IMAGE * DummyImage(IN UINTN PixelSize)
+{
+    UINTN           x, y, LineOffset;
+    CHAR8           *ImageData, *Ptr, *YPtr;
+    REFIT_IMAGE     *Image;
+    
+    ImageData = AllocateZeroPool(PixelSize * PixelSize * 4);
+    LineOffset = PixelSize * 4;
+    
+    YPtr = ImageData + ((PixelSize - 32) >> 1) * (LineOffset + 4);
+    for (y = 0; y < 32; y++) {
+        Ptr = YPtr;
+        for (x = 0; x < 32; x++) {
+            if (((x + y) % 12) < 6) {
+                *Ptr++ = 0;
+                *Ptr++ = 0;
+                *Ptr++ = 0;
+            } else {
+                *Ptr++ = 0;
+                *Ptr++ = 255;
+                *Ptr++ = 255;
+            }
+            *Ptr++ = 144;
+        }
+        YPtr += LineOffset;
+    }
+    
+    Image = AllocatePool(sizeof(REFIT_IMAGE));
+    Image->PixelData = ImageData;
+    Image->Width = PixelSize;
+    Image->Height = PixelSize;
+    
+    return Image;
+}
+
 #else   /* !TEXTONLY */
 
 REFIT_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize)
@@ -259,4 +334,24 @@ REFIT_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN
     return NULL;
 }
 
+REFIT_IMAGE * DummyImage(IN UINTN PixelSize)
+{
+    return NULL;
+}
+
+REFIT_IMAGE * BuiltinIcon(IN UINTN Id)
+{
+    return NULL;
+}
+
 #endif  /* !TEXTONLY */
+
+REFIT_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize)
+{
+    REFIT_IMAGE *Image;
+    
+    Image = LoadIcns(BaseDir, FileName, PixelSize);
+    if (Image == NULL)
+        Image = DummyImage(PixelSize);
+    return Image;
+}

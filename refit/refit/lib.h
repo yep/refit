@@ -50,6 +50,14 @@ typedef struct {
     EFI_FILE_INFO *LastFileInfo;
 } REFIT_DIR_ITER;
 
+extern EFI_HANDLE       SelfImageHandle;
+extern EFI_LOADED_IMAGE *SelfLoadedImage;
+extern EFI_FILE         *SelfRootDir;
+extern EFI_FILE         *SelfDir;
+extern CHAR16           *SelfDirPath;
+
+EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle);
+
 VOID CreateList(OUT VOID ***ListPtr, OUT UINTN *ElementCount, IN UINTN InitialElementCount);
 VOID AddListElement(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount, IN VOID *NewElement);
 VOID FreeList(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount /*, IN Callback*/);
@@ -117,6 +125,10 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);
 //
 
 REFIT_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
+REFIT_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
+REFIT_IMAGE * DummyImage(IN UINTN PixelSize);
+
+REFIT_IMAGE * BuiltinIcon(IN UINTN Id);
 
 //
 // menu module

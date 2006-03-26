@@ -36,6 +36,50 @@
 
 #include "lib.h"
 
+// variables
+
+EFI_HANDLE       SelfImageHandle;
+EFI_LOADED_IMAGE *SelfLoadedImage;
+EFI_FILE         *SelfRootDir;
+EFI_FILE         *SelfDir;
+CHAR16           *SelfDirPath;
+
+//
+// self recognition stuff
+//
+
+EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle)
+{
+    EFI_STATUS  Status;
+    CHAR16      *DevicePathAsString;
+    CHAR16      BaseDirectory[256];
+    UINTN       i;
+    
+    SelfImageHandle = ImageHandle;
+    Status = BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID*)&SelfLoadedImage);
+    if (CheckFatalError(Status, L"while getting a LoadedImageProtocol handle"))
+        return EFI_LOAD_ERROR;
+    
+    SelfRootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
+    
+    // find the current directory
+    DevicePathAsString = DevicePathToStr(SelfLoadedImage->FilePath);
+    if (DevicePathAsString != NULL) {
+        StrCpy(BaseDirectory, DevicePathAsString);
+        FreePool(DevicePathAsString);
+        for (i = StrLen(BaseDirectory); i > 0 && BaseDirectory[i] != '\\'; i--) ;
+        BaseDirectory[i] = 0;
+    } else
+        BaseDirectory[0] = 0;
+    SelfDirPath = StrDuplicate(BaseDirectory);
+    
+    Status = SelfRootDir->Open(SelfRootDir, &SelfDir, SelfDirPath, EFI_FILE_MODE_READ, 0);
+    if (CheckFatalError(Status, L"while opening our installation directory"))
+        return EFI_LOAD_ERROR;
+    
+    return EFI_SUCCESS;
+}
+
 //
 // list functions
 //
