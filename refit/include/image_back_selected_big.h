@@ -1,4 +1,4 @@
-static const UINT8 image_back_selected_big_data[] = {
+static UINT8 image_back_selected_big_data[] = {
  0xbf, 0xbf, 0xbf, 0,
  0xbf, 0xbf, 0xbf, 0,
  0xbf, 0xbf, 0xbf, 0,

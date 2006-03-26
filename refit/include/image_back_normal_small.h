@@ -1,4 +1,4 @@
-static const UINT8 image_back_normal_small_data[] = {
+static UINT8 image_back_normal_small_data[] = {
  0xbf, 0xbf, 0xbf, 0,
  0xbf, 0xbf, 0xbf, 0,
  0xbf, 0xbf, 0xbf, 0,
