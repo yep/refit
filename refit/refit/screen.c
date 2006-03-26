@@ -63,7 +63,10 @@ static BOOLEAN InGraphicsMode;
 static BOOLEAN GraphicsScreenDirty;
 
 #ifndef TEXTONLY
+
 static EFI_UGA_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
+static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, FONT_CELL_HEIGHT };
+
 #endif  /* !TEXTONLY */
 
 // general defines and variables
@@ -363,37 +366,109 @@ VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
     GraphicsScreenDirty = TRUE;
 }
 
+static VOID Compose(IN EFI_UGA_PIXEL *TopBasePtr, IN OUT EFI_UGA_PIXEL *CompBasePtr,
+                    IN UINTN Width, IN UINTN Height,
+                    IN UINTN TopLineOffset, IN UINTN CompLineOffset)
+{
+    UINTN x, y;
+    EFI_UGA_PIXEL *TopPtr, *CompPtr;
+    UINTN Alpha;
+    UINTN RevAlpha;
+    
+    for (y = 0; y < Height; y++) {
+        TopPtr = TopBasePtr;
+        CompPtr = CompBasePtr;
+        for (x = 0; x < Width; x++) {
+            Alpha = TopPtr->Reserved;
+            RevAlpha = 255 - Alpha;
+            CompPtr->Blue  = ((UINTN)CompPtr->Blue  * RevAlpha + (UINTN)TopPtr->Blue  * Alpha) / 255;
+            CompPtr->Green = ((UINTN)CompPtr->Green * RevAlpha + (UINTN)TopPtr->Green * Alpha) / 255;
+            CompPtr->Red   = ((UINTN)CompPtr->Red   * RevAlpha + (UINTN)TopPtr->Red   * Alpha) / 255;
+            TopPtr++, CompPtr++;
+        }
+        TopBasePtr += TopLineOffset;
+        CompBasePtr += CompLineOffset;
+    }
+}
+
 VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos)
 {
     EFI_UGA_PIXEL *CompositeData;
-    UINTN x, y, TopOffsetX, TopOffsetY;
+    UINTN TotalWidth, TotalHeight, CompWidth, CompHeight, OffsetX, OffsetY;
     
-    CompositeData = AllocatePool(BaseImage->Width * BaseImage->Height * 4);
-    CopyMem(CompositeData, (VOID *)BaseImage->PixelData, BaseImage->Width * BaseImage->Height * 4);
-    TopOffsetX = (BaseImage->Width - TopImage->Width) >> 1;
-    TopOffsetY = (BaseImage->Height - TopImage->Height) >> 1;
+    // initialize buffer with base image
+    TotalWidth  = BaseImage->Width;
+    TotalHeight = BaseImage->Height;
+    CompositeData = AllocatePool(TotalWidth * TotalHeight * 4);
+    CopyMem(CompositeData, (VOID *)BaseImage->PixelData, TotalWidth * TotalHeight * 4);
     
-    for (y = 0; y < TopImage->Height; y++) {
-        const UINT8 *BasePtr = BaseImage->PixelData + (y + TopOffsetY) * BaseImage->Width * 4 + TopOffsetX * 4;
-        const UINT8 *TopPtr = TopImage->PixelData + y * TopImage->Width * 4;
-        EFI_UGA_PIXEL *CompPtr = CompositeData + (y + TopOffsetY) * BaseImage->Width + TopOffsetX;
-        for (x = 0; x < TopImage->Width; x++) {
-            UINTN Alpha = TopPtr[3];
-            UINTN RevAlpha = 255 - Alpha;
-            CompPtr->Blue = ((UINTN)(*BasePtr++) * RevAlpha + (UINTN)(*TopPtr++) * Alpha) / 255;
-            CompPtr->Green = ((UINTN)(*BasePtr++) * RevAlpha + (UINTN)(*TopPtr++) * Alpha) / 255;
-            CompPtr->Red = ((UINTN)(*BasePtr++) * RevAlpha + (UINTN)(*TopPtr++) * Alpha) / 255;
-            BasePtr++, TopPtr++, CompPtr++;
-        }
-    }
+    // place the top image
+    CompWidth = TopImage->Width;
+    if (CompWidth > TotalWidth)
+        CompWidth = TotalWidth;
+    OffsetX = (TotalWidth - CompWidth) >> 1;
+    CompHeight = TopImage->Height;
+    if (CompHeight > TotalHeight)
+        CompHeight = TotalHeight;
+    OffsetY = (TotalHeight - CompHeight) >> 1;
     
+    // compose
+    Compose((EFI_UGA_PIXEL *)(TopImage->PixelData),
+            CompositeData + OffsetY * TotalWidth + OffsetX,
+            CompWidth, CompHeight, TopImage->Width, TotalWidth);
+    
+    // blit to screen and clean up
     UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
-             0, 0, XPos, YPos, BaseImage->Width, BaseImage->Height, 0);
+             0, 0, XPos, YPos, TotalWidth, TotalHeight, 0);
     FreePool(CompositeData);
     GraphicsScreenDirty = TRUE;
 }
 
-VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
+VOID BltImageCompositeBadge(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN REFIT_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos)
+{
+    EFI_UGA_PIXEL *CompositeData;
+    UINTN TotalWidth, TotalHeight, CompWidth, CompHeight, OffsetX, OffsetY;
+    
+    // initialize buffer with base image
+    TotalWidth  = BaseImage->Width;
+    TotalHeight = BaseImage->Height;
+    CompositeData = AllocatePool(TotalWidth * TotalHeight * 4);
+    CopyMem(CompositeData, (VOID *)BaseImage->PixelData, TotalWidth * TotalHeight * 4);
+    
+    // place the top image
+    CompWidth = TopImage->Width;
+    if (CompWidth > TotalWidth)
+        CompWidth = TotalWidth;
+    OffsetX = (TotalWidth - CompWidth) >> 1;
+    CompHeight = TopImage->Height;
+    if (CompHeight > TotalHeight)
+        CompHeight = TotalHeight;
+    OffsetY = (TotalHeight - CompHeight) >> 1;
+    
+    // compose top image
+    Compose((EFI_UGA_PIXEL *)(TopImage->PixelData),
+            CompositeData + OffsetY * TotalWidth + OffsetX,
+            CompWidth, CompHeight, TopImage->Width, TotalWidth);
+    
+    // place the badge image
+    if (BadgeImage != NULL && (BadgeImage->Width + 8) < CompWidth && (BadgeImage->Height + 8) < CompHeight) {
+        OffsetX += CompWidth  - 8 - BadgeImage->Width;
+        OffsetY += CompHeight - 8 - BadgeImage->Height;
+        
+        // compose badge image
+        Compose((EFI_UGA_PIXEL *)(BadgeImage->PixelData),
+                CompositeData + OffsetY * TotalWidth + OffsetX,
+                BadgeImage->Width, BadgeImage->Height, BadgeImage->Width, TotalWidth);
+    }
+    
+    // blit to screen and clean up
+    UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
+             0, 0, XPos, YPos, TotalWidth, TotalHeight, 0);
+    FreePool(CompositeData);
+    GraphicsScreenDirty = TRUE;
+}
+
+VOID DrawText(IN CHAR16 *Text, IN UINTN Mode, IN UINTN XPos, IN UINTN YPos)
 {
     UINT8 *Ptr;
     UINT8 *FontPtr;
@@ -402,9 +477,12 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
     UINTN LineOffset, FontLineOffset;
     REFIT_IMAGE *FontImage;
     
+    if (TextBuffer.PixelData == NULL)
+        TextBuffer.PixelData = AllocatePool(TextBuffer.Width * TextBuffer.Height * 4);
+    
     // clear the buffer
-    Ptr = BackBuffer->PixelData;
-    for (i = 0; i < BackBuffer->Width * BackBuffer->Height; i++) {
+    Ptr = TextBuffer.PixelData;
+    for (i = 0; i < TextBuffer.Width * TextBuffer.Height; i++) {
         *Ptr++ = 0xbf;
         *Ptr++ = 0xbf;
         *Ptr++ = 0xbf;
@@ -414,8 +492,8 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
     // fit the text
     TextLength = StrLen(Text);
     TextWidth = TextLength * FONT_CELL_WIDTH;
-    if (BackBuffer->Width < TextWidth) {
-        TextLength = BackBuffer->Width / FONT_CELL_WIDTH;
+    if (TextBuffer.Width < TextWidth) {
+        TextLength = TextBuffer.Width / FONT_CELL_WIDTH;
         TextWidth = TextLength * FONT_CELL_WIDTH;
     }
     
@@ -423,8 +501,10 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
     FontImage = BuiltinImage(0);
     
     // render it
-    Ptr = BackBuffer->PixelData + ((BackBuffer->Width - TextWidth) >> 1) * 4;
-    LineOffset = BackBuffer->Width * 4;
+    Ptr = TextBuffer.PixelData;
+    if ((Mode & TEXT_MODE_ALIGN_MASK) == TEXT_MODE_ALIGN_CENTER)
+        Ptr += ((TextBuffer.Width - TextWidth) >> 1) * 4;
+    LineOffset = TextBuffer.Width * 4;
     FontLineOffset = FontImage->Width * 4;
     for (i = 0; i < TextLength; i++) {
         c = Text[i];
@@ -437,6 +517,14 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
             CopyMem(Ptr + y * LineOffset, FontPtr + y * FontLineOffset, FONT_CELL_WIDTH * 4);
         Ptr += FONT_CELL_WIDTH * 4;
     }
+    
+    // blit to screen
+    BltImage(&TextBuffer, XPos, YPos);
+    
+    /* TODO:
+#define TEXT_MODE_NORMAL       (0x00)
+#define TEXT_MODE_SELECTED     (0x04)
+     */
 }
 
 #endif  /* !TEXTONLY */

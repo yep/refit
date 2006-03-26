@@ -54,9 +54,9 @@ typedef struct {
 #define TAG_LOADER (4)
 #define TAG_TOOL   (5)
 
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, NULL };
-static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL };
-static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL };
+static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, NULL, NULL };
+static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL };
+static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL };
 
 static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, NULL, 20, L"Automatic boot" };
 
@@ -96,14 +96,17 @@ bailout:
     FinishExternalScreen();
 }
 
-static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
+static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN EFI_HANDLE DeviceHandle,
+                             IN EFI_FILE *RootDir, IN CHAR16 *VolName, IN REFIT_IMAGE *VolBadgeImage)
 {
-    CHAR16 *FileName;
-    UINTN i;
-    LOADER_ENTRY *Entry;
+    CHAR16          *FileName;
+    CHAR16          IconFileName[256];
+    UINTN           i;
+    LOADER_ENTRY    *Entry;
     
     Entry = AllocatePool(sizeof(LOADER_ENTRY));
     
+    // find the file name
     FileName = LoaderPath;
     for (i = StrLen(LoaderPath) - 1; i >= 0; i--) {
         if (LoaderPath[i] == '\\') {
@@ -112,29 +115,50 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         }
     }
     
+    // prepare the menu entry
     if (LoaderTitle == NULL)
         LoaderTitle = LoaderPath + 1;
     Entry->me.Title = PoolPrint(L"Boot %s from %s", LoaderTitle, VolName);
     Entry->me.Tag = TAG_LOADER;
     Entry->me.Row = 0;
     Entry->me.Image = NULL;
+    Entry->me.BadgeImage = VolBadgeImage;
     Entry->LoaderPath = StrDuplicate(LoaderPath);
     Entry->VolName = StrDuplicate(VolName);
     Entry->DevicePath = FileDevicePath(DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = FALSE;
     
-    // TODO: check for a file <loader-basename>.icns and load that as the image
+#ifndef TEXTONLY
+    // locate a custom icon for the loader
+    StrCpy(IconFileName, LoaderPath);
+    for (i = StrLen(IconFileName) - 1; i >= 0; i--) {
+        if (IconFileName[i] == '.') {
+            IconFileName[i] = 0;
+            break;
+        }
+        if (IconFileName[i] == '\\')
+            break;
+    }
+    StrCat(IconFileName, L".icns");
+    if (FileExists(RootDir, IconFileName))
+        Entry->me.Image = LoadIcns(RootDir, IconFileName, 128);
+#endif  /* !TEXTONLY */
     
+    // determine default icon and graphics mode setting
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
-        Entry->me.Image = BuiltinIcon(0);  // os_mac
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(0);  // os_mac
         Entry->UseGraphicsMode = TRUE;
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
-        Entry->me.Image = BuiltinIcon(1);  // os_linux
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(1);  // os_linux
     } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
-        Entry->me.Image = BuiltinIcon(2);  // os_win
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(2);  // os_win
     } else if (StriCmp(FileName, L"xom.efi") == 0) {
-        Entry->me.Image = BuiltinIcon(2);  // os_win
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(2);  // os_win
         Entry->UseGraphicsMode = TRUE;
     }
     if (Entry->me.Image == NULL) {
@@ -152,7 +176,8 @@ static void free_loader_entry(IN LOADER_ENTRY *Entry)
     FreePool(Entry->DevicePath);
 }
 
-static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
+static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
+                            IN CHAR16 *VolName, IN REFIT_IMAGE *VolBadgeImage)
 {
     EFI_STATUS              Status;
     REFIT_DIR_ITER          DirIter;
@@ -171,7 +196,7 @@ static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE
             SPrint(FileName, 255, L"\\%s\\%s", Path, DirEntry->FileName);
         else
             SPrint(FileName, 255, L"\\%s", DirEntry->FileName);
-        add_loader_entry(FileName, NULL, DeviceHandle, VolName);
+        add_loader_entry(FileName, NULL, DeviceHandle, RootDir, VolName, VolBadgeImage);
     }
     Status = DirIterClose(&DirIter);
     if (Status != EFI_NOT_FOUND) {
@@ -193,6 +218,7 @@ static void loader_scan(void)
     EFI_FILE                *RootDir;
     EFI_FILE_SYSTEM_INFO    *FileSystemInfoPtr;
     CHAR16                  *VolName;
+    REFIT_IMAGE             *VolBadgeImage;
     REFIT_DIR_ITER          EfiDirIter;
     EFI_FILE_INFO           *EfiDirEntry;
     CHAR16                  FileName[256];
@@ -228,35 +254,36 @@ static void loader_scan(void)
         }
         
         // get volume icon
-        // FUTURE:
-        //VolBadge = LoadIcns(RootDir, L".VolumeIcon.icns", 32);
+        VolBadgeImage = LoadIcns(RootDir, L".VolumeIcon.icns", 32);
+        if (VolBadgeImage == NULL)
+            VolBadgeImage = BuiltinIcon(8);
         
         // check for Mac OS X boot loader
         StrCpy(FileName, MACOSX_LOADER_PATH);
         if (FileExists(RootDir, FileName)) {
             Print(L"  - Mac OS X boot file found\n");
-            add_loader_entry(FileName, L"Mac OS X", DeviceHandle, VolName);
+            add_loader_entry(FileName, L"Mac OS X", DeviceHandle, RootDir, VolName, VolBadgeImage);
         }
         
         // check for XOM
         StrCpy(FileName, L"\\System\\Library\\CoreServices\\xom.efi");
         if (FileExists(RootDir, FileName)) {
-            add_loader_entry(FileName, L"Windows XP (XoM)", DeviceHandle, VolName);
+            add_loader_entry(FileName, L"Windows XP (XoM)", DeviceHandle, RootDir, VolName, VolBadgeImage);
         }
         
         // check for Microsoft boot loader/menu
         StrCpy(FileName, L"\\EFI\\Microsoft\\Boot\\Bootmgfw.efi");
         if (FileExists(RootDir, FileName)) {
             Print(L"  - Microsoft boot menu found\n");
-            add_loader_entry(FileName, L"Microsoft boot menu", DeviceHandle, VolName);
+            add_loader_entry(FileName, L"Microsoft boot menu", DeviceHandle, RootDir, VolName, VolBadgeImage);
         }
         
         // scan the root directory for EFI executables
-        loader_scan_dir(RootDir, NULL, DeviceHandle, VolName);
+        loader_scan_dir(RootDir, NULL, DeviceHandle, VolName, VolBadgeImage);
         // scan the elilo directory (as used on gimli's first Live CD)
-        loader_scan_dir(RootDir, L"elilo", DeviceHandle, VolName);
+        loader_scan_dir(RootDir, L"elilo", DeviceHandle, VolName, VolBadgeImage);
         // scan the boot directory
-        loader_scan_dir(RootDir, L"boot", DeviceHandle, VolName);
+        loader_scan_dir(RootDir, L"boot", DeviceHandle, VolName, VolBadgeImage);
         
         // scan subdirectories of the EFI directory (as per the standard)
         DirIterOpen(RootDir, L"EFI", &EfiDirIter);
@@ -268,7 +295,7 @@ static void loader_scan(void)
             Print(L"  - Directory EFI\\%s found\n", EfiDirEntry->FileName);
             
             SPrint(FileName, 255, L"EFI\\%s", EfiDirEntry->FileName);
-            loader_scan_dir(RootDir, FileName, DeviceHandle, VolName);
+            loader_scan_dir(RootDir, FileName, DeviceHandle, VolName, VolBadgeImage);
         }
         Status = DirIterClose(&EfiDirIter);
         if (Status != EFI_NOT_FOUND)
@@ -316,6 +343,7 @@ static void add_tool_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_
     Entry->me.Tag = TAG_TOOL;
     Entry->me.Row = 1;
     Entry->me.Image = Image;
+    Entry->me.BadgeImage = NULL;
     Entry->LoaderPath = StrDuplicate(LoaderPath);
     Entry->VolName = NULL;
     Entry->DevicePath = FileDevicePath(SelfLoadedImage->DeviceHandle, Entry->LoaderPath);

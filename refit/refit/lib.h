@@ -87,6 +87,12 @@ EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter);
 #define FONT_CELL_WIDTH (7)
 #define FONT_CELL_HEIGHT (12)
 
+#define TEXT_MODE_ALIGN_LEFT   (0x01)
+#define TEXT_MODE_ALIGN_CENTER (0x02)
+#define TEXT_MODE_ALIGN_MASK   (0x03)
+#define TEXT_MODE_NORMAL       (0x00)
+#define TEXT_MODE_SELECTED     (0x04)
+
 typedef struct {
     UINT8 *PixelData;
     UINTN Width, Height;
@@ -117,7 +123,8 @@ VOID SwitchToGraphicsAndClear(VOID);
 VOID BltClearScreen(IN BOOLEAN ShowBanner);
 VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
-VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);
+VOID BltImageCompositeBadge(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN REFIT_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos);
+VOID DrawText(IN CHAR16 *Text, IN UINTN Mode, IN UINTN XPos, IN UINTN YPos);
 #endif  /* !TEXTONLY */
 
 //
@@ -145,6 +152,7 @@ typedef struct {
     UINTN Tag;
     UINTN Row;
     REFIT_IMAGE *Image;
+    REFIT_IMAGE *BadgeImage;
 } REFIT_MENU_ENTRY;
 
 typedef struct {

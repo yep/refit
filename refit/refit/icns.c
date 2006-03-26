@@ -59,8 +59,9 @@ BUILTIN_ICON BuiltinIconTable[] = {
     { NULL, L"\\icons\\func_exit.icns", 48 },
     { NULL, L"\\icons\\func_reset.icns", 48 },
     { NULL, L"\\icons\\tool_shell.icns", 48 },
+    { NULL, L"\\icons\\vol_internal.icns", 32 },
 };
-#define BUILTIN_ICON_COUNT (8)
+#define BUILTIN_ICON_COUNT (9)
 
 REFIT_IMAGE * BuiltinIcon(IN UINTN Id)
 {
