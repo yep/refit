@@ -56,6 +56,7 @@ OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\main.obj \
     $(BUILD_DIR)\menu.obj \
     $(BUILD_DIR)\screen.obj \
+    $(BUILD_DIR)\icns.obj \
     $(BUILD_DIR)\lib.obj  \
 
 #
@@ -65,6 +66,7 @@ OBJECTS = $(OBJECTS) \
 $(BUILD_DIR)\main.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
 $(BUILD_DIR)\menu.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
 $(BUILD_DIR)\screen.obj     : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\icns.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
 $(BUILD_DIR)\lib.obj        : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
 
 #

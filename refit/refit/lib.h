@@ -80,7 +80,7 @@ EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter);
 #define FONT_CELL_HEIGHT (12)
 
 typedef struct {
-    const UINT8 *PixelData;
+    UINT8 *PixelData;
     UINTN Width, Height;
 } REFIT_IMAGE;
 
@@ -111,6 +111,12 @@ VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
 VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);
 #endif  /* !TEXTONLY */
+
+//
+// icns loader module
+//
+
+REFIT_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
 
 //
 // menu module

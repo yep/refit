@@ -65,6 +65,8 @@ DUMMY_IMAGE(image_os_unknown)
 #include "image_os_unknown.h"
 #endif
 
+REFIT_IMAGE *IcnsTest;
+
 // types
 
 typedef struct {
@@ -156,7 +158,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     Entry->UseGraphicsMode = FALSE;
     
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
-        Entry->me.Image = &image_os_mac;
+        Entry->me.Image = IcnsTest; //&image_os_mac;
         Entry->UseGraphicsMode = TRUE;
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
@@ -413,6 +415,10 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     Status = BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID*)&SelfLoadedImage);
     if (CheckFatalError(Status, L"while getting a LoadedImageProtocol handle"))
         return EFI_LOAD_ERROR;
+    
+    
+    IcnsTest = LoadIcns(LibOpenRoot(SelfLoadedImage->DeviceHandle), L"\\efi\\refit\\Internal.icns", 128);
+    
     
     // scan for loaders and tools, add them to the menu
     loader_scan();
