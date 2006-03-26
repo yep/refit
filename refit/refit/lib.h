@@ -129,6 +129,7 @@ REFIT_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, 
 REFIT_IMAGE * DummyImage(IN UINTN PixelSize);
 
 REFIT_IMAGE * BuiltinIcon(IN UINTN Id);
+REFIT_IMAGE * BuiltinImage(IN UINTN Id);
 
 //
 // menu module

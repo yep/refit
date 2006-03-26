@@ -63,12 +63,7 @@ static BOOLEAN InGraphicsMode;
 static BOOLEAN GraphicsScreenDirty;
 
 #ifndef TEXTONLY
-
 static EFI_UGA_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
-
-#include "image_refit_banner.h"
-#include "image_font.h"
-
 #endif  /* !TEXTONLY */
 
 // general defines and variables
@@ -354,8 +349,10 @@ VOID SwitchToGraphicsAndClear(VOID)
 VOID BltClearScreen(IN BOOLEAN ShowBanner)
 {
     UGA->Blt(UGA, &BackgroundPixel, EfiUgaVideoFill, 0, 0, 0, 0, UGAWidth, UGAHeight, 0);
-    if (ShowBanner)
-        BltImage(&image_refit_banner, (UGAWidth - image_refit_banner.Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+    if (ShowBanner) {
+        REFIT_IMAGE *banner = BuiltinImage(1);
+        BltImage(banner, (UGAWidth - banner->Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+    }
     GraphicsScreenDirty = FALSE;
 }
 
@@ -403,6 +400,7 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
     UINTN TextLength, TextWidth;
     UINTN i, c, y;
     UINTN LineOffset, FontLineOffset;
+    REFIT_IMAGE *FontImage;
     
     // clear the buffer
     Ptr = BackBuffer->PixelData;
@@ -421,17 +419,20 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer)
         TextWidth = TextLength * FONT_CELL_WIDTH;
     }
     
+    // load the font
+    FontImage = BuiltinImage(0);
+    
     // render it
     Ptr = BackBuffer->PixelData + ((BackBuffer->Width - TextWidth) >> 1) * 4;
     LineOffset = BackBuffer->Width * 4;
-    FontLineOffset = image_font.Width * 4;
+    FontLineOffset = FontImage->Width * 4;
     for (i = 0; i < TextLength; i++) {
         c = Text[i];
         if (c < 32 || c >= 127)
             c = 95;
         else
             c -= 32;
-        FontPtr = image_font_data + c * FONT_CELL_WIDTH * 4;
+        FontPtr = FontImage->PixelData + c * FONT_CELL_WIDTH * 4;
         for (y = 0; y < FONT_CELL_HEIGHT; y++)
             CopyMem(Ptr + y * LineOffset, FontPtr + y * FontLineOffset, FONT_CELL_WIDTH * 4);
         Ptr += FONT_CELL_WIDTH * 4;

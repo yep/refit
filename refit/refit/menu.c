@@ -36,7 +36,7 @@
 
 #include "lib.h"
 
-/* scrolling definitions */
+// scrolling definitions
 
 typedef struct {
     INTN CurrentSelection, LastSelection, MaxIndex;
@@ -51,19 +51,10 @@ typedef struct {
 #define SCROLL_FIRST      (4)
 #define SCROLL_LAST       (5)
 
-/* other menu definitions */
+// other menu definitions
 
 static CHAR16 ArrowUp[2] = { ARROW_UP, 0 };
 static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
-
-#ifndef TEXTONLY
-
-#include "image_back_normal_big.h"
-#include "image_back_normal_small.h"
-#include "image_back_selected_big.h"
-#include "image_back_selected_small.h"
-
-#endif  /* !TEXTONLY */
 
 //
 // Scrolling functions
@@ -364,14 +355,14 @@ static VOID DrawMenuEntryGraphics(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UIN
     
     if (Entry->Row == 0) {
         if (selected)
-            BackgroundImage = &image_back_selected_big;
+            BackgroundImage = BuiltinImage(3);  // image_back_selected_big
         else
-            BackgroundImage = &image_back_normal_big;
+            BackgroundImage = BuiltinImage(2);  // image_back_normal_big
     } else {
         if (selected)
-            BackgroundImage = &image_back_selected_small;
+            BackgroundImage = BuiltinImage(5);  // image_back_selected_small
         else
-            BackgroundImage = &image_back_normal_small;
+            BackgroundImage = BuiltinImage(4);  // image_back_normal_small
     }
     BltImageComposite(BackgroundImage, Entry->Image, PosX, PosY);
 }
