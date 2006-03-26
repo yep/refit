@@ -59,10 +59,10 @@ OBJECTS = $(OBJECTS) \
 # Source file dependencies
 #
 
-$(BUILD_DIR)\main.obj       : $(*B).c $(INC_DEPS)
-$(BUILD_DIR)\menu.obj       : $(*B).c $(INC_DEPS)
-$(BUILD_DIR)\screen.obj     : $(*B).c $(INC_DEPS)
-$(BUILD_DIR)\lib.obj        : $(*B).c $(INC_DEPS)
+$(BUILD_DIR)\main.obj       : $(*B).c $(INC_DEPS) lib.h
+$(BUILD_DIR)\menu.obj       : $(*B).c $(INC_DEPS) lib.h
+$(BUILD_DIR)\screen.obj     : $(*B).c $(INC_DEPS) lib.h
+$(BUILD_DIR)\lib.obj        : $(*B).c $(INC_DEPS) lib.h
 
 #
 # Handoff to master.mak
