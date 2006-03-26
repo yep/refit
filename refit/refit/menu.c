@@ -215,21 +215,7 @@ static VOID UpdateScrollScancode(IN OUT SCROLL_STATE *State, IN UINT16 Scancode)
 
 VOID MenuAddEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry)
 {
-    REFIT_MENU_ENTRY *NewEntries;
-    
-    if (Screen->EntryCount >= Screen->AllocatedEntryCount) {
-        Screen->AllocatedEntryCount += 8;
-        NewEntries = AllocatePool(sizeof(REFIT_MENU_ENTRY) * Screen->AllocatedEntryCount);
-        if (Screen->EntryCount > 0)
-            CopyMem(NewEntries, Screen->Entries, sizeof(REFIT_MENU_ENTRY) * Screen->EntryCount);
-        if (Screen->Entries)
-            FreePool(Screen->Entries);
-        Screen->Entries = NewEntries;
-        // TODO: use ReallocatePool instead
-    }
-    
-    CopyMem(Screen->Entries + Screen->EntryCount, Entry, sizeof(REFIT_MENU_ENTRY));
-    Screen->EntryCount++;
+    AddListElement(&(Screen->Entries), &(Screen->EntryCount), Entry);
 }
 
 VOID MenuFree(IN REFIT_MENU_SCREEN *Screen)
@@ -268,7 +254,7 @@ static UINTN MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Ch
     // determine width of the menu
     menuWidth = 20;  // minimum
     for (i = 0; i <= State.MaxIndex; i++) {
-        itemWidth = StrLen(Screen->Entries[i].Title);
+        itemWidth = StrLen(Screen->Entries[i]->Title);
         if (menuWidth < itemWidth)
             menuWidth = itemWidth;
     }
@@ -278,7 +264,7 @@ static UINTN MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Ch
     // prepare strings for display
     DisplayStrings = AllocatePool(sizeof(CHAR16 *) * Screen->EntryCount);
     for (i = 0; i <= State.MaxIndex; i++)
-        DisplayStrings[i] = PoolPrint(L" %-.*s ", menuWidth, Screen->Entries[i].Title);
+        DisplayStrings[i] = PoolPrint(L" %-.*s ", menuWidth, Screen->Entries[i]->Title);
     // TODO: shorten strings that are too long (PoolPrint doesn't do that...)
     // TODO: use more elaborate techniques for shortening too long strings (ellipses in the middle)
     // TODO: account for double-width characters
@@ -366,7 +352,7 @@ static UINTN MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Ch
     FreePool(DisplayStrings);
     
     if (ChosenEntry)
-        *ChosenEntry = Screen->Entries + State.CurrentSelection;
+        *ChosenEntry = Screen->Entries[State.CurrentSelection];
     return MenuExit;
 }
 
@@ -419,7 +405,7 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
     row0Count = 0;
     row1Count = 0;
     for (i = 0; i <= State.MaxIndex; i++) {
-        if (Screen->Entries[i].Row == 0)
+        if (Screen->Entries[i]->Row == 0)
             row0Count++;
         else
             row1Count++;
@@ -433,7 +419,7 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
     row0PosXRunning = row0PosX;
     row1PosXRunning = row1PosX;
     for (i = 0; i <= State.MaxIndex; i++) {
-        if (Screen->Entries[i].Row == 0) {
+        if (Screen->Entries[i]->Row == 0) {
             itemPosX[i] = row0PosXRunning;
             row0PosXRunning += 144 + 8;
         } else {
@@ -449,11 +435,11 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
     // initial painting
     SwitchToGraphicsAndClear();
     for (i = 0; i <= State.MaxIndex; i++) {
-        DrawMenuEntryGraphics(&(Screen->Entries[i]), (i == State.CurrentSelection) ? TRUE : FALSE,
+        DrawMenuEntryGraphics(Screen->Entries[i], (i == State.CurrentSelection) ? TRUE : FALSE,
                               itemPosX[i],
-                              (Screen->Entries[i].Row == 0) ? row0PosY : row1PosY);
+                              (Screen->Entries[i]->Row == 0) ? row0PosY : row1PosY);
     }
-    RenderText(Screen->Entries[State.CurrentSelection].Title, &TextBuffer);
+    RenderText(Screen->Entries[State.CurrentSelection]->Title, &TextBuffer);
     BltImage(&TextBuffer, (UGAWidth - TextBuffer.Width) >> 1, row1PosY + 80 + 16);
     State.PaintAll = FALSE;
     State.PaintSelection = FALSE;
@@ -461,13 +447,13 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
     while (!MenuExit) {
         
         if (State.PaintSelection) {
-            DrawMenuEntryGraphics(&(Screen->Entries[State.LastSelection]), FALSE,
+            DrawMenuEntryGraphics(Screen->Entries[State.LastSelection], FALSE,
                                   itemPosX[State.LastSelection],
-                                  (Screen->Entries[State.LastSelection].Row == 0) ? row0PosY : row1PosY);
-            DrawMenuEntryGraphics(&(Screen->Entries[State.CurrentSelection]), TRUE,
+                                  (Screen->Entries[State.LastSelection]->Row == 0) ? row0PosY : row1PosY);
+            DrawMenuEntryGraphics(Screen->Entries[State.CurrentSelection], TRUE,
                                   itemPosX[State.CurrentSelection],
-                                  (Screen->Entries[State.CurrentSelection].Row == 0) ? row0PosY : row1PosY);
-            RenderText(Screen->Entries[State.CurrentSelection].Title, &TextBuffer);
+                                  (Screen->Entries[State.CurrentSelection]->Row == 0) ? row0PosY : row1PosY);
+            RenderText(Screen->Entries[State.CurrentSelection]->Title, &TextBuffer);
             BltImage(&TextBuffer, (UGAWidth - TextBuffer.Width) >> 1, row1PosY + 80 + 16);
             State.PaintSelection = FALSE;
         }
@@ -512,7 +498,7 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
     FreePool(itemPosX);
     
     if (ChosenEntry)
-        *ChosenEntry = Screen->Entries + State.CurrentSelection;
+        *ChosenEntry = Screen->Entries[State.CurrentSelection];
     return MenuExit;
 }
 

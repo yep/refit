@@ -124,7 +124,6 @@ VOID RenderText(IN CHAR16 *Text, IN OUT REFIT_IMAGE *BackBuffer);
 typedef struct {
     CHAR16 *Title;
     UINTN Tag;
-    VOID *UserData;
     UINTN Row;
     REFIT_IMAGE *Image;
 } REFIT_MENU_ENTRY;
@@ -132,8 +131,7 @@ typedef struct {
 typedef struct {
     CHAR16 *Title;
     UINTN EntryCount;
-    UINTN AllocatedEntryCount;
-    REFIT_MENU_ENTRY *Entries;
+    REFIT_MENU_ENTRY **Entries;
     UINTN TimeoutSeconds;
     CHAR16 *TimeoutText;
 } REFIT_MENU_SCREEN;

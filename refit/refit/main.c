@@ -63,20 +63,32 @@ DUMMY_IMAGE(image_os_unknown)
 #include "image_os_unknown.h"
 #endif
 
+// types
+
+typedef struct {
+    REFIT_MENU_ENTRY me;
+    CHAR16      *LoaderPath;
+    CHAR16      *VolName;
+    EFI_HANDLE  DeviceHandle;
+    BOOLEAN     UseGraphicsMode;
+} LOADER_ENTRY;
+
 // variables
 
 static EFI_HANDLE SelfImageHandle;
 static EFI_LOADED_IMAGE *SelfLoadedImage;
 
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", 1, NULL, 1, &image_tool_exit };
-static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", 2, NULL, 1, &image_tool_reset };
-static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, NULL, 1, &image_tool_shell };
-static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", 4, NULL, 1, &image_tool_about };
+static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", 1, 1, &image_tool_exit };
+static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", 2, 1, &image_tool_reset };
+static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, 1, &image_tool_shell };
+static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", 4, 1, &image_tool_about };
 
-static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, 0, NULL, 20, L"Automatic boot" };
+static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, NULL, 20, L"Automatic boot" };
+
+#define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
 
 
-void run_tool(IN CHAR16 *RelativeFilePath)
+static void run_tool(IN CHAR16 *RelativeFilePath)
 {
     EFI_STATUS              Status;
     EFI_DEVICE_PATH         *DevicePath;
@@ -88,12 +100,13 @@ void run_tool(IN CHAR16 *RelativeFilePath)
     
     // find the current directory
     DevicePathAsString = DevicePathToStr(SelfLoadedImage->FilePath);
-    if (DevicePathAsString!=NULL) {
-        StrCpy(FileName,DevicePathAsString);
+    if (DevicePathAsString != NULL) {
+        StrCpy(FileName, DevicePathAsString);
         FreePool(DevicePathAsString);
-    }
-    for (i = StrLen(FileName) - 1; i > 0 && FileName[i] != '\\'; i--) ;
-    FileName[i] = 0;
+        for (i = StrLen(FileName); i > 0 && FileName[i] != '\\'; i--) ;
+        FileName[i] = 0;
+    } else
+        FileName[0] = 0;
     
     // append relative path to get the absolute path for the image file
     StrCat(FileName, RelativeFilePath);
@@ -116,13 +129,13 @@ bailout:
     FinishExternalScreen();
 }
 
-void start_shell(void)
+static void start_shell(void)
 {
     BeginExternalScreen(0, L"rEFIt - EFI Shell");
     run_tool(L"\\apps\\shell.efi");
 }
 
-void about_refit(void)
+static void about_refit(void)
 {
     BeginTextScreen(L"rEFIt - About");
     Print(L"rEFIt Version 0.4\n\n");
@@ -131,19 +144,22 @@ void about_refit(void)
     FinishTextScreen(TRUE);
 }
 
-void chainload(IN UINTN Tag, IN VOID *UserData)
+static void chainload(IN LOADER_ENTRY *Entry)
 {
     EFI_STATUS              Status;
     EFI_DEVICE_PATH         *DevicePath;
     EFI_HANDLE              ChildImageHandle;
+    CHAR16                  ErrorInfo[256];
     
-    BeginExternalScreen((Tag == 8) ? 0 : 1, L"rEFIt - Booting OS");
+    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"rEFIt - Booting OS");
     
-    DevicePath = (EFI_DEVICE_PATH *)UserData;
+    DevicePath = FileDevicePath(Entry->DeviceHandle, Entry->LoaderPath);
     
     // load the image into memory
     Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
-    if (CheckError(Status, L"while loading the OS boot loader"))
+    FreePool(DevicePath);
+    SPrint(ErrorInfo, 255, L"while loading %s on %s", Entry->LoaderPath, Entry->VolName);
+    if (CheckError(Status, ErrorInfo))
         goto bailout;
     
     // turn control over to the image
@@ -155,13 +171,62 @@ bailout:
     FinishExternalScreen();
 }
 
+static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
+{
+    CHAR16 *FileName;
+    UINTN i;
+    LOADER_ENTRY *Entry;
+    
+    Entry = AllocatePool(sizeof(LOADER_ENTRY));
+    
+    FileName = LoaderPath;
+    for (i = StrLen(LoaderPath) - 1; i >= 0; i--) {
+        if (LoaderPath[i] == '\\') {
+            FileName = LoaderPath + i + 1;
+            break;
+        }
+    }
+    
+    if (LoaderTitle == NULL)
+        LoaderTitle = LoaderPath + 1;
+    Entry->me.Title = PoolPrint(L"Boot %s from %s", LoaderTitle, VolName);
+    Entry->me.Tag = 8;
+    Entry->me.Row = 0;
+    Entry->me.Image = &image_os_unknown;
+    Entry->LoaderPath = StrDuplicate(LoaderPath);
+    Entry->VolName = StrDuplicate(VolName);
+    Entry->DeviceHandle = DeviceHandle;
+    Entry->UseGraphicsMode = FALSE;
+    
+    if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
+        Entry->me.Image = &image_os_mac;
+        Entry->UseGraphicsMode = TRUE;
+    } else if (StriCmp(FileName, L"e.efi") == 0 ||
+               StriCmp(FileName, L"elilo.efi") == 0) {
+        Entry->me.Image = &image_os_linux;
+    } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
+        Entry->me.Image = &image_os_win;
+    } else if (StriCmp(FileName, L"xom.efi") == 0) {
+        Entry->me.Image = &image_os_win;
+        Entry->UseGraphicsMode = TRUE;
+    }
+    
+    MenuAddEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+}
+
+static void free_loader_entry(IN LOADER_ENTRY *Entry)
+{
+    FreePool(Entry->me.Title);
+    FreePool(Entry->LoaderPath);
+    FreePool(Entry->VolName);
+}
+
 void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
 {
     EFI_STATUS              Status;
     REFIT_DIR_ITER          DirIter;
     EFI_FILE_INFO           *DirEntry;
     CHAR16                  FileName[256];
-    REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL, 0, &image_os_unknown };
     
     // look through contents of the directory
     DirIterOpen(RootDir, Path, &DirIter);
@@ -175,20 +240,7 @@ void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
             SPrint(FileName, 255, L"\\%s\\%s", Path, DirEntry->FileName);
         else
             SPrint(FileName, 255, L"\\%s", DirEntry->FileName);
-        entry_boot.Title = PoolPrint(L"Boot %s from %s", FileName+1, VolName);
-        entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-        entry_boot.Tag = 8;
-        entry_boot.Image = &image_os_unknown;
-        if (StriCmp(DirEntry->FileName, L"e.efi") == 0 ||
-	    StriCmp(DirEntry->FileName, L"elilo.efi") == 0)
-            entry_boot.Image = &image_os_linux;
-        else if (StriCmp(DirEntry->FileName, L"Bootmgfw.efi") == 0)
-            entry_boot.Image = &image_os_win;
-        else if (StriCmp(DirEntry->FileName, L"xom.efi") == 0) {
-            entry_boot.Tag = 9;
-            entry_boot.Image = &image_os_win;
-        }
-        MenuAddEntry(&main_menu, &entry_boot);
+        add_loader_entry(FileName, NULL, DeviceHandle, VolName);
     }
     Status = DirIterClose(&DirIter);
     if (Status != EFI_NOT_FOUND) {
@@ -213,7 +265,6 @@ void scan_volumes(void)
     REFIT_DIR_ITER          EfiDirIter;
     EFI_FILE_INFO           *EfiDirEntry;
     CHAR16                  FileName[256];
-    REFIT_MENU_ENTRY        entry_boot = { NULL, 8, NULL, 0, &image_os_unknown };
     
     Print(L"Scanning for boot loaders...\n");
     
@@ -246,37 +297,23 @@ void scan_volumes(void)
         }
         
         // check for Mac OS X boot loader
-        StrCpy(FileName, L"\\System\\Library\\CoreServices\\boot.efi");
+        StrCpy(FileName, MACOSX_LOADER_PATH);
         if (FileExists(RootDir, FileName)) {
             Print(L"  - Mac OS X boot file found\n");
-            
-            entry_boot.Title = PoolPrint(L"Boot Mac OS X from %s", VolName);
-            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-            entry_boot.Tag = 9;
-            entry_boot.Image = &image_os_mac;
-            MenuAddEntry(&main_menu, &entry_boot);
+            add_loader_entry(FileName, L"Mac OS X", DeviceHandle, VolName);
         }
         
         // check for XOM
         StrCpy(FileName, L"\\System\\Library\\CoreServices\\xom.efi");
         if (FileExists(RootDir, FileName)) {
-            entry_boot.Title = PoolPrint(L"Boot Windows XP (XoM) from %s", VolName);
-            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-            entry_boot.Tag = 9;
-            entry_boot.Image = &image_os_win;
-            MenuAddEntry(&main_menu, &entry_boot);
+            add_loader_entry(FileName, L"Windows XP (XoM)", DeviceHandle, VolName);
         }
         
         // check for Microsoft boot loader/menu
         StrCpy(FileName, L"\\EFI\\Microsoft\\Boot\\Bootmgfw.efi");
         if (FileExists(RootDir, FileName)) {
             Print(L"  - Microsoft boot menu found\n");
-            
-            entry_boot.Title = PoolPrint(L"Boot Microsoft boot menu from %s", VolName);
-            entry_boot.UserData = FileDevicePath(DeviceHandle, FileName);
-            entry_boot.Tag = 8;
-            entry_boot.Image = &image_os_win;
-            MenuAddEntry(&main_menu, &entry_boot);
+            add_loader_entry(FileName, L"Microsoft boot menu", DeviceHandle, VolName);
         }
         
         // scan the root directory for EFI executables
@@ -319,6 +356,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     REFIT_MENU_ENTRY *chosenEntry;
     BOOLEAN mainLoopRunning = TRUE;
     UINTN MenuExit;
+    UINTN i;
     
     InitializeLib(ImageHandle, SystemTable);
     BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
@@ -359,15 +397,22 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
                 about_refit();
                 break;
                 
-            case 8:   // Boot OS via .EFI loader, text mode
-            case 9:   // Boot OS via .EFI loader, graphics mode
-                chainload(chosenEntry->Tag, chosenEntry->UserData);
+            case 8:   // Boot OS via .EFI loader
+                chainload((LOADER_ENTRY *)chosenEntry);
                 break;
                 
         }
         
         main_menu.TimeoutSeconds = 0;
     }
+    
+    for (i = 0; i < main_menu.EntryCount; i++) {
+        if (main_menu.Entries[i]->Tag == 8) {
+            free_loader_entry((LOADER_ENTRY *)(main_menu.Entries[i]));
+            FreePool(main_menu.Entries[i]);
+        }
+    }
+    FreePool(main_menu.Entries);
     
     // clear screen completely
     TerminateScreen();
