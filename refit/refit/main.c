@@ -43,6 +43,7 @@
 DUMMY_IMAGE(image_tool_about)
 DUMMY_IMAGE(image_tool_exit)
 DUMMY_IMAGE(image_tool_reset)
+
 DUMMY_IMAGE(image_tool_shell)
 
 DUMMY_IMAGE(image_os_mac)
@@ -55,6 +56,7 @@ DUMMY_IMAGE(image_os_unknown)
 #include "image_tool_about.h"
 #include "image_tool_exit.h"
 #include "image_tool_reset.h"
+
 #include "image_tool_shell.h"
 
 #include "image_os_mac.h"
@@ -67,73 +69,31 @@ DUMMY_IMAGE(image_os_unknown)
 
 typedef struct {
     REFIT_MENU_ENTRY me;
-    CHAR16      *LoaderPath;
-    CHAR16      *VolName;
-    EFI_HANDLE  DeviceHandle;
-    BOOLEAN     UseGraphicsMode;
+    CHAR16           *LoaderPath;
+    CHAR16           *VolName;
+    EFI_DEVICE_PATH  *DevicePath;
+    BOOLEAN          UseGraphicsMode;
 } LOADER_ENTRY;
 
 // variables
 
+#define TAG_EXIT   (1)
+#define TAG_RESET  (2)
+#define TAG_ABOUT  (3)
+#define TAG_LOADER (4)
+#define TAG_TOOL   (5)
+
 static EFI_HANDLE SelfImageHandle;
 static EFI_LOADED_IMAGE *SelfLoadedImage;
 
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", 1, 1, &image_tool_exit };
-static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", 2, 1, &image_tool_reset };
-static REFIT_MENU_ENTRY entry_shell   = { L"Start EFI Shell", 3, 1, &image_tool_shell };
-static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", 4, 1, &image_tool_about };
+static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, &image_tool_exit };
+static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, &image_tool_reset };
+static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, &image_tool_about };
 
 static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, NULL, 20, L"Automatic boot" };
 
 #define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
 
-
-static void run_tool(IN CHAR16 *RelativeFilePath)
-{
-    EFI_STATUS              Status;
-    EFI_DEVICE_PATH         *DevicePath;
-    CHAR16                  *DevicePathAsString;
-    CHAR16                  FileName[256];
-    CHAR16                  ErrorInfo[256];
-    UINTN                   i;
-    EFI_HANDLE              ShellHandle;
-    
-    // find the current directory
-    DevicePathAsString = DevicePathToStr(SelfLoadedImage->FilePath);
-    if (DevicePathAsString != NULL) {
-        StrCpy(FileName, DevicePathAsString);
-        FreePool(DevicePathAsString);
-        for (i = StrLen(FileName); i > 0 && FileName[i] != '\\'; i--) ;
-        FileName[i] = 0;
-    } else
-        FileName[0] = 0;
-    
-    // append relative path to get the absolute path for the image file
-    StrCat(FileName, RelativeFilePath);
-    
-    // make a full device path for the image file
-    DevicePath = FileDevicePath(SelfLoadedImage->DeviceHandle, FileName);
-    
-    // load the image into memory
-    Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ShellHandle);
-    FreePool(DevicePath);
-    SPrint(ErrorInfo, 255, L"while loading %s", FileName);
-    if (CheckError(Status, ErrorInfo))
-        goto bailout;
-    
-    // turn control over to the image
-    BS->StartImage(ShellHandle, NULL, NULL);
-    // control returns here when the child image calls Exit()
-    
-bailout:
-    FinishExternalScreen();
-}
-
-static void start_shell(void)
-{
-    BeginExternalScreen(0, L"rEFIt - EFI Shell");
-    run_tool(L"\\apps\\shell.efi");
-}
 
 static void about_refit(void)
 {
@@ -144,20 +104,17 @@ static void about_refit(void)
     FinishTextScreen(TRUE);
 }
 
-static void chainload(IN LOADER_ENTRY *Entry)
+
+static void start_loader(IN LOADER_ENTRY *Entry)
 {
     EFI_STATUS              Status;
-    EFI_DEVICE_PATH         *DevicePath;
     EFI_HANDLE              ChildImageHandle;
     CHAR16                  ErrorInfo[256];
     
     BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"rEFIt - Booting OS");
     
-    DevicePath = FileDevicePath(Entry->DeviceHandle, Entry->LoaderPath);
-    
     // load the image into memory
-    Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
-    FreePool(DevicePath);
+    Status = BS->LoadImage(FALSE, SelfImageHandle, Entry->DevicePath, NULL, 0, &ChildImageHandle);
     SPrint(ErrorInfo, 255, L"while loading %s on %s", Entry->LoaderPath, Entry->VolName);
     if (CheckError(Status, ErrorInfo))
         goto bailout;
@@ -190,12 +147,12 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     if (LoaderTitle == NULL)
         LoaderTitle = LoaderPath + 1;
     Entry->me.Title = PoolPrint(L"Boot %s from %s", LoaderTitle, VolName);
-    Entry->me.Tag = 8;
+    Entry->me.Tag = TAG_LOADER;
     Entry->me.Row = 0;
     Entry->me.Image = &image_os_unknown;
     Entry->LoaderPath = StrDuplicate(LoaderPath);
     Entry->VolName = StrDuplicate(VolName);
-    Entry->DeviceHandle = DeviceHandle;
+    Entry->DevicePath = FileDevicePath(DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = FALSE;
     
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
@@ -219,9 +176,10 @@ static void free_loader_entry(IN LOADER_ENTRY *Entry)
     FreePool(Entry->me.Title);
     FreePool(Entry->LoaderPath);
     FreePool(Entry->VolName);
+    FreePool(Entry->DevicePath);
 }
 
-void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
+static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle, IN CHAR16 *VolName)
 {
     EFI_STATUS              Status;
     REFIT_DIR_ITER          DirIter;
@@ -252,7 +210,7 @@ void scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
     }
 }
 
-void scan_volumes(void)
+static void loader_scan(void)
 {
     EFI_STATUS              Status;
     UINTN                   HandleCount = 0;
@@ -317,11 +275,11 @@ void scan_volumes(void)
         }
         
         // scan the root directory for EFI executables
-        scan_dir(RootDir, NULL, DeviceHandle, VolName);
+        loader_scan_dir(RootDir, NULL, DeviceHandle, VolName);
         // scan the elilo directory (as used on gimli's first Live CD)
-        scan_dir(RootDir, L"elilo", DeviceHandle, VolName);
+        loader_scan_dir(RootDir, L"elilo", DeviceHandle, VolName);
         // scan the boot directory
-        scan_dir(RootDir, L"boot", DeviceHandle, VolName);
+        loader_scan_dir(RootDir, L"boot", DeviceHandle, VolName);
         
         // scan subdirectories of the EFI directory (as per the standard)
         DirIterOpen(RootDir, L"EFI", &EfiDirIter);
@@ -333,7 +291,7 @@ void scan_volumes(void)
             Print(L"  - Directory EFI\\%s found\n", EfiDirEntry->FileName);
             
             SPrint(FileName, 255, L"EFI\\%s", EfiDirEntry->FileName);
-            scan_dir(RootDir, FileName, DeviceHandle, VolName);
+            loader_scan_dir(RootDir, FileName, DeviceHandle, VolName);
         }
         Status = DirIterClose(&EfiDirIter);
         if (Status != EFI_NOT_FOUND)
@@ -344,6 +302,95 @@ void scan_volumes(void)
     }
     
     FreePool(Handles);
+}
+
+
+static void start_tool(IN LOADER_ENTRY *Entry)
+{
+    EFI_STATUS              Status;
+    CHAR16                  ScreenTitle[256];
+    EFI_HANDLE              ChildImageHandle;
+    CHAR16                  ErrorInfo[256];
+    
+    SPrint(ScreenTitle, 255, L"rEFIt - %s", Entry->me.Title + 6);
+    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, ScreenTitle);
+    
+    // load the image into memory
+    Status = BS->LoadImage(FALSE, SelfImageHandle, Entry->DevicePath, NULL, 0, &ChildImageHandle);
+    SPrint(ErrorInfo, 255, L"while loading %s", Entry->LoaderPath);
+    if (CheckError(Status, ErrorInfo))
+        goto bailout;
+    
+    // turn control over to the image
+    BS->StartImage(ChildImageHandle, NULL, NULL);
+    // control returns here when the child image calls Exit()
+    
+bailout:
+    FinishExternalScreen();
+}
+
+static void add_tool_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IMAGE *Image, BOOLEAN UseGraphicsMode)
+{
+    LOADER_ENTRY *Entry;
+    
+    Entry = AllocatePool(sizeof(LOADER_ENTRY));
+    
+    Entry->me.Title = PoolPrint(L"Start %s", LoaderTitle);
+    Entry->me.Tag = TAG_TOOL;
+    Entry->me.Row = 1;
+    Entry->me.Image = Image;
+    Entry->LoaderPath = StrDuplicate(LoaderPath);
+    Entry->VolName = NULL;
+    Entry->DevicePath = FileDevicePath(SelfLoadedImage->DeviceHandle, Entry->LoaderPath);
+    Entry->UseGraphicsMode = UseGraphicsMode;
+    
+    MenuAddEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+}
+
+static void free_tool_entry(IN LOADER_ENTRY *Entry)
+{
+    FreePool(Entry->me.Title);
+    FreePool(Entry->LoaderPath);
+    FreePool(Entry->DevicePath);
+}
+
+static void tool_scan(void)
+{
+    //EFI_STATUS              Status;
+    EFI_FILE                *RootDir;
+    CHAR16                  *DevicePathAsString;
+    CHAR16                  BaseDirectory[256];
+    CHAR16                  FileName[256];
+    UINTN                   i;
+    
+    Print(L"Scanning for tools...\n");
+    
+    // open volume for probing
+    RootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
+    if (RootDir == NULL) {
+        Print(L"Error: Can't open volume.\n");
+        // TODO: signal that we had an error
+        return;
+    }
+    
+    // find the current directory
+    DevicePathAsString = DevicePathToStr(SelfLoadedImage->FilePath);
+    if (DevicePathAsString != NULL) {
+        StrCpy(BaseDirectory, DevicePathAsString);
+        FreePool(DevicePathAsString);
+        for (i = StrLen(BaseDirectory); i > 0 && BaseDirectory[i] != '\\'; i--) ;
+        BaseDirectory[i] = 0;
+    } else
+        BaseDirectory[0] = 0;
+    
+    // look for the EFI shell
+    SPrint(FileName, 255, L"%s\\apps\\shell.efi", BaseDirectory);
+    if (FileExists(RootDir, FileName)) {
+        add_tool_entry(FileName, L"EFI Shell", &image_tool_shell, FALSE);
+    }
+    
+    // done!
+    RootDir->Close(RootDir);
 }
 
 
@@ -367,48 +414,55 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     if (CheckFatalError(Status, L"while getting a LoadedImageProtocol handle"))
         return EFI_LOAD_ERROR;
     
-    scan_volumes();
-    FinishTextScreen(FALSE);   // wait for user ACK when there were errors
+    // scan for loaders and tools, add them to the menu
+    loader_scan();
+    tool_scan();
     
-    MenuAddEntry(&main_menu, &entry_shell);
+    // fixed other menu entries
     MenuAddEntry(&main_menu, &entry_about);
     MenuAddEntry(&main_menu, &entry_exit);
     MenuAddEntry(&main_menu, &entry_reset);
     
+    // wait for user ACK when there were errors
+    FinishTextScreen(FALSE);
+    
     while (mainLoopRunning) {
         MenuExit = MenuRun(1, &main_menu, &chosenEntry);
         
-        if (MenuExit == MENU_EXIT_ESCAPE || chosenEntry->Tag == 1)
+        if (MenuExit == MENU_EXIT_ESCAPE || chosenEntry->Tag == TAG_EXIT)
             break;
         
         switch (chosenEntry->Tag) {
             
-            case 2:   // Reboot
+            case TAG_RESET:    // Reboot
                 TerminateScreen();
                 RT->ResetSystem(EfiResetCold, EFI_SUCCESS, 0, NULL);
-                mainLoopRunning = FALSE;
+                mainLoopRunning = FALSE;   // just in case we get this far
                 break;
                 
-            case 3:   // Start Shell
-                start_shell();
-                break;
-                
-            case 4:   // About rEFIt
+            case TAG_ABOUT:    // About rEFIt
                 about_refit();
                 break;
                 
-            case 8:   // Boot OS via .EFI loader
-                chainload((LOADER_ENTRY *)chosenEntry);
+            case TAG_LOADER:   // Boot OS via .EFI loader
+                start_loader((LOADER_ENTRY *)chosenEntry);
+                break;
+                
+            case TAG_TOOL:     // Start a EFI tool
+                start_tool((LOADER_ENTRY *)chosenEntry);
                 break;
                 
         }
         
-        main_menu.TimeoutSeconds = 0;
+        main_menu.TimeoutSeconds = 0;   // no timeout on the second run
     }
     
     for (i = 0; i < main_menu.EntryCount; i++) {
-        if (main_menu.Entries[i]->Tag == 8) {
+        if (main_menu.Entries[i]->Tag == TAG_LOADER) {
             free_loader_entry((LOADER_ENTRY *)(main_menu.Entries[i]));
+            FreePool(main_menu.Entries[i]);
+        } else if (main_menu.Entries[i]->Tag == TAG_TOOL) {
+            free_tool_entry((LOADER_ENTRY *)(main_menu.Entries[i]));
             FreePool(main_menu.Entries[i]);
         }
     }
