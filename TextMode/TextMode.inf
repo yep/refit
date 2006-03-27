@@ -1,0 +1,46 @@
+
+[defines]
+BASE_NAME            = TextMode
+FILE_GUID            = 0B700759-E6EB-4AAD-AECF-67B5521A58D0
+COMPONENT_TYPE       = APPLICATION
+
+[sources.common]
+  TextMode.c
+
+[includes.common]
+  .
+  .\Inc
+  .\ver
+  .\Library
+  $(EDK_SOURCE)\Foundation
+  $(EDK_SOURCE)\Foundation\Include
+  $(EDK_SOURCE)\Foundation\Include\IndustryStandard
+  $(EDK_SOURCE)\Foundation\Efi
+  $(EDK_SOURCE)\Foundation\Efi\Include
+  $(EDK_SOURCE)\Foundation\FrameWork
+  $(EDK_SOURCE)\Foundation\FrameWork\Include
+  $(EDK_SOURCE)\Foundation\Core\Dxe
+  $(DEST_DIR)
+
+[libraries.common]
+  EdkProtocolLib
+  EdkFrameworkProtocolLib
+  EfiProtocolLib
+  ArchProtocolLib
+  EdkGuidLib
+  EdkFrameworkGuidLib
+  EfiGuidLib
+    
+[--]
+
+##
+## To enable building shell commands standalone or built into the shell,
+## we will specify some additional DEFINEs on the compile command line.
+##
+[nmake.common]
+#  C_PROJ_FLAGS = $(C_PROJ_FLAGS) /Zm500
+  IMAGE_ENTRY_POINT=TextModeMain
+#  C_STD_FLAGS = $(C_STD_FLAGS) /DEFI_MONOSHELL
+#  C_STD_FLAGS = $(C_STD_FLAGS) /DSTRING_ARRAY_NAME=$(BASE_NAME)Strings 
+#  C_STD_FLAGS = $(C_STD_FLAGS) /DSTRING_DEFINES_FILE=\"$(BASE_NAME)StrDefs.h\"
+
