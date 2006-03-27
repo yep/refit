@@ -215,10 +215,12 @@ static void loader_scan(void)
     UINTN                   HandleIndex;
     EFI_HANDLE              *Handles;
     EFI_HANDLE              DeviceHandle;
+    EFI_DEVICE_PATH         *DevicePath;
     EFI_FILE                *RootDir;
     EFI_FILE_SYSTEM_INFO    *FileSystemInfoPtr;
     CHAR16                  *VolName;
     REFIT_IMAGE             *VolBadgeImage;
+    UINTN                   VolumeKind;
     REFIT_DIR_ITER          EfiDirIter;
     EFI_FILE_INFO           *EfiDirEntry;
     CHAR16                  FileName[256];
@@ -254,9 +256,40 @@ static void loader_scan(void)
         }
         
         // get volume icon
-        VolBadgeImage = LoadIcns(RootDir, L".VolumeIcon.icns", 32);
-        if (VolBadgeImage == NULL)
-            VolBadgeImage = BuiltinIcon(8);
+        VolBadgeImage = NULL;
+        if (FileExists(RootDir, L".VolumeIcon.icns"))
+            VolBadgeImage = LoadIcns(RootDir, L".VolumeIcon.icns", 32);
+        if (VolBadgeImage == NULL) {
+            // use a generic icon, try to determine what kind of disk this is
+            
+            VolumeKind = 8;   // default: internal disk
+            DevicePath = DevicePathFromHandle(DeviceHandle);
+            //if (DevicePath != NULL)
+            //    Print(L"  * %s\n", DevicePathToStr(DevicePath));
+            while (DevicePath != NULL && !IsDevicePathEndType(DevicePath)) {
+                //Print(L"  + type %d sub-type %d length %d\n", DevicePathType(DevicePath), DevicePathSubType(DevicePath), DevicePathNodeLength(DevicePath));
+                if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH &&
+                    (DevicePathSubType(DevicePath) == MSG_USB_DP ||
+                     DevicePathSubType(DevicePath) == MSG_USB_CLASS_DP ||
+                     DevicePathSubType(DevicePath) == MSG_1394_DP ||
+                     DevicePathSubType(DevicePath) == MSG_FIBRECHANNEL_DP))
+                    VolumeKind = 9;   // external disk
+                if (DevicePathType(DevicePath) == MEDIA_DEVICE_PATH &&
+                    DevicePathSubType(DevicePath) == MEDIA_CDROM_DP)
+                    VolumeKind = 10;   // optical disk
+                // TODO: the following is a bad, hardware-dependent hack!
+                if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH &&
+                    DevicePathSubType(DevicePath) == MSG_ATAPI_DP) {
+                    ATAPI_DEVICE_PATH *AtapiPath = (ATAPI_DEVICE_PATH *)DevicePath;
+                    if (AtapiPath->PrimarySecondary == 0 && AtapiPath->SlaveMaster == 0)
+                        VolumeKind = 10;   // optical disk
+                }
+                DevicePath = NextDevicePathNode(DevicePath);
+            }
+            //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
+            
+            VolBadgeImage = BuiltinIcon(VolumeKind);
+        }
         
         // check for Mac OS X boot loader
         StrCpy(FileName, MACOSX_LOADER_PATH);
