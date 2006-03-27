@@ -13,4 +13,4 @@ if [ "$(uname -p)" != "i386" ]; then
 fi
 
 set -x
-sudo bless --folder "$DIR" --file "$FILE" --labelfile refit.volicon
+sudo bless --folder "$DIR" --file "$FILE" --labelfile refit.vollabel
