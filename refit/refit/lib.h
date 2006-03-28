@@ -115,6 +115,7 @@ BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
 VOID SwitchToGraphicsAndClear(VOID);
 VOID BltClearScreen(IN BOOLEAN ShowBanner);
 VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
+VOID BltImageAlpha(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageCompositeBadge(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN REFIT_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos);
 
@@ -153,6 +154,7 @@ typedef struct {
 
 typedef struct {
     CHAR16 *Title;
+    REFIT_IMAGE *TitleImage;
     UINTN EntryCount;
     REFIT_MENU_ENTRY **Entries;
     UINTN TimeoutSeconds;

@@ -390,6 +390,36 @@ static VOID Compose(IN EFI_UGA_PIXEL *TopBasePtr, IN OUT EFI_UGA_PIXEL *CompBase
     }
 }
 
+VOID BltImageAlpha(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
+{
+    EFI_UGA_PIXEL *CompositeData, *Ptr;
+    UINTN TotalWidth, TotalHeight, i;
+    
+    // initialize buffer with base image
+    TotalWidth  = Image->Width;
+    TotalHeight = Image->Height;
+    CompositeData = AllocatePool(TotalWidth * TotalHeight * 4);
+    Ptr = CompositeData;
+    for (i = 0; i < TotalWidth * TotalHeight; i++) {
+        Ptr->Blue  = 0xbf;
+        Ptr->Green = 0xbf;
+        Ptr->Red   = 0xbf;
+        Ptr->Reserved = 0;
+        Ptr++;
+    }
+    
+    // compose
+    Compose((EFI_UGA_PIXEL *)(Image->PixelData),
+            CompositeData,
+            TotalWidth, TotalHeight, TotalWidth, TotalWidth);
+    
+    // blit to screen and clean up
+    UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
+             0, 0, XPos, YPos, TotalWidth, TotalHeight, 0);
+    FreePool(CompositeData);
+    GraphicsScreenDirty = TRUE;
+}
+
 VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos)
 {
     EFI_UGA_PIXEL *CompositeData;

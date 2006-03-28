@@ -58,7 +58,9 @@ static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
 
 #ifndef TEXTONLY
 
-static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, FONT_CELL_HEIGHT };
+#define TEXT_SPACING (FONT_CELL_HEIGHT + 4)
+
+static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, TEXT_SPACING };
 
 #endif  /* !TEXTONLY */
 
@@ -394,7 +396,7 @@ static VOID DrawMenuText(IN CHAR16 *Text, IN UINTN SelectedWidth, IN UINTN XPos,
     }
     
     // render the text
-    RenderText(Text, &TextBuffer, 16, 0);
+    RenderText(Text, &TextBuffer, 8, (TEXT_SPACING - FONT_CELL_HEIGHT) >> 1);
     BltImage(&TextBuffer, XPos, YPos);
 }
 
@@ -429,19 +431,24 @@ static UINTN RunMenuGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
         if (MenuWidth < ItemWidth)
             MenuWidth = ItemWidth;
     }
-    MenuWidth = 2*16 + MenuWidth * FONT_CELL_WIDTH;
+    MenuWidth = 2*8 + MenuWidth * FONT_CELL_WIDTH;
     if (MenuWidth > 512)
         MenuWidth = 512;
     
-    EntriesPosX = (UGAWidth - MenuWidth) >> 1;
+    if (Screen->TitleImage)
+        EntriesPosX = (UGAWidth + (Screen->TitleImage->Width + 32) - MenuWidth) >> 1;
+    else
+        EntriesPosX = (UGAWidth - MenuWidth) >> 1;
     EntriesPosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + 32 + 32;
-    TimeoutPosY = EntriesPosY + (Screen->EntryCount + 1) * 16;
+    TimeoutPosY = EntriesPosY + (Screen->EntryCount + 1) * TEXT_SPACING;
     
     // initial painting
     SwitchToGraphicsAndClear();
+    if (Screen->TitleImage)
+        BltImageAlpha(Screen->TitleImage, EntriesPosX - (Screen->TitleImage->Width + 32), EntriesPosY);
     for (i = 0; i <= State.MaxIndex; i++) {
         DrawMenuText(Screen->Entries[i]->Title, (i == State.CurrentSelection) ? MenuWidth : 0,
-                     EntriesPosX, EntriesPosY + i * 16);
+                     EntriesPosX, EntriesPosY + i * TEXT_SPACING);
     }
     // TODO: account for scrolling
     State.PaintAll = FALSE;
@@ -451,9 +458,9 @@ static UINTN RunMenuGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
         
         if (State.PaintSelection) {
             DrawMenuText(Screen->Entries[State.LastSelection]->Title, 0,
-                         EntriesPosX, EntriesPosY + State.LastSelection * 16);
+                         EntriesPosX, EntriesPosY + State.LastSelection * TEXT_SPACING);
             DrawMenuText(Screen->Entries[State.CurrentSelection]->Title, MenuWidth,
-                         EntriesPosX, EntriesPosY + State.CurrentSelection * 16);
+                         EntriesPosX, EntriesPosY + State.CurrentSelection * TEXT_SPACING);
             State.PaintSelection = FALSE;
         }
         // TODO: account for scrolling
@@ -624,7 +631,7 @@ static UINTN RunMainMenuGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_EN
         if (HaveTimeout) {
             TimeoutMessage = PoolPrint(L"%s in %d seconds", Screen->TimeoutText, (TimeoutCountdown + 5) / 10);
             DrawMainMenuText(TimeoutMessage,
-                             (UGAWidth - TextBuffer.Width) >> 1, textPosY + 16);
+                             (UGAWidth - TextBuffer.Width) >> 1, textPosY + TEXT_SPACING);
             FreePool(TimeoutMessage);
         }
         
@@ -644,7 +651,7 @@ static UINTN RunMainMenuGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_EN
         if (HaveTimeout) {
             // the user pressed a key, cancel the timeout
             DrawMainMenuText(L"",
-                             (UGAWidth - TextBuffer.Width) >> 1, textPosY + 16);
+                             (UGAWidth - TextBuffer.Width) >> 1, textPosY + TEXT_SPACING);
             HaveTimeout = FALSE;
         }
         
