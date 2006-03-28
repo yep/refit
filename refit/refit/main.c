@@ -165,7 +165,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         Entry->me.Image = BuiltinIcon(3);  // os_unknown
     }
     
-    MenuAddEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+    AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
 }
 
 static void free_loader_entry(IN LOADER_ENTRY *Entry)
@@ -382,7 +382,7 @@ static void add_tool_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_
     Entry->DevicePath = FileDevicePath(SelfLoadedImage->DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = UseGraphicsMode;
     
-    MenuAddEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+    AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
 }
 
 static void free_tool_entry(IN LOADER_ENTRY *Entry)
@@ -432,17 +432,17 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     
     // fixed other menu entries
     entry_about.Image = BuiltinIcon(4);
-    MenuAddEntry(&main_menu, &entry_about);
+    AddMenuEntry(&main_menu, &entry_about);
     entry_exit.Image = BuiltinIcon(5);
-    MenuAddEntry(&main_menu, &entry_exit);
+    AddMenuEntry(&main_menu, &entry_exit);
     entry_reset.Image = BuiltinIcon(6);
-    MenuAddEntry(&main_menu, &entry_reset);
+    AddMenuEntry(&main_menu, &entry_reset);
     
     // wait for user ACK when there were errors
     FinishTextScreen(FALSE);
     
     while (mainLoopRunning) {
-        MenuExit = MenuRun(1, &main_menu, &chosenEntry);
+        MenuExit = RunMainMenu(&main_menu, &chosenEntry);
         
         if (MenuExit == MENU_EXIT_ESCAPE || chosenEntry->Tag == TAG_EXIT)
             break;

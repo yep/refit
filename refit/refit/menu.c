@@ -56,6 +56,12 @@ typedef struct {
 static CHAR16 ArrowUp[2] = { ARROW_UP, 0 };
 static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
 
+#ifndef TEXTONLY
+
+static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, FONT_CELL_HEIGHT };
+
+#endif  /* !TEXTONLY */
+
 //
 // Scrolling functions
 //
@@ -204,18 +210,22 @@ static VOID UpdateScrollScancode(IN OUT SCROLL_STATE *State, IN UINT16 Scancode)
 // Menu functions
 //
 
-VOID MenuAddEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry)
+VOID AddMenuEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry)
 {
     AddListElement(&(Screen->Entries), &(Screen->EntryCount), Entry);
 }
 
-VOID MenuFree(IN REFIT_MENU_SCREEN *Screen)
+VOID FreeMenu(IN REFIT_MENU_SCREEN *Screen)
 {
     if (Screen->Entries)
         FreePool(Screen->Entries);
 }
 
-static UINTN MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+//
+// text mode menu (used for all situations)
+//
+
+static UINTN RunMenuText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
     SCROLL_STATE State;
     INTN i;
@@ -349,7 +359,17 @@ static UINTN MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Ch
 
 #ifndef TEXTONLY
 
-static VOID DrawMenuEntryGraphics(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN XPos, UINTN YPos)
+//
+// graphics mode menu, generic style
+//
+
+// TODO
+
+//
+// graphics mode menu, main menu style
+//
+
+static VOID DrawMainMenuEntry(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN XPos, UINTN YPos)
 {
     REFIT_IMAGE *BackgroundImage;
     
@@ -366,8 +386,6 @@ static VOID DrawMenuEntryGraphics(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UIN
     }
     BltImageCompositeBadge(BackgroundImage, Entry->Image, Entry->BadgeImage, XPos, YPos);
 }
-
-static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, FONT_CELL_HEIGHT };
 
 static VOID DrawMainMenuText(IN CHAR16 *Text, IN UINTN XPos, IN UINTN YPos)
 {
@@ -392,7 +410,7 @@ static VOID DrawMainMenuText(IN CHAR16 *Text, IN UINTN XPos, IN UINTN YPos)
     BltImage(&TextBuffer, XPos, YPos);
 }
 
-static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+static UINTN RunMainMenuGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
     UINTN row0Count, row0PosX, row0PosY, row0PosXRunning;
     UINTN row1Count, row1PosX, row1PosY, row1PosXRunning;
@@ -448,9 +466,9 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
     // initial painting
     SwitchToGraphicsAndClear();
     for (i = 0; i <= State.MaxIndex; i++) {
-        DrawMenuEntryGraphics(Screen->Entries[i], (i == State.CurrentSelection) ? TRUE : FALSE,
-                              itemPosX[i],
-                              (Screen->Entries[i]->Row == 0) ? row0PosY : row1PosY);
+        DrawMainMenuEntry(Screen->Entries[i], (i == State.CurrentSelection) ? TRUE : FALSE,
+                          itemPosX[i],
+                          (Screen->Entries[i]->Row == 0) ? row0PosY : row1PosY);
     }
     DrawMainMenuText(Screen->Entries[State.CurrentSelection]->Title,
                      (UGAWidth - TextBuffer.Width) >> 1, textPosY);
@@ -460,12 +478,12 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
     while (!MenuExit) {
         
         if (State.PaintSelection) {
-            DrawMenuEntryGraphics(Screen->Entries[State.LastSelection], FALSE,
-                                  itemPosX[State.LastSelection],
-                                  (Screen->Entries[State.LastSelection]->Row == 0) ? row0PosY : row1PosY);
-            DrawMenuEntryGraphics(Screen->Entries[State.CurrentSelection], TRUE,
-                                  itemPosX[State.CurrentSelection],
-                                  (Screen->Entries[State.CurrentSelection]->Row == 0) ? row0PosY : row1PosY);
+            DrawMainMenuEntry(Screen->Entries[State.LastSelection], FALSE,
+                              itemPosX[State.LastSelection],
+                              (Screen->Entries[State.LastSelection]->Row == 0) ? row0PosY : row1PosY);
+            DrawMainMenuEntry(Screen->Entries[State.CurrentSelection], TRUE,
+                              itemPosX[State.CurrentSelection],
+                              (Screen->Entries[State.CurrentSelection]->Row == 0) ? row0PosY : row1PosY);
             DrawMainMenuText(Screen->Entries[State.CurrentSelection]->Title,
                              (UGAWidth - TextBuffer.Width) >> 1, textPosY);
             State.PaintSelection = FALSE;
@@ -516,12 +534,17 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
 
 #endif  /* !TEXTONLY */
 
-UINTN MenuRun(IN BOOLEAN HasGraphics, IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+{
+    return RunMenuText(Screen, ChosenEntry);
+}
+
+UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
 #ifndef TEXTONLY
-    if (HasGraphics && AllowGraphicsMode)
-        return MenuRunGraphics(Screen, ChosenEntry);
+    if (AllowGraphicsMode)
+        return RunMainMenuGraphics(Screen, ChosenEntry);
     else
 #endif  /* !TEXTONLY */
-        return MenuRunText(Screen, ChosenEntry);
+        return RunMenuText(Screen, ChosenEntry);
 }

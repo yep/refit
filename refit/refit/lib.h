@@ -159,8 +159,9 @@ typedef struct {
     CHAR16 *TimeoutText;
 } REFIT_MENU_SCREEN;
 
-VOID MenuAddEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry);
-VOID MenuFree(IN REFIT_MENU_SCREEN *Screen);
-UINTN MenuRun(IN BOOLEAN HasGraphics, IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
+VOID AddMenuEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry);
+VOID FreeMenu(IN REFIT_MENU_SCREEN *Screen);
+UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
+UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
 
 /* EOF */
