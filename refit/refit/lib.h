@@ -155,12 +155,15 @@ typedef struct {
 typedef struct {
     CHAR16 *Title;
     REFIT_IMAGE *TitleImage;
+    UINTN InfoLineCount;
+    CHAR16 **InfoLines;
     UINTN EntryCount;
     REFIT_MENU_ENTRY **Entries;
     UINTN TimeoutSeconds;
     CHAR16 *TimeoutText;
 } REFIT_MENU_SCREEN;
 
+VOID AddMenuInfoLine(IN REFIT_MENU_SCREEN *Screen, IN CHAR16 *InfoLine);
 VOID AddMenuEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry);
 VOID FreeMenu(IN REFIT_MENU_SCREEN *Screen);
 UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);

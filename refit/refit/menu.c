@@ -194,6 +194,11 @@ static VOID UpdateScroll(IN OUT SCROLL_STATE *State, IN UINTN Movement)
 // menu helper functions
 //
 
+VOID AddMenuInfoLine(IN REFIT_MENU_SCREEN *Screen, IN CHAR16 *InfoLine)
+{
+    AddListElement(&(Screen->InfoLines), &(Screen->InfoLineCount), InfoLine);
+}
+
 VOID AddMenuEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry)
 {
     AddListElement(&(Screen->Entries), &(Screen->EntryCount), Entry);
@@ -321,17 +326,22 @@ static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC Sty
 static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, IN UINTN Function, IN CHAR16 *ParamText)
 {
     INTN i;
-    UINTN MenuWidth, ItemWidth;
+    UINTN MenuWidth, ItemWidth, MenuHeight;
+    static MenuPosY;
     static CHAR16 **DisplayStrings;
     CHAR16 *TimeoutMessage;
     
     switch (Function) {
         
         case MENU_FUNCTION_INIT:
-            InitScroll(State, Screen->EntryCount, ConHeight - 4 - ((Screen->TimeoutSeconds > 0) ? 2 : 0));
-            
-            // setup screen
-            BeginTextScreen(Screen->Title);
+            // vertical layout
+            MenuPosY = 4;
+            if (Screen->InfoLineCount > 0)
+                MenuPosY += Screen->InfoLineCount + 1;
+            MenuHeight = ConHeight - MenuPosY;
+            if (Screen->TimeoutSeconds > 0)
+                MenuHeight -= 2;
+            InitScroll(State, Screen->EntryCount, MenuHeight);
             
             // determine width of the menu
             MenuWidth = 20;  // minimum
@@ -350,6 +360,16 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             // TODO: shorten strings that are too long (PoolPrint doesn't do that...)
             // TODO: use more elaborate techniques for shortening too long strings (ellipses in the middle)
             // TODO: account for double-width characters
+                
+            // initial painting
+            BeginTextScreen(Screen->Title);
+            if (Screen->InfoLineCount > 0) {
+                ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
+                for (i = 0; i < (INTN)Screen->InfoLineCount; i++) {
+                    ST->ConOut->SetCursorPosition(ST->ConOut, 3, 4 + i);
+                    ST->ConOut->OutputString(ST->ConOut, Screen->InfoLines[i]);
+                }
+            }
             
             break;
             
@@ -364,7 +384,7 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             // paint the whole screen (initially and after scrolling)
             for (i = 0; i <= State->MaxIndex; i++) {
                 if (i >= State->FirstVisible && i <= State->LastVisible) {
-                    ST->ConOut->SetCursorPosition(ST->ConOut, 2, 4 + (i - State->FirstVisible));
+                    ST->ConOut->SetCursorPosition(ST->ConOut, 2, MenuPosY + (i - State->FirstVisible));
                     if (i == State->CurrentSelection)
                         ST->ConOut->SetAttribute(ST->ConOut, ATTR_CHOICE_CURRENT);
                     else
@@ -374,12 +394,12 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             }
             // scrolling indicators
             ST->ConOut->SetAttribute(ST->ConOut, ATTR_SCROLLARROW);
-            ST->ConOut->SetCursorPosition(ST->ConOut, 0, 4);
+            ST->ConOut->SetCursorPosition(ST->ConOut, 0, MenuPosY);
             if (State->FirstVisible > 0)
                 ST->ConOut->OutputString(ST->ConOut, ArrowUp);
             else
                 ST->ConOut->OutputString(ST->ConOut, L" ");
-            ST->ConOut->SetCursorPosition(ST->ConOut, 0, 4 + State->MaxVisible);
+            ST->ConOut->SetCursorPosition(ST->ConOut, 0, MenuPosY + State->MaxVisible);
             if (State->LastVisible < State->MaxIndex)
                 ST->ConOut->OutputString(ST->ConOut, ArrowDown);
             else
@@ -388,10 +408,10 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             
         case MENU_FUNCTION_PAINT_SELECTION:
             // redraw selection cursor
-            ST->ConOut->SetCursorPosition(ST->ConOut, 2, 4 + (State->LastSelection - State->FirstVisible));
+            ST->ConOut->SetCursorPosition(ST->ConOut, 2, MenuPosY + (State->LastSelection - State->FirstVisible));
             ST->ConOut->SetAttribute(ST->ConOut, ATTR_CHOICE_BASIC);
             ST->ConOut->OutputString(ST->ConOut, DisplayStrings[State->LastSelection]);
-            ST->ConOut->SetCursorPosition(ST->ConOut, 2, 4 + (State->CurrentSelection - State->FirstVisible));
+            ST->ConOut->SetCursorPosition(ST->ConOut, 2, MenuPosY + (State->CurrentSelection - State->FirstVisible));
             ST->ConOut->SetAttribute(ST->ConOut, ATTR_CHOICE_CURRENT);
             ST->ConOut->OutputString(ST->ConOut, DisplayStrings[State->CurrentSelection]);
             break;
@@ -475,8 +495,8 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
                     MenuWidth = ItemWidth;
             }
             MenuWidth = 2*8 + MenuWidth * FONT_CELL_WIDTH;
-            if (MenuWidth > 512)
-                MenuWidth = 512;
+            if (MenuWidth > LAYOUT_TEXT_WIDTH)
+                MenuWidth = LAYOUT_TEXT_WIDTH;
             
             if (Screen->TitleImage)
                 EntriesPosX = (UGAWidth + (Screen->TitleImage->Width + 32) - MenuWidth) >> 1;
@@ -489,6 +509,13 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
             SwitchToGraphicsAndClear();
             if (Screen->TitleImage)
                 BltImageAlpha(Screen->TitleImage, EntriesPosX - (Screen->TitleImage->Width + 32), EntriesPosY);
+            if (Screen->InfoLineCount > 0) {
+                for (i = 0; i < (INTN)Screen->InfoLineCount; i++) {
+                    DrawMenuText(Screen->InfoLines[i], 0, EntriesPosX, EntriesPosY);
+                    EntriesPosY += TEXT_SPACING;
+                }
+                EntriesPosY += TEXT_SPACING;  // also add a blank line
+            }
             
             break;
             
