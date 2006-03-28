@@ -27,4 +27,4 @@ static UINT8 image_back_normal_big_compdata[] = {
  0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf,
  0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf, 0xbf, 0xbf,
 };
-static BUILTIN_IMAGE image_back_normal_big = { NULL, 144, 144, 1, image_back_normal_big_compdata, 320 };
+static BUILTIN_IMAGE image_back_normal_big = { NULL, 144, 144, 0, 1, image_back_normal_big_compdata, 320 };

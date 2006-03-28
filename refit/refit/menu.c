@@ -349,7 +349,7 @@ static UINTN MenuRunText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Ch
 
 #ifndef TEXTONLY
 
-static VOID DrawMenuEntryGraphics(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN PosX, UINTN PosY)
+static VOID DrawMenuEntryGraphics(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN XPos, UINTN YPos)
 {
     REFIT_IMAGE *BackgroundImage;
     
@@ -364,7 +364,32 @@ static VOID DrawMenuEntryGraphics(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UIN
         else
             BackgroundImage = BuiltinImage(4);  // image_back_normal_small
     }
-    BltImageCompositeBadge(BackgroundImage, Entry->Image, Entry->BadgeImage, PosX, PosY);
+    BltImageCompositeBadge(BackgroundImage, Entry->Image, Entry->BadgeImage, XPos, YPos);
+}
+
+static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, FONT_CELL_HEIGHT };
+
+static VOID DrawMainMenuText(IN CHAR16 *Text, IN UINTN XPos, IN UINTN YPos)
+{
+    UINT8 *Ptr;
+    UINTN TextWidth, i;
+    
+    if (TextBuffer.PixelData == NULL)
+        TextBuffer.PixelData = AllocatePool(TextBuffer.Width * TextBuffer.Height * 4);
+    
+    // clear the buffer
+    Ptr = TextBuffer.PixelData;
+    for (i = 0; i < TextBuffer.Width * TextBuffer.Height; i++) {
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0;
+    }
+    
+    // render the text
+    MeasureText(Text, &TextWidth, NULL);
+    RenderText(Text, &TextBuffer, (TextBuffer.Width - TextWidth) >> 1, 0);
+    BltImage(&TextBuffer, XPos, YPos);
 }
 
 static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
@@ -427,8 +452,8 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
                               itemPosX[i],
                               (Screen->Entries[i]->Row == 0) ? row0PosY : row1PosY);
     }
-    DrawText(Screen->Entries[State.CurrentSelection]->Title,
-             TEXT_MODE_ALIGN_CENTER, (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
+    DrawMainMenuText(Screen->Entries[State.CurrentSelection]->Title,
+                     (UGAWidth - TextBuffer.Width) >> 1, textPosY);
     State.PaintAll = FALSE;
     State.PaintSelection = FALSE;
     
@@ -441,15 +466,15 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
             DrawMenuEntryGraphics(Screen->Entries[State.CurrentSelection], TRUE,
                                   itemPosX[State.CurrentSelection],
                                   (Screen->Entries[State.CurrentSelection]->Row == 0) ? row0PosY : row1PosY);
-            DrawText(Screen->Entries[State.CurrentSelection]->Title,
-                     TEXT_MODE_ALIGN_CENTER, (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
+            DrawMainMenuText(Screen->Entries[State.CurrentSelection]->Title,
+                             (UGAWidth - TextBuffer.Width) >> 1, textPosY);
             State.PaintSelection = FALSE;
         }
         
         if (HaveTimeout) {
             TimeoutMessage = PoolPrint(L"%s in %d seconds", Screen->TimeoutText, (TimeoutCountdown + 5) / 10);
-            DrawText(TimeoutMessage,
-                     TEXT_MODE_ALIGN_CENTER, (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY + 16);
+            DrawMainMenuText(TimeoutMessage,
+                             (UGAWidth - TextBuffer.Width) >> 1, textPosY + 16);
             FreePool(TimeoutMessage);
         }
         
@@ -468,8 +493,8 @@ static UINTN MenuRunGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY 
         }
         if (HaveTimeout) {
             // the user pressed a key, cancel the timeout
-            DrawText(L"",
-                     TEXT_MODE_ALIGN_CENTER, (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY + 16);
+            DrawMainMenuText(L"",
+                             (UGAWidth - TextBuffer.Width) >> 1, textPosY + 16);
             HaveTimeout = FALSE;
         }
         

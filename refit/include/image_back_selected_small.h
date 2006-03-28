@@ -126,4 +126,4 @@ static UINT8 image_back_selected_small_compdata[] = {
  0xc4, 0x87, 0xbf, 0x02, 0xc9, 0xd2, 0xd6, 0xab, 0xdc, 0x02, 0xd6, 0xd2,
  0xc9, 0x83, 0xbf,
 };
-static BUILTIN_IMAGE image_back_selected_small = { NULL, 64, 64, 1, image_back_selected_small_compdata, 1503 };
+static BUILTIN_IMAGE image_back_selected_small = { NULL, 64, 64, 0, 1, image_back_selected_small_compdata, 1503 };

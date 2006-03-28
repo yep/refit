@@ -65,7 +65,6 @@ static BOOLEAN GraphicsScreenDirty;
 #ifndef TEXTONLY
 
 static EFI_UGA_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
-static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, FONT_CELL_HEIGHT };
 
 #endif  /* !TEXTONLY */
 
@@ -468,63 +467,52 @@ VOID BltImageCompositeBadge(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage,
     GraphicsScreenDirty = TRUE;
 }
 
-VOID DrawText(IN CHAR16 *Text, IN UINTN Mode, IN UINTN XPos, IN UINTN YPos)
+VOID MeasureText(IN CHAR16 *Text, OUT UINTN *Width, OUT UINTN *Height)
 {
-    UINT8 *Ptr;
-    UINT8 *FontPtr;
-    UINTN TextLength, TextWidth;
-    UINTN i, c, y;
-    UINTN LineOffset, FontLineOffset;
+    if (Width != NULL)
+        *Width = StrLen(Text) * FONT_CELL_WIDTH;
+    if (Height != NULL)
+        *Height = FONT_CELL_HEIGHT;
+}
+
+VOID RenderText(IN CHAR16 *Text, IN REFIT_IMAGE *BackBuffer, IN UINTN XPos, IN UINTN YPos)
+{
     REFIT_IMAGE *FontImage;
+    EFI_UGA_PIXEL *BufferPtr;
+    EFI_UGA_PIXEL *FontPixelData;
+    UINTN BufferLineOffset, FontLineOffset;
+    UINTN TextLength;
+    UINTN i, c;
     
-    if (TextBuffer.PixelData == NULL)
-        TextBuffer.PixelData = AllocatePool(TextBuffer.Width * TextBuffer.Height * 4);
-    
-    // clear the buffer
-    Ptr = TextBuffer.PixelData;
-    for (i = 0; i < TextBuffer.Width * TextBuffer.Height; i++) {
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0;
-    }
-    
-    // fit the text
+    // clip the text
+    if (XPos < 0)
+        XPos = 0;
+    if (YPos < 0)
+        YPos = 0;
     TextLength = StrLen(Text);
-    TextWidth = TextLength * FONT_CELL_WIDTH;
-    if (TextBuffer.Width < TextWidth) {
-        TextLength = TextBuffer.Width / FONT_CELL_WIDTH;
-        TextWidth = TextLength * FONT_CELL_WIDTH;
-    }
+    if (TextLength * FONT_CELL_WIDTH + XPos > BackBuffer->Width)
+        TextLength = (BackBuffer->Width - XPos) / FONT_CELL_WIDTH;
     
     // load the font
     FontImage = BuiltinImage(0);
     
     // render it
-    Ptr = TextBuffer.PixelData;
-    if ((Mode & TEXT_MODE_ALIGN_MASK) == TEXT_MODE_ALIGN_CENTER)
-        Ptr += ((TextBuffer.Width - TextWidth) >> 1) * 4;
-    LineOffset = TextBuffer.Width * 4;
-    FontLineOffset = FontImage->Width * 4;
+    BufferPtr = (EFI_UGA_PIXEL *)BackBuffer->PixelData;
+    BufferLineOffset = BackBuffer->Width;
+    BufferPtr += XPos + YPos * BufferLineOffset;
+    FontPixelData = (EFI_UGA_PIXEL *)FontImage->PixelData;
+    FontLineOffset = FontImage->Width;
     for (i = 0; i < TextLength; i++) {
         c = Text[i];
         if (c < 32 || c >= 127)
             c = 95;
         else
             c -= 32;
-        FontPtr = FontImage->PixelData + c * FONT_CELL_WIDTH * 4;
-        for (y = 0; y < FONT_CELL_HEIGHT; y++)
-            CopyMem(Ptr + y * LineOffset, FontPtr + y * FontLineOffset, FONT_CELL_WIDTH * 4);
-        Ptr += FONT_CELL_WIDTH * 4;
+        Compose(FontPixelData + c * FONT_CELL_WIDTH, BufferPtr,
+                FONT_CELL_WIDTH, FONT_CELL_HEIGHT,
+                FontLineOffset, BufferLineOffset);
+        BufferPtr += FONT_CELL_WIDTH;
     }
-    
-    // blit to screen
-    BltImage(&TextBuffer, XPos, YPos);
-    
-    /* TODO:
-#define TEXT_MODE_NORMAL       (0x00)
-#define TEXT_MODE_SELECTED     (0x04)
-     */
 }
 
 #endif  /* !TEXTONLY */

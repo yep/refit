@@ -6,4 +6,4 @@ static UINT8 image_back_normal_small_compdata[] = {
  0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf, 0xff, 0xbf,
  0xff, 0xbf, 0xbf, 0xbf,
 };
-static BUILTIN_IMAGE image_back_normal_small = { NULL, 64, 64, 1, image_back_normal_small_compdata, 64 };
+static BUILTIN_IMAGE image_back_normal_small = { NULL, 64, 64, 0, 1, image_back_normal_small_compdata, 64 };

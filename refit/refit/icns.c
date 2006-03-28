@@ -87,7 +87,7 @@ REFIT_IMAGE * BuiltinIcon(IN UINTN Id)
 
 typedef struct {
     REFIT_IMAGE *Image;
-    UINTN Width, Height, PlaneCount;
+    UINTN Width, Height, Mode, PlaneCount;
     CHAR8 *CompData;
     UINTN CompDataLen;
 } BUILTIN_IMAGE;
@@ -112,7 +112,7 @@ BUILTIN_IMAGE *BuiltinImageTable[] = {
 
 REFIT_IMAGE * BuiltinImage(IN UINTN Id)
 {
-    CHAR8 *PixelData, *ImageData, *PtrR, *PtrG, *PtrB, *DestPtr;
+    CHAR8 *PixelData, *ImageData, *PtrR, *PtrG, *PtrB, *PtrA, *DestPtr;
     UINTN PixelCount, i;
     
     if (Id >= BUILTIN_IMAGE_COUNT)
@@ -126,7 +126,7 @@ REFIT_IMAGE * BuiltinImage(IN UINTN Id)
                                         PixelCount * BuiltinImageTable[Id]->PlaneCount);
         ImageData = AllocatePool(PixelCount * 4);
         
-        if (BuiltinImageTable[Id]->PlaneCount == 1) {
+        if (BuiltinImageTable[Id]->PlaneCount == 1 && BuiltinImageTable[Id]->Mode == 0) {
             // translate greyscale image
             PtrG = PixelData;
             DestPtr = ImageData;
@@ -135,6 +135,17 @@ REFIT_IMAGE * BuiltinImage(IN UINTN Id)
                 *DestPtr++ = *PtrG;
                 *DestPtr++ = *PtrG++;
                 *DestPtr++ = 0;
+            }
+            
+        } else if (BuiltinImageTable[Id]->PlaneCount == 1 && BuiltinImageTable[Id]->Mode == 1) {
+            // translate alpha-only image
+            PtrA = PixelData;
+            DestPtr = ImageData;
+            for (i = 0; i < PixelCount; i++) {
+                *DestPtr++ = 0;
+                *DestPtr++ = 0;
+                *DestPtr++ = 0;
+                *DestPtr++ = *PtrA++;
             }
             
         } else if (BuiltinImageTable[Id]->PlaneCount == 3) {

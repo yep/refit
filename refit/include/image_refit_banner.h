@@ -344,4 +344,4 @@ static UINT8 image_refit_banner_compdata[] = {
  0x06, 0xbb, 0xa4, 0xd3, 0xb2, 0xa2, 0xae, 0xbc, 0xf6, 0xbf, 0x04, 0xba,
  0xa1, 0xa4, 0xb2, 0xbe, 0xe3, 0xbf,
 };
-static BUILTIN_IMAGE image_refit_banner = { NULL, 128, 32, 3, image_refit_banner_compdata, 4122 };
+static BUILTIN_IMAGE image_refit_banner = { NULL, 128, 32, 0, 3, image_refit_banner_compdata, 4122 };
