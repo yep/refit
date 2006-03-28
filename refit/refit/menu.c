@@ -363,7 +363,139 @@ static UINTN RunMenuText(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **Ch
 // graphics mode menu, generic style
 //
 
-// TODO
+static VOID DrawMenuText(IN CHAR16 *Text, IN UINTN SelectedWidth, IN UINTN XPos, IN UINTN YPos)
+{
+    UINT8 *Ptr;
+    UINTN i, x, y;
+    
+    if (TextBuffer.PixelData == NULL)
+        TextBuffer.PixelData = AllocatePool(TextBuffer.Width * TextBuffer.Height * 4);
+    
+    // clear the buffer
+    Ptr = TextBuffer.PixelData;
+    for (i = 0; i < TextBuffer.Width * TextBuffer.Height; i++) {
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0xbf;
+        *Ptr++ = 0;
+    }
+    
+    // draw selection background
+    if (SelectedWidth > 0) {
+        for (y = 0; y < TextBuffer.Height; y++) {
+            Ptr = TextBuffer.PixelData + y * TextBuffer.Width * 4;
+            for (x = 0; x < SelectedWidth; x++) {
+                *Ptr++ = 0xff;
+                *Ptr++ = 0xff;
+                *Ptr++ = 0xff;
+                *Ptr++ = 0;
+            }
+        }
+    }
+    
+    // render the text
+    RenderText(Text, &TextBuffer, 16, 0);
+    BltImage(&TextBuffer, XPos, YPos);
+}
+
+static UINTN RunMenuGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+{
+    UINTN MenuWidth, ItemWidth;
+    UINTN EntriesPosX, EntriesPosY, TimeoutPosY;
+    SCROLL_STATE State;
+    INTN i;
+    EFI_STATUS Status;
+    EFI_INPUT_KEY key;
+    UINTN index;
+    BOOLEAN HaveTimeout;
+    UINTN TimeoutCountdown;
+    CHAR16 *TimeoutMessage;
+    UINTN MenuExit;
+    
+    if (Screen->TimeoutSeconds > 0) {
+        HaveTimeout = TRUE;
+        TimeoutCountdown = Screen->TimeoutSeconds * 10;
+    } else
+        HaveTimeout = FALSE;
+    
+    InitScroll(&State, Screen->EntryCount, 0);    // TODO: calculate available screen space
+    
+    MenuExit = 0;
+    
+    // determine width of the menu
+    MenuWidth = 20;  // minimum
+    for (i = 0; i <= State.MaxIndex; i++) {
+        ItemWidth = StrLen(Screen->Entries[i]->Title);
+        if (MenuWidth < ItemWidth)
+            MenuWidth = ItemWidth;
+    }
+    MenuWidth = 2*16 + MenuWidth * FONT_CELL_WIDTH;
+    if (MenuWidth > 512)
+        MenuWidth = 512;
+    
+    EntriesPosX = (UGAWidth - MenuWidth) >> 1;
+    EntriesPosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + 32 + 32;
+    TimeoutPosY = EntriesPosY + (Screen->EntryCount + 1) * 16;
+    
+    // initial painting
+    SwitchToGraphicsAndClear();
+    for (i = 0; i <= State.MaxIndex; i++) {
+        DrawMenuText(Screen->Entries[i]->Title, (i == State.CurrentSelection) ? MenuWidth : 0,
+                     EntriesPosX, EntriesPosY + i * 16);
+    }
+    // TODO: account for scrolling
+    State.PaintAll = FALSE;
+    State.PaintSelection = FALSE;
+    
+    while (!MenuExit) {
+        
+        if (State.PaintSelection) {
+            DrawMenuText(Screen->Entries[State.LastSelection]->Title, 0,
+                         EntriesPosX, EntriesPosY + State.LastSelection * 16);
+            DrawMenuText(Screen->Entries[State.CurrentSelection]->Title, MenuWidth,
+                         EntriesPosX, EntriesPosY + State.CurrentSelection * 16);
+            State.PaintSelection = FALSE;
+        }
+        // TODO: account for scrolling
+        
+        if (HaveTimeout) {
+            TimeoutMessage = PoolPrint(L"%s in %d seconds", Screen->TimeoutText, (TimeoutCountdown + 5) / 10);
+            DrawMenuText(TimeoutMessage, 0, EntriesPosX, TimeoutPosY);
+            FreePool(TimeoutMessage);
+        }
+        
+        Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
+        if (Status == EFI_NOT_READY) {
+            if (HaveTimeout && TimeoutCountdown == 0) {
+                // timeout expired
+                MenuExit = MENU_EXIT_TIMEOUT;
+                break;
+            } else if (HaveTimeout) {
+                BS->Stall(100000);
+                TimeoutCountdown--;
+            } else
+                BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
+            continue;
+        }
+        if (HaveTimeout) {
+            // the user pressed a key, cancel the timeout
+            DrawMenuText(L"", 0, EntriesPosX, TimeoutPosY);
+            HaveTimeout = FALSE;
+        }
+        
+        UpdateScrollScancode(&State, key.ScanCode);
+        
+        if (key.ScanCode == 0x17)   // Escape
+            MenuExit = MENU_EXIT_ESCAPE;
+        if (key.UnicodeChar == 0x0a || key.UnicodeChar == 0x0d || key.UnicodeChar == 0x20)   // Enter, Space
+            MenuExit = MENU_EXIT_ENTER;
+        // TODO: function key for "details" exit
+    }
+    
+    if (ChosenEntry)
+        *ChosenEntry = Screen->Entries[State.CurrentSelection];
+    return MenuExit;
+}
 
 //
 // graphics mode menu, main menu style
@@ -536,7 +668,12 @@ static UINTN RunMainMenuGraphics(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_EN
 
 UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
-    return RunMenuText(Screen, ChosenEntry);
+#ifndef TEXTONLY
+    if (AllowGraphicsMode)
+        return RunMenuGraphics(Screen, ChosenEntry);
+    else
+#endif  /* !TEXTONLY */
+        return RunMenuText(Screen, ChosenEntry);
 }
 
 UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)

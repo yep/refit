@@ -60,16 +60,33 @@ static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NU
 
 static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", 0, NULL, 20, L"Automatic boot" };
 
+static REFIT_MENU_ENTRY about_entry_1 = { L"rEFIt Version 0.4", 0, 0, NULL, NULL };
+static REFIT_MENU_ENTRY about_entry_2 = { L"", 0, 0, NULL, NULL };
+static REFIT_MENU_ENTRY about_entry_3 = { L"Copyright (c) 2006 Christoph Pfisterer", 0, 0, NULL, NULL };
+static REFIT_MENU_ENTRY about_entry_4 = { L"Portions Copyright (c) Intel Corporation and others", 0, 0, NULL, NULL };
+static REFIT_MENU_SCREEN about_menu   = { L"rEFIt - About", 0, NULL, 0, NULL };
+
 #define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
 
 
 static void about_refit(void)
 {
+    if (about_menu.EntryCount == 0) {
+        AddMenuEntry(&about_menu, &about_entry_1);
+        AddMenuEntry(&about_menu, &about_entry_2);
+        AddMenuEntry(&about_menu, &about_entry_3);
+        AddMenuEntry(&about_menu, &about_entry_4);
+    }
+    
+    RunMenu(&about_menu, NULL);
+    
+    /*
     BeginTextScreen(L"rEFIt - About");
     Print(L"rEFIt Version 0.4\n\n");
     Print(L"Copyright (c) 2006 Christoph Pfisterer\n");
     Print(L"Portions Copyright (c) Intel Corporation and others\n");
     FinishTextScreen(TRUE);
+     */
 }
 
 
