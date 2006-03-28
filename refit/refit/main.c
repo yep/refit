@@ -67,7 +67,7 @@ static REFIT_MENU_SCREEN about_menu      = { L"rEFIt - About", NULL, 0, NULL, 0,
 
 static void about_refit(void)
 {
-    if (about_menu.TitleImage == NULL) {
+    if (about_menu.EntryCount == 0) {
         about_menu.TitleImage = BuiltinIcon(4);
         AddMenuInfoLine(&about_menu, L"rEFIt Version 0.4");
         AddMenuInfoLine(&about_menu, L"");
