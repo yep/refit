@@ -58,9 +58,9 @@ typedef struct {
 static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, NULL, NULL, NULL };
 static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
 static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
-static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", NULL, 0, NULL, 0, NULL, 20, L"Automatic boot" };
+static REFIT_MENU_SCREEN main_menu    = { L"Main Menu", NULL, 0, NULL, 0, NULL, 20, L"Automatic boot" };
 
-static REFIT_MENU_SCREEN about_menu   = { L"rEFIt - About", NULL, 0, NULL, 0, NULL, 0, NULL };
+static REFIT_MENU_SCREEN about_menu   = { L"About", NULL, 0, NULL, 0, NULL, 0, NULL };
 
 static REFIT_MENU_ENTRY submenu_exit_entry = { L"Return to Main Menu", TAG_RETURN, 0, NULL, NULL, NULL };
 
@@ -90,7 +90,7 @@ static void start_loader(IN LOADER_ENTRY *Entry)
     CHAR16                  ErrorInfo[256];
     CHAR16                  *FullLoadOptions = NULL;
     
-    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"rEFIt - Booting OS");
+    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"Booting OS");
     
     // load the image into memory
     Status = BS->LoadImage(FALSE, SelfImageHandle, Entry->DevicePath, NULL, 0, &ChildImageHandle);
@@ -413,12 +413,10 @@ static void loader_scan(void)
 static void start_tool(IN LOADER_ENTRY *Entry)
 {
     EFI_STATUS              Status;
-    CHAR16                  ScreenTitle[256];
     EFI_HANDLE              ChildImageHandle;
     CHAR16                  ErrorInfo[256];
     
-    SPrint(ScreenTitle, 255, L"rEFIt - %s", Entry->me.Title + 6);
-    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, ScreenTitle);
+    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, Entry->me.Title + 6);  // assumes "Start <title>"
     
     // load the image into memory
     Status = BS->LoadImage(FALSE, SelfImageHandle, Entry->DevicePath, NULL, 0, &ChildImageHandle);

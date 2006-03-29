@@ -274,12 +274,12 @@ static VOID DrawScreenHeader(IN CHAR16 *Title)
     ST->ConOut->SetAttribute(ST->ConOut, ATTR_BANNER);
     for (y = 0; y < 3; y++) {
         ST->ConOut->SetCursorPosition(ST->ConOut, 0, y);
-        ST->ConOut->OutputString(ST->ConOut, BlankLine);
+        Print(BlankLine);
     }
     
     // print header text
     ST->ConOut->SetCursorPosition(ST->ConOut, 3, 1);
-    ST->ConOut->OutputString(ST->ConOut, Title);
+    Print(L"rEFIt - %s", Title);
     
     // reposition cursor
     ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
@@ -305,7 +305,7 @@ BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where)
 {
     CHAR16 ErrorName[64];
     
-    if (!(EFI_ERROR(Status)))
+    if (!EFI_ERROR(Status))
         return FALSE;
     
     StatusToString(ErrorName, Status);
@@ -323,7 +323,7 @@ BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where)
 {
     CHAR16 ErrorName[64];
     
-    if (!(EFI_ERROR(Status)))
+    if (!EFI_ERROR(Status))
         return FALSE;
     
     StatusToString(ErrorName, Status);

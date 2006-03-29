@@ -86,6 +86,7 @@ VOID ReplaceExtension(IN OUT CHAR16 *Path, IN CHAR16 *Extension);
 
 #define LAYOUT_TEXT_WIDTH (512)
 #define LAYOUT_TOTAL_HEIGHT (368)
+#define LAYOUT_BANNER_YOFFSET (32+32)
 
 #define FONT_CELL_WIDTH (7)
 #define FONT_CELL_HEIGHT (12)

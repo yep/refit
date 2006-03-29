@@ -66,9 +66,17 @@ static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
 
 #ifndef TEXTONLY
 
-#define TEXT_SPACING (FONT_CELL_HEIGHT + 4)
+#define TEXT_YMARGIN (2)
+#define TEXT_XMARGIN (8)
+#define TEXT_LINE_HEIGHT (FONT_CELL_HEIGHT + TEXT_YMARGIN * 2)
+#define TITLEICON_SPACING (16)
 
-static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, TEXT_SPACING };
+#define ROW0_TILESIZE (144)
+#define ROW1_TILESIZE (64)
+#define TILE_XSPACING (8)
+#define TILE_YSPACING (16)
+
+static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT };
 
 #endif  /* !TEXTONLY */
 
@@ -472,7 +480,7 @@ static VOID DrawMenuText(IN CHAR16 *Text, IN UINTN SelectedWidth, IN UINTN XPos,
     }
     
     // render the text
-    RenderText(Text, &TextBuffer, 8, (TEXT_SPACING - FONT_CELL_HEIGHT) >> 1);
+    RenderText(Text, &TextBuffer, TEXT_XMARGIN, TEXT_YMARGIN);
     BltImage(&TextBuffer, XPos, YPos);
 }
 
@@ -489,32 +497,39 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
             
             // determine width of the menu
             MenuWidth = 20;  // minimum
+            for (i = 0; i < (INTN)Screen->InfoLineCount; i++) {
+                ItemWidth = StrLen(Screen->InfoLines[i]);
+                if (MenuWidth < ItemWidth)
+                    MenuWidth = ItemWidth;
+            }
             for (i = 0; i <= State->MaxIndex; i++) {
                 ItemWidth = StrLen(Screen->Entries[i]->Title);
                 if (MenuWidth < ItemWidth)
                     MenuWidth = ItemWidth;
             }
-            MenuWidth = 2*8 + MenuWidth * FONT_CELL_WIDTH;
+            MenuWidth = TEXT_XMARGIN * 2 + MenuWidth * FONT_CELL_WIDTH;
             if (MenuWidth > LAYOUT_TEXT_WIDTH)
                 MenuWidth = LAYOUT_TEXT_WIDTH;
             
             if (Screen->TitleImage)
-                EntriesPosX = (UGAWidth + (Screen->TitleImage->Width + 32) - MenuWidth) >> 1;
+                EntriesPosX = (UGAWidth + (Screen->TitleImage->Width + TITLEICON_SPACING) - MenuWidth) >> 1;
             else
                 EntriesPosX = (UGAWidth - MenuWidth) >> 1;
-            EntriesPosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + 32 + 32;
-            TimeoutPosY = EntriesPosY + (Screen->EntryCount + 1) * TEXT_SPACING;
+            EntriesPosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + LAYOUT_BANNER_YOFFSET + TEXT_LINE_HEIGHT * 2;
+            TimeoutPosY = EntriesPosY + (Screen->EntryCount + 1) * TEXT_LINE_HEIGHT;
             
             // initial painting
             SwitchToGraphicsAndClear();
+            MeasureText(Screen->Title, &ItemWidth, NULL);
+            DrawMenuText(Screen->Title, 0, ((UGAWidth - ItemWidth) >> 1) - TEXT_XMARGIN, EntriesPosY - TEXT_LINE_HEIGHT * 2);
             if (Screen->TitleImage)
-                BltImageAlpha(Screen->TitleImage, EntriesPosX - (Screen->TitleImage->Width + 32), EntriesPosY);
+                BltImageAlpha(Screen->TitleImage, EntriesPosX - (Screen->TitleImage->Width + TITLEICON_SPACING), EntriesPosY);
             if (Screen->InfoLineCount > 0) {
                 for (i = 0; i < (INTN)Screen->InfoLineCount; i++) {
                     DrawMenuText(Screen->InfoLines[i], 0, EntriesPosX, EntriesPosY);
-                    EntriesPosY += TEXT_SPACING;
+                    EntriesPosY += TEXT_LINE_HEIGHT;
                 }
-                EntriesPosY += TEXT_SPACING;  // also add a blank line
+                EntriesPosY += TEXT_LINE_HEIGHT;  // also add a blank line
             }
             
             break;
@@ -526,7 +541,7 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
         case MENU_FUNCTION_PAINT_ALL:
             for (i = 0; i <= State->MaxIndex; i++) {
                 DrawMenuText(Screen->Entries[i]->Title, (i == State->CurrentSelection) ? MenuWidth : 0,
-                             EntriesPosX, EntriesPosY + i * TEXT_SPACING);
+                             EntriesPosX, EntriesPosY + i * TEXT_LINE_HEIGHT);
             }
             // TODO: account for scrolling
             /*
@@ -558,9 +573,9 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
         case MENU_FUNCTION_PAINT_SELECTION:
             // redraw selection cursor
             DrawMenuText(Screen->Entries[State->LastSelection]->Title, 0,
-                         EntriesPosX, EntriesPosY + State->LastSelection * TEXT_SPACING);
+                         EntriesPosX, EntriesPosY + State->LastSelection * TEXT_LINE_HEIGHT);
             DrawMenuText(Screen->Entries[State->CurrentSelection]->Title, MenuWidth,
-                         EntriesPosX, EntriesPosY + State->CurrentSelection * TEXT_SPACING);
+                         EntriesPosX, EntriesPosY + State->CurrentSelection * TEXT_LINE_HEIGHT);
             // TODO: account for scrolling
             /*
             ST->ConOut->SetCursorPosition(ST->ConOut, 2, 4 + (State->LastSelection - State->FirstVisible));
@@ -646,11 +661,11 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
                 else
                     row1Count++;
             }
-            row0PosX = (UGAWidth + 8 - (144 + 8) * row0Count) >> 1;
-            row0PosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + 32 + 32;
-            row1PosX = (UGAWidth + 8 - (64 + 8) * row1Count) >> 1;
-            row1PosY = row0PosY + 144 + 16;
-            textPosY = row1PosY + 64 + 16;
+            row0PosX = (UGAWidth + TILE_XSPACING - (ROW0_TILESIZE + TILE_XSPACING) * row0Count) >> 1;
+            row0PosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + LAYOUT_BANNER_YOFFSET;
+            row1PosX = (UGAWidth + TILE_XSPACING - (ROW1_TILESIZE + TILE_XSPACING) * row1Count) >> 1;
+            row1PosY = row0PosY + ROW0_TILESIZE + TILE_YSPACING;
+            textPosY = row1PosY + ROW1_TILESIZE + TILE_YSPACING;
             
             itemPosX = AllocatePool(sizeof(UINTN) * Screen->EntryCount);
             row0PosXRunning = row0PosX;
@@ -658,10 +673,10 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             for (i = 0; i <= State->MaxIndex; i++) {
                 if (Screen->Entries[i]->Row == 0) {
                     itemPosX[i] = row0PosXRunning;
-                    row0PosXRunning += 144 + 8;
+                    row0PosXRunning += ROW0_TILESIZE + TILE_XSPACING;
                 } else {
                     itemPosX[i] = row1PosXRunning;
-                    row1PosXRunning += 64 + 8;
+                    row1PosXRunning += ROW1_TILESIZE + TILE_XSPACING;
                 }
             }
             
@@ -695,7 +710,7 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             break;
             
         case MENU_FUNCTION_PAINT_TIMEOUT:
-            DrawMainMenuText(ParamText, (UGAWidth - TextBuffer.Width) >> 1, textPosY + TEXT_SPACING);
+            DrawMainMenuText(ParamText, (UGAWidth - TextBuffer.Width) >> 1, textPosY + TEXT_LINE_HEIGHT);
             break;
             
     }
