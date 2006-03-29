@@ -44,6 +44,7 @@ typedef struct {
     CHAR16           *VolName;
     EFI_DEVICE_PATH  *DevicePath;
     BOOLEAN          UseGraphicsMode;
+    CHAR16           *LoadOptions;
 } LOADER_ENTRY;
 
 // variables
@@ -54,13 +55,14 @@ typedef struct {
 #define TAG_LOADER (4)
 #define TAG_TOOL   (5)
 
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, NULL, NULL };
-static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL };
-static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL };
+static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, NULL, NULL, NULL };
+static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
+static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
 static REFIT_MENU_SCREEN main_menu    = { L"rEFIt - Main Menu", NULL, 0, NULL, 0, NULL, 20, L"Automatic boot" };
 
-static REFIT_MENU_ENTRY about_exit_entry = { L"Return to Main Menu", 0, 0, NULL, NULL };
-static REFIT_MENU_SCREEN about_menu      = { L"rEFIt - About", NULL, 0, NULL, 0, NULL, 0, NULL };
+static REFIT_MENU_SCREEN about_menu   = { L"rEFIt - About", NULL, 0, NULL, 0, NULL, 0, NULL };
+
+static REFIT_MENU_ENTRY submenu_exit_entry = { L"Return to Main Menu", TAG_RETURN, 0, NULL, NULL, NULL };
 
 #define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
 
@@ -73,7 +75,7 @@ static void about_refit(void)
         AddMenuInfoLine(&about_menu, L"");
         AddMenuInfoLine(&about_menu, L"Copyright (c) 2006 Christoph Pfisterer");
         AddMenuInfoLine(&about_menu, L"Portions Copyright (c) Intel Corporation and others");
-        AddMenuEntry(&about_menu, &about_exit_entry);
+        AddMenuEntry(&about_menu, &submenu_exit_entry);
     }
     
     RunMenu(&about_menu, NULL);
@@ -84,7 +86,9 @@ static void start_loader(IN LOADER_ENTRY *Entry)
 {
     EFI_STATUS              Status;
     EFI_HANDLE              ChildImageHandle;
+    EFI_LOADED_IMAGE        *ChildLoadedImage;
     CHAR16                  ErrorInfo[256];
+    CHAR16                  *FullLoadOptions = NULL;
     
     BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"rEFIt - Booting OS");
     
@@ -94,12 +98,30 @@ static void start_loader(IN LOADER_ENTRY *Entry)
     if (CheckError(Status, ErrorInfo))
         goto bailout;
     
+    // set load options
+    if (Entry->LoadOptions != NULL) {
+        Status = BS->HandleProtocol(ChildImageHandle, &LoadedImageProtocol, (VOID **) &ChildLoadedImage);
+        if (CheckError(Status, L"while getting a LoadedImageProtocol handle"))
+            goto bailout_unload;
+        
+        FullLoadOptions = PoolPrint(L"%s %s", Basename(Entry->LoaderPath), Entry->LoadOptions);
+        ChildLoadedImage->LoadOptions = (VOID *)FullLoadOptions;
+        ChildLoadedImage->LoadOptionsSize = StrLen(FullLoadOptions) * sizeof(CHAR16);
+        Print(L"Set load options: '%s'\n", FullLoadOptions);
+    }
+    
     // turn control over to the image
     // TODO: re-enable the EFI watchdog timer!
-    BS->StartImage(ChildImageHandle, NULL, NULL);
+    Status = BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
+    CheckError(Status, L"returned from loader");
     
+bailout_unload:
+    // unload the image, we don't care if it works or not...
+    Status = BS->UnloadImage(ChildImageHandle);
 bailout:
+    if (FullLoadOptions != NULL)
+        FreePool(FullLoadOptions);
     FinishExternalScreen();
 }
 
@@ -108,27 +130,18 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
 {
     CHAR16          *FileName;
     CHAR16          IconFileName[256];
-    UINTN           i;
-    LOADER_ENTRY    *Entry;
+    LOADER_ENTRY    *Entry, *SubEntry;
+    REFIT_MENU_SCREEN *SubScreen;
     
-    Entry = AllocatePool(sizeof(LOADER_ENTRY));
-    
-    // find the file name
-    FileName = LoaderPath;
-    for (i = StrLen(LoaderPath) - 1; i >= 0; i--) {
-        if (LoaderPath[i] == '\\') {
-            FileName = LoaderPath + i + 1;
-            break;
-        }
-    }
+    FileName = Basename(LoaderPath);
     
     // prepare the menu entry
+    Entry = AllocateZeroPool(sizeof(LOADER_ENTRY));
     if (LoaderTitle == NULL)
         LoaderTitle = LoaderPath + 1;
     Entry->me.Title = PoolPrint(L"Boot %s from %s", LoaderTitle, VolName);
     Entry->me.Tag = TAG_LOADER;
     Entry->me.Row = 0;
-    Entry->me.Image = NULL;
     Entry->me.BadgeImage = VolBadgeImage;
     Entry->LoaderPath = StrDuplicate(LoaderPath);
     Entry->VolName = StrDuplicate(VolName);
@@ -138,15 +151,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
 #ifndef TEXTONLY
     // locate a custom icon for the loader
     StrCpy(IconFileName, LoaderPath);
-    for (i = StrLen(IconFileName) - 1; i >= 0; i--) {
-        if (IconFileName[i] == '.') {
-            IconFileName[i] = 0;
-            break;
-        }
-        if (IconFileName[i] == '\\')
-            break;
-    }
-    StrCat(IconFileName, L".icns");
+    ReplaceExtension(IconFileName, L".icns");
     if (FileExists(RootDir, IconFileName))
         Entry->me.Image = LoadIcns(RootDir, IconFileName, 128);
 #endif  /* !TEXTONLY */
@@ -156,17 +161,71 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         if (Entry->me.Image == NULL)
             Entry->me.Image = BuiltinIcon(0);  // os_mac
         Entry->UseGraphicsMode = TRUE;
+        
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
         if (Entry->me.Image == NULL)
             Entry->me.Image = BuiltinIcon(1);  // os_linux
+        
+        // create submenu for elilo
+        SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
+        SubScreen->Title = PoolPrint(L"Boot Options for %s on %s", FileName, VolName);
+        SubScreen->TitleImage = Entry->me.Image;
+        
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = PoolPrint(L"Run %s", FileName);
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = PoolPrint(L"Run %s in interactive mode", FileName);
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"-p";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        /*
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = PoolPrint(L"Run %s without prompting", FileName);
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"-d0";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Linux for a 17\" iMac or a MacBook Pro";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"i17";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        */
+        
+        AddMenuEntry(SubScreen, &submenu_exit_entry);
+        
+        Entry->me.SubScreen = SubScreen;
+        
     } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
         if (Entry->me.Image == NULL)
             Entry->me.Image = BuiltinIcon(2);  // os_win
+        
     } else if (StriCmp(FileName, L"xom.efi") == 0) {
         if (Entry->me.Image == NULL)
             Entry->me.Image = BuiltinIcon(2);  // os_win
         Entry->UseGraphicsMode = TRUE;
+        
     }
     if (Entry->me.Image == NULL) {
         Entry->me.Image = BuiltinIcon(3);  // os_unknown
@@ -264,6 +323,7 @@ static void loader_scan(void)
         
         // get volume icon
         VolBadgeImage = NULL;
+#ifndef TEXTONLY
         if (FileExists(RootDir, L".VolumeIcon.icns"))
             VolBadgeImage = LoadIcns(RootDir, L".VolumeIcon.icns", 32);
         if (VolBadgeImage == NULL) {
@@ -297,6 +357,7 @@ static void loader_scan(void)
             
             VolBadgeImage = BuiltinIcon(VolumeKind);
         }
+#endif  /* !TEXTONLY */
         
         // check for Mac OS X boot loader
         StrCpy(FileName, MACOSX_LOADER_PATH);
@@ -366,9 +427,13 @@ static void start_tool(IN LOADER_ENTRY *Entry)
         goto bailout;
     
     // turn control over to the image
-    BS->StartImage(ChildImageHandle, NULL, NULL);
+    Status = BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
+    CheckError(Status, L"returned from tool");
     
+bailout_unload:
+    // unload the image, we don't care if it works or not...
+    Status = BS->UnloadImage(ChildImageHandle);
 bailout:
     FinishExternalScreen();
 }
@@ -377,15 +442,13 @@ static void add_tool_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_
 {
     LOADER_ENTRY *Entry;
     
-    Entry = AllocatePool(sizeof(LOADER_ENTRY));
+    Entry = AllocateZeroPool(sizeof(LOADER_ENTRY));
     
     Entry->me.Title = PoolPrint(L"Start %s", LoaderTitle);
     Entry->me.Tag = TAG_TOOL;
     Entry->me.Row = 1;
     Entry->me.Image = Image;
-    Entry->me.BadgeImage = NULL;
     Entry->LoaderPath = StrDuplicate(LoaderPath);
-    Entry->VolName = NULL;
     Entry->DevicePath = FileDevicePath(SelfLoadedImage->DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = UseGraphicsMode;
     
@@ -475,8 +538,6 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
                 break;
                 
         }
-        
-        main_menu.TimeoutSeconds = 0;   // no timeout on the second run
     }
     
     for (i = 0; i < main_menu.EntryCount; i++) {

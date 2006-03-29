@@ -70,6 +70,9 @@ VOID DirIterOpen(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath OPTIONAL, OUT REF
 BOOLEAN DirIterNext(IN OUT REFIT_DIR_ITER *DirIter, IN UINTN FilterMode, IN CHAR16 *FilePattern OPTIONAL, OUT EFI_FILE_INFO **DirEntry);
 EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter);
 
+CHAR16 * Basename(IN CHAR16 *Path);
+VOID ReplaceExtension(IN OUT CHAR16 *Path, IN CHAR16 *Extension);
+
 //
 // screen module
 //
@@ -144,15 +147,20 @@ REFIT_IMAGE * BuiltinImage(IN UINTN Id);
 #define MENU_EXIT_DETAILS (3)
 #define MENU_EXIT_TIMEOUT (4)
 
-typedef struct {
+#define TAG_RETURN       (99)
+
+struct _refit_menu_screen;
+
+typedef struct _refit_menu_entry {
     CHAR16 *Title;
     UINTN Tag;
     UINTN Row;
     REFIT_IMAGE *Image;
     REFIT_IMAGE *BadgeImage;
+    struct _refit_menu_screen *SubScreen;
 } REFIT_MENU_ENTRY;
 
-typedef struct {
+typedef struct _refit_menu_screen {
     CHAR16 *Title;
     REFIT_IMAGE *TitleImage;
     UINTN InfoLineCount;

@@ -722,11 +722,29 @@ UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
     MENU_STYLE_FUNC Style = TextMenuStyle;
+    MENU_STYLE_FUNC MainStyle = TextMenuStyle;
+    REFIT_MENU_ENTRY *TempChosenEntry;
+    UINTN MenuExit = 0;
     
 #ifndef TEXTONLY
-    if (AllowGraphicsMode)
-        Style = MainMenuStyle;
+    if (AllowGraphicsMode) {
+        Style = GraphicsMenuStyle;
+        MainStyle = MainMenuStyle;
+    }
 #endif  /* !TEXTONLY */
     
-    return RunGenericMenu(Screen, Style, ChosenEntry);
+    while (!MenuExit) {
+        MenuExit = RunGenericMenu(Screen, MainStyle, &TempChosenEntry);
+        Screen->TimeoutSeconds = 0;
+        
+        if (MenuExit == MENU_EXIT_DETAILS && TempChosenEntry->SubScreen != NULL) {
+            MenuExit = RunGenericMenu(TempChosenEntry->SubScreen, Style, &TempChosenEntry);
+            if (MenuExit == MENU_EXIT_ESCAPE || TempChosenEntry->Tag == TAG_RETURN)
+                MenuExit = 0;
+        }
+    }
+    
+    if (ChosenEntry)
+        *ChosenEntry = TempChosenEntry;
+    return MenuExit;
 }

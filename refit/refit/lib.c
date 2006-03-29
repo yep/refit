@@ -246,3 +246,41 @@ EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter)
         DirIter->DirHandle->Close(DirIter->DirHandle);
     return DirIter->LastStatus;
 }
+
+//
+// file name manipulation
+//
+
+CHAR16 * Basename(IN CHAR16 *Path)
+{
+    CHAR16 *FileName;
+    UINTN  i;
+    
+    FileName = Path;
+    
+    if (Path != NULL) {
+        for (i = StrLen(Path); i >= 0; i--) {
+            if (Path[i] == '\\' || Path[i] == '/') {
+                FileName = Path + i + 1;
+                break;
+            }
+        }
+    }
+    
+    return FileName;
+}
+
+VOID ReplaceExtension(IN OUT CHAR16 *Path, IN CHAR16 *Extension)
+{
+    UINTN i;
+    
+    for (i = StrLen(Path); i >= 0; i--) {
+        if (Path[i] == '.') {
+            Path[i] = 0;
+            break;
+        }
+        if (Path[i] == '\\' || Path[i] == '/')
+            break;
+    }
+    StrCat(Path, Extension);
+}
