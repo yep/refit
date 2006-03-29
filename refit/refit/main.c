@@ -432,7 +432,7 @@ static void loader_scan(void)
         // scan subdirectories of the EFI directory (as per the standard)
         DirIterOpen(RootDir, L"EFI", &EfiDirIter);
         while (DirIterNext(&EfiDirIter, 1, NULL, &EfiDirEntry)) {
-            if (StriCmp(EfiDirEntry->FileName, L"TOOLS") == 0)
+            if (StriCmp(EfiDirEntry->FileName, L"TOOLS") == 0 || EfiDirEntry->FileName[0] == '.')
                 continue;   // skip this, doesn't contain boot loaders
             if (StriCmp(EfiDirEntry->FileName, L"REFIT") == 0 || StriCmp(EfiDirEntry->FileName, L"REFITL") == 0)
                 continue;   // skip ourselves
