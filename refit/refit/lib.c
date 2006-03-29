@@ -56,7 +56,7 @@ EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle)
     UINTN       i;
     
     SelfImageHandle = ImageHandle;
-    Status = BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID*)&SelfLoadedImage);
+    Status = BS->HandleProtocol(SelfImageHandle, &LoadedImageProtocol, (VOID **) &SelfLoadedImage);
     if (CheckFatalError(Status, L"while getting a LoadedImageProtocol handle"))
         return EFI_LOAD_ERROR;
     
