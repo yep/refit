@@ -108,7 +108,7 @@ static void start_loader(IN LOADER_ENTRY *Entry)
         FullLoadOptions = PoolPrint(L"%s %s", Basename(Entry->LoaderPath), Entry->LoadOptions);
         ChildLoadedImage->LoadOptions = (VOID *)FullLoadOptions;
         ChildLoadedImage->LoadOptionsSize = StrLen(FullLoadOptions) * sizeof(CHAR16);
-        Print(L"Set load options: '%s'\n", FullLoadOptions);
+        Print(L"Using load options '%s'\n", FullLoadOptions);
     }
     
     // turn control over to the image
@@ -138,15 +138,13 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     
     // prepare the menu entry
     Entry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-    if (LoaderTitle == NULL)
-        LoaderTitle = LoaderPath + 1;
-    Entry->me.Title = PoolPrint(L"Boot %s from %s", LoaderTitle, VolName);
-    Entry->me.Tag = TAG_LOADER;
-    Entry->me.Row = 0;
-    Entry->me.BadgeImage = VolBadgeImage;
-    Entry->LoaderPath = StrDuplicate(LoaderPath);
-    Entry->VolName = StrDuplicate(VolName);
-    Entry->DevicePath = FileDevicePath(DeviceHandle, Entry->LoaderPath);
+    Entry->me.Title        = PoolPrint(L"Boot %s from %s", (LoaderTitle != NULL) ? LoaderTitle : LoaderPath + 1, VolName);
+    Entry->me.Tag          = TAG_LOADER;
+    Entry->me.Row          = 0;
+    Entry->me.BadgeImage   = VolBadgeImage;
+    Entry->LoaderPath      = StrDuplicate(LoaderPath);
+    Entry->VolName         = StrDuplicate(VolName);
+    Entry->DevicePath      = FileDevicePath(DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = FALSE;
     
 #ifndef TEXTONLY
@@ -157,31 +155,35 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         Entry->me.Image = LoadIcns(RootDir, IconFileName, 128);
 #endif  /* !TEXTONLY */
     
-    // determine default icon and graphics mode setting
+    // create the submenu
+    SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
+    SubScreen->Title = PoolPrint(L"Boot Options for %s on %s", (LoaderTitle != NULL) ? LoaderTitle : FileName, VolName);
+    
+    // default entry
+    SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+    SubEntry->me.Title        = PoolPrint(L"Run %s", FileName);
+    SubEntry->me.Tag          = TAG_LOADER;
+    SubEntry->LoaderPath      = Entry->LoaderPath;
+    SubEntry->VolName         = Entry->VolName;
+    SubEntry->DevicePath      = Entry->DevicePath;
+    SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+    AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+    
+    Entry->me.SubScreen = SubScreen;
+    
+    // loader-specific settings (icon, graphics mode, submenu entries)
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
         if (Entry->me.Image == NULL)
             Entry->me.Image = BuiltinIcon(0);  // os_mac
-        Entry->UseGraphicsMode = TRUE;
+        Entry->UseGraphicsMode    = TRUE;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
         
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
         if (Entry->me.Image == NULL)
             Entry->me.Image = BuiltinIcon(1);  // os_linux
         
-        // create submenu for elilo
-        SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
-        SubScreen->Title = PoolPrint(L"Boot Options for %s on %s", FileName, VolName);
-        SubScreen->TitleImage = Entry->me.Image;
-        
-        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-        SubEntry->me.Title        = PoolPrint(L"Run %s", FileName);
-        SubEntry->me.Tag          = TAG_LOADER;
-        SubEntry->LoaderPath      = Entry->LoaderPath;
-        SubEntry->VolName         = Entry->VolName;
-        SubEntry->DevicePath      = Entry->DevicePath;
-        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
-        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
-        
+        // additional submenu entries for elilo
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
         SubEntry->me.Title        = PoolPrint(L"Run %s in interactive mode", FileName);
         SubEntry->me.Tag          = TAG_LOADER;
@@ -192,19 +194,8 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         SubEntry->LoadOptions     = L"-p";
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
-        /*
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-        SubEntry->me.Title        = PoolPrint(L"Run %s without prompting", FileName);
-        SubEntry->me.Tag          = TAG_LOADER;
-        SubEntry->LoaderPath      = Entry->LoaderPath;
-        SubEntry->VolName         = Entry->VolName;
-        SubEntry->DevicePath      = Entry->DevicePath;
-        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
-        SubEntry->LoadOptions     = L"-d0";
-        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
-        
-        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-        SubEntry->me.Title        = L"Boot Linux for a 17\" iMac or a MacBook Pro";
+        SubEntry->me.Title        = L"Boot Linux for a 17\" iMac or a 15\" MacBook Pro (*)";
         SubEntry->me.Tag          = TAG_LOADER;
         SubEntry->LoaderPath      = Entry->LoaderPath;
         SubEntry->VolName         = Entry->VolName;
@@ -212,11 +203,29 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
         SubEntry->LoadOptions     = L"i17";
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
-        */
         
-        AddMenuEntry(SubScreen, &submenu_exit_entry);
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Linux for a 20\" iMac (*)";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"i20";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
-        Entry->me.SubScreen = SubScreen;
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Linux for a Mac Mini (*)";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"mini";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        AddMenuInfoLine(SubScreen, L"NOTE: This is an example. Entries");
+        AddMenuInfoLine(SubScreen, L"marked with (*) may not work.");
         
     } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
         if (Entry->me.Image == NULL)
@@ -225,13 +234,51 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     } else if (StriCmp(FileName, L"xom.efi") == 0) {
         if (Entry->me.Image == NULL)
             Entry->me.Image = BuiltinIcon(2);  // os_win
-        Entry->UseGraphicsMode = TRUE;
+        Entry->UseGraphicsMode    = TRUE;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        
+        // by default, skip the built-in selection and boot from hard disk only
+        Entry->LoadOptions = L"-s -h";
+        
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Windows from Hard Disk (*)";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"-s -h";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Windows from CD-ROM (*)";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"-s -c";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = PoolPrint(L"Run %s in text mode", FileName);
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = FALSE;
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        AddMenuInfoLine(SubScreen, L"NOTE: This is an example. Entries");
+        AddMenuInfoLine(SubScreen, L"marked with (*) may not work.");
         
     }
     if (Entry->me.Image == NULL) {
         Entry->me.Image = BuiltinIcon(3);  // os_unknown
     }
     
+    SubScreen->TitleImage = Entry->me.Image;
+    AddMenuEntry(SubScreen, &submenu_exit_entry);
     AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
 }
 
