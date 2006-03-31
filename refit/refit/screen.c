@@ -162,7 +162,7 @@ VOID InitScreen(VOID)
     BlankLine[i] = 0;
     
     // show the banner (even when in graphics mode)
-    DrawScreenHeader(L"rEFIt - Initializing...");
+    DrawScreenHeader(L"Initializing...");
 }
 
 VOID BeginTextScreen(IN CHAR16 *Title)
@@ -286,14 +286,38 @@ static VOID DrawScreenHeader(IN CHAR16 *Title)
     ST->ConOut->SetCursorPosition(ST->ConOut, 0, 4);
 }
 
+static BOOLEAN ReadAllKeyStrokes(VOID)
+{
+    BOOLEAN       GotKeyStrokes;
+    EFI_STATUS    Status;
+    EFI_INPUT_KEY key;
+    
+    GotKeyStrokes = FALSE;
+    for (;;) {
+        Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
+        if (Status == EFI_SUCCESS) {
+            GotKeyStrokes = TRUE;
+            continue;
+        }
+        break;
+    }
+    return GotKeyStrokes;
+}
+
 static VOID PauseForKey(VOID)
 {
     UINTN index;
-    EFI_INPUT_KEY key;
     
     Print(L"\n* Hit any key to continue *");
+    
+    if (ReadAllKeyStrokes()) {  // remove buffered key strokes
+        BS->Stall(5000000);     // 5 seconds delay
+        ReadAllKeyStrokes();    // empty the buffer again
+    }
+    
     BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
-    ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
+    ReadAllKeyStrokes();        // empty the buffer to protect the menu
+    
     Print(L"\n");
 }
 
