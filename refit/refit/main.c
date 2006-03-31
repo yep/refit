@@ -105,9 +105,12 @@ static void start_loader(IN LOADER_ENTRY *Entry)
         if (CheckError(Status, L"while getting a LoadedImageProtocol handle"))
             goto bailout_unload;
         
-        FullLoadOptions = PoolPrint(L"%s %s", Basename(Entry->LoaderPath), Entry->LoadOptions);
+        FullLoadOptions = PoolPrint(L"%s %s ", Basename(Entry->LoaderPath), Entry->LoadOptions);
+        // NOTE: That last space is also added by the EFI shell and seems to be significant
+        //  when passing options to Apple's boot.efi... We also include the terminating null
+        //  in the length for safety.
         ChildLoadedImage->LoadOptions = (VOID *)FullLoadOptions;
-        ChildLoadedImage->LoadOptionsSize = StrLen(FullLoadOptions) * sizeof(CHAR16);
+        ChildLoadedImage->LoadOptionsSize = (StrLen(FullLoadOptions) + 1) * sizeof(CHAR16);
         Print(L"Using load options '%s'\n", FullLoadOptions);
     }
     
@@ -131,6 +134,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
 {
     CHAR16          *FileName;
     CHAR16          IconFileName[256];
+    UINTN           LoaderKind;
     LOADER_ENTRY    *Entry, *SubEntry;
     REFIT_MENU_SCREEN *SubScreen;
     
@@ -155,13 +159,38 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         Entry->me.Image = LoadIcns(RootDir, IconFileName, 128);
 #endif  /* !TEXTONLY */
     
+    // detect specific loaders
+    LoaderKind = 0;
+    if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(0);  // os_mac
+        Entry->UseGraphicsMode = TRUE;
+        LoaderKind = 1;
+    } else if (StriCmp(FileName, L"e.efi") == 0 ||
+               StriCmp(FileName, L"elilo.efi") == 0) {
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(1);  // os_linux
+        LoaderKind = 2;
+    } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(2);  // os_win
+    } else if (StriCmp(FileName, L"xom.efi") == 0) {
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(2);  // os_win
+        Entry->UseGraphicsMode = TRUE;
+        LoaderKind = 3;
+    }
+    if (Entry->me.Image == NULL)
+        Entry->me.Image = BuiltinIcon(3);  // os_unknown
+    
     // create the submenu
     SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
     SubScreen->Title = PoolPrint(L"Boot Options for %s on %s", (LoaderTitle != NULL) ? LoaderTitle : FileName, VolName);
+    SubScreen->TitleImage = Entry->me.Image;
     
     // default entry
     SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-    SubEntry->me.Title        = PoolPrint(L"Run %s", FileName);
+    SubEntry->me.Title        = (LoaderKind == 1) ? L"Boot Mac OS X" : PoolPrint(L"Run %s", FileName);
     SubEntry->me.Tag          = TAG_LOADER;
     SubEntry->LoaderPath      = Entry->LoaderPath;
     SubEntry->VolName         = Entry->VolName;
@@ -169,21 +198,29 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
     AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
     
-    Entry->me.SubScreen = SubScreen;
-    
-    // loader-specific settings (icon, graphics mode, submenu entries)
-    if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(0);  // os_mac
-        Entry->UseGraphicsMode    = TRUE;
-        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+    // loader-specific submenu entries
+    if (LoaderKind == 1) {          // entries for Mac OS X
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Mac OS X in verbose mode";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = FALSE;
+        SubEntry->LoadOptions     = L"-v";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
-    } else if (StriCmp(FileName, L"e.efi") == 0 ||
-               StriCmp(FileName, L"elilo.efi") == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(1);  // os_linux
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Mac OS X in single user mode";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = FALSE;
+        SubEntry->LoadOptions     = L"-v -s";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
-        // additional submenu entries for elilo
+    } else if (LoaderKind == 2) {   // entries for elilo
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
         SubEntry->me.Title        = PoolPrint(L"Run %s in interactive mode", FileName);
         SubEntry->me.Tag          = TAG_LOADER;
@@ -227,16 +264,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         AddMenuInfoLine(SubScreen, L"NOTE: This is an example. Entries");
         AddMenuInfoLine(SubScreen, L"marked with (*) may not work.");
         
-    } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(2);  // os_win
-        
-    } else if (StriCmp(FileName, L"xom.efi") == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(2);  // os_win
-        Entry->UseGraphicsMode    = TRUE;
-        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
-        
+    } else if (LoaderKind == 3) {   // entries for xom.efi
         // by default, skip the built-in selection and boot from hard disk only
         Entry->LoadOptions = L"-s -h";
         
@@ -273,12 +301,9 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         AddMenuInfoLine(SubScreen, L"marked with (*) may not work.");
         
     }
-    if (Entry->me.Image == NULL) {
-        Entry->me.Image = BuiltinIcon(3);  // os_unknown
-    }
     
-    SubScreen->TitleImage = Entry->me.Image;
     AddMenuEntry(SubScreen, &submenu_exit_entry);
+    Entry->me.SubScreen = SubScreen;
     AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
 }
 
@@ -582,10 +607,10 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     UINTN i;
     
     InitializeLib(ImageHandle, SystemTable);
+    InitScreen();
     Status = InitRefitLib(ImageHandle);
     if (EFI_ERROR(Status))
         return Status;
-    InitScreen();
     
     BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
     
