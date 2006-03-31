@@ -60,6 +60,19 @@ EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle)
     if (CheckFatalError(Status, L"while getting a LoadedImageProtocol handle"))
         return EFI_LOAD_ERROR;
     
+    /*
+    if (SelfLoadedImage->LoadOptionsSize > 0) {
+        CHAR16 Buffer[1024];
+        UINTN Length = SelfLoadedImage->LoadOptionsSize / 2;
+        if (Length > 1023)
+            Length = 1023;
+        CopyMem(Buffer, SelfLoadedImage->LoadOptions, SelfLoadedImage->LoadOptionsSize);
+        Buffer[Length] = 0;
+        Print(L"Load options: '%s'\n", Buffer);
+        CheckError(EFI_LOAD_ERROR, L"FOR DEBUGGING");
+    }
+    */
+    
     SelfRootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
     
     // find the current directory
