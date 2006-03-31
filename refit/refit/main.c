@@ -561,6 +561,11 @@ static void tool_scan(void)
     SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
     if (FileExists(SelfRootDir, FileName)) {
         add_tool_entry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
+    } else {
+        StrCpy(FileName, L"\\efi\\tools\\shell.efi");
+        if (FileExists(SelfRootDir, FileName)) {
+            add_tool_entry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
+        }
     }
 }
 
