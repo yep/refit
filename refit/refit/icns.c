@@ -62,8 +62,9 @@ BUILTIN_ICON BuiltinIconTable[] = {
     { NULL, L"\\icons\\vol_internal.icns", 32 },
     { NULL, L"\\icons\\vol_external.icns", 32 },
     { NULL, L"\\icons\\vol_optical.icns", 32 },
+    { NULL, L"\\icons\\os_hwtest.icns", 128 },
 };
-#define BUILTIN_ICON_COUNT (11)
+#define BUILTIN_ICON_COUNT (12)
 
 REFIT_IMAGE * BuiltinIcon(IN UINTN Id)
 {

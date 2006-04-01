@@ -166,6 +166,9 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
             Entry->me.Image = BuiltinIcon(0);  // os_mac
         Entry->UseGraphicsMode = TRUE;
         LoaderKind = 1;
+    } else if (StriCmp(FileName, L"diags.efi") == 0) {
+        if (Entry->me.Image == NULL)
+            Entry->me.Image = BuiltinIcon(11); // os_hwtest
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
         if (Entry->me.Image == NULL)
@@ -516,6 +519,13 @@ static void loader_scan(void)
         Status = DirIterClose(&EfiDirIter);
         if (Status != EFI_NOT_FOUND)
             CheckError(Status, L"while scanning the EFI directory");
+        
+        // check for Apple hardware diagnostics
+        StrCpy(FileName, L"\\System\\Library\\CoreServices\\.diagnostics\\diags.efi");
+        if (FileExists(RootDir, FileName)) {
+            Print(L"  - Apple Hardware Test found\n");
+            add_loader_entry(FileName, L"Apple Hardware Test", DeviceHandle, RootDir, VolName, VolBadgeImage);
+        }
         
         RootDir->Close(RootDir);
         FreePool(VolName);
