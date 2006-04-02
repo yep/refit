@@ -38,8 +38,6 @@
 
 #ifndef TEXTONLY
 
-static CHAR8 * DecompressPixelData(IN CHAR8 *CompDataPtr, IN UINTN CompDataLen, IN UINTN RawDataLen);
-
 //
 // well-known icons
 //
@@ -80,108 +78,6 @@ REFIT_IMAGE * BuiltinIcon(IN UINTN Id)
     }
     
     return BuiltinIconTable[Id].Image;
-}
-
-//
-// built-in images
-//
-
-typedef struct {
-    REFIT_IMAGE *Image;
-    UINTN Width, Height, Mode, PlaneCount;
-    CHAR8 *CompData;
-    UINTN CompDataLen;
-} BUILTIN_IMAGE;
-
-#include "image_font.h"
-#include "image_refit_banner.h"
-
-#include "image_back_normal_big.h"
-#include "image_back_normal_small.h"
-#include "image_back_selected_big.h"
-#include "image_back_selected_small.h"
-
-BUILTIN_IMAGE *BuiltinImageTable[] = {
-    &image_font,
-    &image_refit_banner,
-    &image_back_normal_big,
-    &image_back_selected_big,
-    &image_back_normal_small,
-    &image_back_selected_small,
-};
-#define BUILTIN_IMAGE_COUNT (6)
-
-REFIT_IMAGE * BuiltinImage(IN UINTN Id)
-{
-    CHAR8 *PixelData, *ImageData, *PtrR, *PtrG, *PtrB, *PtrA, *DestPtr;
-    UINTN PixelCount, i;
-    
-    if (Id >= BUILTIN_IMAGE_COUNT)
-        return NULL;
-    
-    if (BuiltinImageTable[Id]->Image == NULL) {
-        
-        PixelCount = BuiltinImageTable[Id]->Width * BuiltinImageTable[Id]->Height;
-        PixelData = DecompressPixelData(BuiltinImageTable[Id]->CompData,
-                                        BuiltinImageTable[Id]->CompDataLen,
-                                        PixelCount * BuiltinImageTable[Id]->PlaneCount);
-        ImageData = AllocatePool(PixelCount * 4);
-        
-        if (BuiltinImageTable[Id]->PlaneCount == 1 && BuiltinImageTable[Id]->Mode == 0) {
-            // translate greyscale image
-            PtrG = PixelData;
-            DestPtr = ImageData;
-            for (i = 0; i < PixelCount; i++) {
-                *DestPtr++ = *PtrG;
-                *DestPtr++ = *PtrG;
-                *DestPtr++ = *PtrG++;
-                *DestPtr++ = 0;
-            }
-            
-        } else if (BuiltinImageTable[Id]->PlaneCount == 1 && BuiltinImageTable[Id]->Mode == 1) {
-            // translate alpha-only image
-            PtrA = PixelData;
-            DestPtr = ImageData;
-            for (i = 0; i < PixelCount; i++) {
-                *DestPtr++ = 0;
-                *DestPtr++ = 0;
-                *DestPtr++ = 0;
-                *DestPtr++ = *PtrA++;
-            }
-            
-        } else if (BuiltinImageTable[Id]->PlaneCount == 3) {
-            // translate color image
-            PtrB = PixelData;
-            PtrG = PixelData + PixelCount;
-            PtrR = PixelData + PixelCount * 2;
-            DestPtr = ImageData;
-            for (i = 0; i < PixelCount; i++) {
-                *DestPtr++ = *PtrB++;
-                *DestPtr++ = *PtrG++;
-                *DestPtr++ = *PtrR++;
-                *DestPtr++ = 0;
-            }
-            
-        } else {
-            // provide at least a dummy image
-            DestPtr = ImageData;
-            for (i = 0; i < PixelCount; i++) {
-                *DestPtr++ = 128;
-                *DestPtr++ = 255;
-                *DestPtr++ = 255;
-                *DestPtr++ = 0;
-            }
-            
-        }
-        FreePool(PixelData);
-        
-        BuiltinImageTable[Id]->Image = AllocatePool(sizeof(REFIT_IMAGE));
-        BuiltinImageTable[Id]->Image->PixelData = ImageData;
-        BuiltinImageTable[Id]->Image->Width = BuiltinImageTable[Id]->Width;
-        BuiltinImageTable[Id]->Image->Height = BuiltinImageTable[Id]->Height;
-    }
-    
-    return BuiltinImageTable[Id]->Image;
 }
 
 //
@@ -450,11 +346,6 @@ REFIT_IMAGE * DummyImage(IN UINTN PixelSize)
 }
 
 REFIT_IMAGE * BuiltinIcon(IN UINTN Id)
-{
-    return NULL;
-}
-
-REFIT_IMAGE * BuiltinImage(IN UINTN Id)
 {
     return NULL;
 }

@@ -57,17 +57,19 @@ OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\menu.obj \
     $(BUILD_DIR)\screen.obj \
     $(BUILD_DIR)\icns.obj \
+    $(BUILD_DIR)\image.obj \
     $(BUILD_DIR)\lib.obj  \
 
 #
 # Source file dependencies
 #
 
-$(BUILD_DIR)\main.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
-$(BUILD_DIR)\menu.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
-$(BUILD_DIR)\screen.obj     : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
-$(BUILD_DIR)\icns.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
-$(BUILD_DIR)\lib.obj        : $(SOURCE_DIR)\$(*B).c $(INC_DEPS)
+$(BUILD_DIR)\main.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS) $(SOURCE_DIR)\lib.h
+$(BUILD_DIR)\menu.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS) $(SOURCE_DIR)\lib.h
+$(BUILD_DIR)\screen.obj     : $(SOURCE_DIR)\$(*B).c $(INC_DEPS) $(SOURCE_DIR)\lib.h
+$(BUILD_DIR)\icns.obj       : $(SOURCE_DIR)\$(*B).c $(INC_DEPS) $(SOURCE_DIR)\lib.h
+$(BUILD_DIR)\image.obj      : $(SOURCE_DIR)\$(*B).c $(INC_DEPS) $(SOURCE_DIR)\lib.h
+$(BUILD_DIR)\lib.obj        : $(SOURCE_DIR)\$(*B).c $(INC_DEPS) $(SOURCE_DIR)\lib.h
 
 #
 # Handoff to master.mak
