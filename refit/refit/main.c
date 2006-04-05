@@ -240,8 +240,8 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         SubEntry->LoaderPath      = Entry->LoaderPath;
         SubEntry->VolName         = Entry->VolName;
         SubEntry->DevicePath      = Entry->DevicePath;
-        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
-        SubEntry->LoadOptions     = L"i17";
+        SubEntry->UseGraphicsMode = TRUE;
+        SubEntry->LoadOptions     = L"-d 0 i17";
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
@@ -250,8 +250,8 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         SubEntry->LoaderPath      = Entry->LoaderPath;
         SubEntry->VolName         = Entry->VolName;
         SubEntry->DevicePath      = Entry->DevicePath;
-        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
-        SubEntry->LoadOptions     = L"i20";
+        SubEntry->UseGraphicsMode = TRUE;
+        SubEntry->LoadOptions     = L"-d 0 i20";
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
@@ -260,8 +260,8 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         SubEntry->LoaderPath      = Entry->LoaderPath;
         SubEntry->VolName         = Entry->VolName;
         SubEntry->DevicePath      = Entry->DevicePath;
-        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
-        SubEntry->LoadOptions     = L"mini";
+        SubEntry->UseGraphicsMode = TRUE;
+        SubEntry->LoadOptions     = L"-d 0 mini";
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
         AddMenuInfoLine(SubScreen, L"NOTE: This is an example. Entries");
@@ -272,7 +272,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         Entry->LoadOptions = L"-s -h";
         
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-        SubEntry->me.Title        = L"Boot Windows from Hard Disk (*)";
+        SubEntry->me.Title        = L"Boot Windows from Hard Disk";
         SubEntry->me.Tag          = TAG_LOADER;
         SubEntry->LoaderPath      = Entry->LoaderPath;
         SubEntry->VolName         = Entry->VolName;
@@ -282,7 +282,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
         
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-        SubEntry->me.Title        = L"Boot Windows from CD-ROM (*)";
+        SubEntry->me.Title        = L"Boot Windows from CD-ROM";
         SubEntry->me.Tag          = TAG_LOADER;
         SubEntry->LoaderPath      = Entry->LoaderPath;
         SubEntry->VolName         = Entry->VolName;
@@ -298,10 +298,8 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
         SubEntry->VolName         = Entry->VolName;
         SubEntry->DevicePath      = Entry->DevicePath;
         SubEntry->UseGraphicsMode = FALSE;
+        SubEntry->LoadOptions     = L"-v";
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
-        
-        AddMenuInfoLine(SubScreen, L"NOTE: This is an example. Entries");
-        AddMenuInfoLine(SubScreen, L"marked with (*) may not work.");
         
     }
     
