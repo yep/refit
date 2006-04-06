@@ -630,8 +630,8 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     // fixed other menu entries
     entry_about.Image = BuiltinIcon(4);
     AddMenuEntry(&main_menu, &entry_about);
-    entry_exit.Image = BuiltinIcon(5);
-    AddMenuEntry(&main_menu, &entry_exit);
+    //entry_exit.Image = BuiltinIcon(5);
+    //AddMenuEntry(&main_menu, &entry_exit);
     entry_reset.Image = BuiltinIcon(6);
     AddMenuEntry(&main_menu, &entry_reset);
     
