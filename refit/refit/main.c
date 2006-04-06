@@ -470,8 +470,9 @@ static void loader_scan(void)
             VolName = StrDuplicate(FileSystemInfoPtr->VolumeLabel);
             FreePool(FileSystemInfoPtr);
         } else {
-            Print(L"  GetInfo failed\n");
-            VolName = StrDuplicate(L"Unnamed Volume");
+            Print(L"Error: Can't get volume info.\n");
+            RootDir->Close(RootDir);
+            continue;
         }
         VolBadgeImage = get_volume_icon(RootDir, DeviceHandle);
         
