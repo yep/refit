@@ -44,11 +44,27 @@
 //
 
 typedef struct {
-    EFI_STATUS LastStatus;
-    EFI_FILE *DirHandle;
-    BOOLEAN CloseDirHandle;
-    EFI_FILE_INFO *LastFileInfo;
+    EFI_STATUS          LastStatus;
+    EFI_FILE            *DirHandle;
+    BOOLEAN             CloseDirHandle;
+    EFI_FILE_INFO       *LastFileInfo;
 } REFIT_DIR_ITER;
+
+#define DISK_KIND_INTERNAL (0)
+#define DISK_KIND_EXTERNAL (1)
+#define DISK_KIND_OPTICAL  (2)
+
+struct _REFIT_IMAGE;
+
+typedef struct {
+    EFI_DEVICE_PATH     *DevicePath;
+    EFI_HANDLE          DeviceHandle;
+    EFI_FILE            *RootDir;
+    CHAR16              *VolName;
+    struct _REFIT_IMAGE *VolBadgeImage;
+    UINTN               DiskKind;
+    BOOLEAN             IsLegacy;
+} REFIT_VOLUME;
 
 extern EFI_HANDLE       SelfImageHandle;
 extern EFI_LOADED_IMAGE *SelfLoadedImage;
@@ -56,11 +72,17 @@ extern EFI_FILE         *SelfRootDir;
 extern EFI_FILE         *SelfDir;
 extern CHAR16           *SelfDirPath;
 
+extern REFIT_VOLUME     *SelfVolume;
+extern REFIT_VOLUME     **Volumes;
+extern UINTN            VolumesCount;
+
 EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle);
 
 VOID CreateList(OUT VOID ***ListPtr, OUT UINTN *ElementCount, IN UINTN InitialElementCount);
 VOID AddListElement(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount, IN VOID *NewElement);
 VOID FreeList(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount /*, IN Callback*/);
+
+VOID ScanVolumes(VOID);
 
 BOOLEAN FileExists(IN EFI_FILE *BaseDir, IN CHAR16 *RelativePath);
 
@@ -91,7 +113,7 @@ VOID ReplaceExtension(IN OUT CHAR16 *Path, IN CHAR16 *Extension);
 #define FONT_CELL_WIDTH (7)
 #define FONT_CELL_HEIGHT (12)
 
-typedef struct {
+typedef struct _REFIT_IMAGE {
     UINT8 *PixelData;
     UINTN Width, Height;
 } REFIT_IMAGE;

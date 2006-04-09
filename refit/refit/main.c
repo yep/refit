@@ -49,13 +49,14 @@ typedef struct {
 
 // variables
 
+#define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
+
 #define TAG_EXIT   (1)
 #define TAG_RESET  (2)
 #define TAG_ABOUT  (3)
 #define TAG_LOADER (4)
 #define TAG_TOOL   (5)
 
-static REFIT_MENU_ENTRY entry_exit    = { L"Exit to built-in Boot Manager", TAG_EXIT, 1, NULL, NULL, NULL };
 static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
 static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
 static REFIT_MENU_SCREEN main_menu    = { L"Main Menu", NULL, 0, NULL, 0, NULL, 20, L"Automatic boot" };
@@ -64,14 +65,13 @@ static REFIT_MENU_SCREEN about_menu   = { L"About", NULL, 0, NULL, 0, NULL, 0, N
 
 static REFIT_MENU_ENTRY submenu_exit_entry = { L"Return to Main Menu", TAG_RETURN, 0, NULL, NULL, NULL };
 
-#define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
 
 
 static void about_refit(void)
 {
     if (about_menu.EntryCount == 0) {
         about_menu.TitleImage = BuiltinIcon(4);
-        AddMenuInfoLine(&about_menu, L"rEFIt Version 0.4");
+        AddMenuInfoLine(&about_menu, L"rEFIt Version 0.5");
         AddMenuInfoLine(&about_menu, L"");
         AddMenuInfoLine(&about_menu, L"Copyright (c) 2006 Christoph Pfisterer");
         AddMenuInfoLine(&about_menu, L"Portions Copyright (c) Intel Corporation and others");
@@ -129,8 +129,7 @@ bailout:
     FinishExternalScreen();
 }
 
-static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN EFI_HANDLE DeviceHandle,
-                             IN EFI_FILE *RootDir, IN CHAR16 *VolName, IN REFIT_IMAGE *VolBadgeImage)
+static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
 {
     CHAR16          *FileName;
     CHAR16          IconFileName[256];
@@ -142,21 +141,21 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     
     // prepare the menu entry
     Entry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-    Entry->me.Title        = PoolPrint(L"Boot %s from %s", (LoaderTitle != NULL) ? LoaderTitle : LoaderPath + 1, VolName);
+    Entry->me.Title        = PoolPrint(L"Boot %s from %s", (LoaderTitle != NULL) ? LoaderTitle : LoaderPath + 1, Volume->VolName);
     Entry->me.Tag          = TAG_LOADER;
     Entry->me.Row          = 0;
-    Entry->me.BadgeImage   = VolBadgeImage;
+    Entry->me.BadgeImage   = Volume->VolBadgeImage;
     Entry->LoaderPath      = StrDuplicate(LoaderPath);
-    Entry->VolName         = StrDuplicate(VolName);
-    Entry->DevicePath      = FileDevicePath(DeviceHandle, Entry->LoaderPath);
+    Entry->VolName         = Volume->VolName;
+    Entry->DevicePath      = FileDevicePath(Volume->DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = FALSE;
     
 #ifndef TEXTONLY
     // locate a custom icon for the loader
     StrCpy(IconFileName, LoaderPath);
     ReplaceExtension(IconFileName, L".icns");
-    if (FileExists(RootDir, IconFileName))
-        Entry->me.Image = LoadIcns(RootDir, IconFileName, 128);
+    if (FileExists(Volume->RootDir, IconFileName))
+        Entry->me.Image = LoadIcns(Volume->RootDir, IconFileName, 128);
 #endif  /* !TEXTONLY */
     
     // detect specific loaders
@@ -188,7 +187,7 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN E
     
     // create the submenu
     SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
-    SubScreen->Title = PoolPrint(L"Boot Options for %s on %s", (LoaderTitle != NULL) ? LoaderTitle : FileName, VolName);
+    SubScreen->Title = PoolPrint(L"Boot Options for %s on %s", (LoaderTitle != NULL) ? LoaderTitle : FileName, Volume->VolName);
     SubScreen->TitleImage = Entry->me.Image;
     
     // default entry
@@ -316,89 +315,7 @@ static void free_loader_entry(IN LOADER_ENTRY *Entry)
     FreePool(Entry->DevicePath);
 }
 
-static REFIT_IMAGE * get_volume_icon(IN EFI_FILE *RootDir, IN EFI_HANDLE DeviceHandle)
-{
-    REFIT_IMAGE             *Image = NULL;
-#ifndef TEXTONLY
-    EFI_STATUS              Status;
-    EFI_DEVICE_PATH         *DevicePath, *StartDevicePath, *NextDevicePath;
-    EFI_DEVICE_PATH         *DiskDevicePath, *RemainingDevicePath;
-    EFI_HANDLE              DiskHandle;
-    EFI_BLOCK_IO            *DiskBlockIO;
-    UINTN                   VolumeKind;
-    UINTN                   PartialLength;
-    
-    // look for a custom volume icon
-    if (Image == NULL && FileExists(RootDir, L".VolumeIcon.icns"))
-        Image = LoadIcns(RootDir, L".VolumeIcon.icns", 32);
-    
-    // get a generic icon
-    if (Image == NULL) {
-        VolumeKind = 8;   // default: internal disk
-        
-        DevicePath = StartDevicePath = DevicePathFromHandle(DeviceHandle);
-        //if (DevicePath != NULL)
-        //    Print(L"  * %s\n", DevicePathToStr(DevicePath));
-        
-        while (DevicePath != NULL && !IsDevicePathEndType(DevicePath)) {
-            NextDevicePath = NextDevicePathNode(DevicePath);
-            
-            if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH &&
-                (DevicePathSubType(DevicePath) == MSG_USB_DP ||
-                 DevicePathSubType(DevicePath) == MSG_USB_CLASS_DP ||
-                 DevicePathSubType(DevicePath) == MSG_1394_DP ||
-                 DevicePathSubType(DevicePath) == MSG_FIBRECHANNEL_DP))
-                VolumeKind = 9;    // USB/FireWire/FC device -> external disk
-            if (DevicePathType(DevicePath) == MEDIA_DEVICE_PATH &&
-                DevicePathSubType(DevicePath) == MEDIA_CDROM_DP)
-                VolumeKind = 10;   // ElTorito entry -> optical disk
-            
-            if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH) {
-                // make a device path for the whole device
-                PartialLength = (UINT8 *)NextDevicePath - (UINT8 *)StartDevicePath;
-                DiskDevicePath = (EFI_DEVICE_PATH *)AllocatePool(PartialLength + sizeof(EFI_DEVICE_PATH));
-                CopyMem(DiskDevicePath, StartDevicePath, PartialLength);
-                CopyMem((UINT8 *)DiskDevicePath + PartialLength, EndDevicePath, sizeof(EFI_DEVICE_PATH));
-                
-                // get the handle for that path
-                RemainingDevicePath = DiskDevicePath;
-                //Print(L"  * looking at %s\n", DevicePathToStr(RemainingDevicePath));
-                Status = BS->LocateDevicePath(&BlockIoProtocol, &RemainingDevicePath, &DiskHandle);
-                //Print(L"  * remaining: %s\n", DevicePathToStr(RemainingDevicePath));
-                FreePool(DiskDevicePath);
-                
-                if (!EFI_ERROR(Status)) {
-                    //Print(L"  - original handle: %08x - disk handle: %08x\n", (UINT32)DeviceHandle, (UINT32)DiskHandle);
-                    
-                    // look at the BlockIO protocol
-                    Status = BS->HandleProtocol(DiskHandle, &BlockIoProtocol, (VOID **) &DiskBlockIO);
-                    if (!EFI_ERROR(Status)) {
-                        
-                        // check the media block size
-                        if (DiskBlockIO->Media->BlockSize == 2048) {
-                            VolumeKind = 10;
-                            break;
-                        }
-                    } //else
-                      //  CheckError(Status, L"from HandleProtocol");
-                } //else
-                  //  CheckError(Status, L"from LocateDevicePath");
-            }
-            
-            DevicePath = NextDevicePath;
-        }
-        //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
-        
-        Image = BuiltinIcon(VolumeKind);
-    }
-    
-#endif  /* !TEXTONLY */
-    
-    return Image;
-}
-
-static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE DeviceHandle,
-                            IN CHAR16 *VolName, IN REFIT_IMAGE *VolBadgeImage)
+static void loader_scan_dir(IN REFIT_VOLUME *Volume, IN CHAR16 *Path)
 {
     EFI_STATUS              Status;
     REFIT_DIR_ITER          DirIter;
@@ -406,7 +323,7 @@ static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE
     CHAR16                  FileName[256];
     
     // look through contents of the directory
-    DirIterOpen(RootDir, Path, &DirIter);
+    DirIterOpen(Volume->RootDir, Path, &DirIter);
     while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
         if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0 ||
             StriCmp(DirEntry->FileName, L"ebounce.efi") == 0 ||
@@ -417,7 +334,7 @@ static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE
             SPrint(FileName, 255, L"\\%s\\%s", Path, DirEntry->FileName);
         else
             SPrint(FileName, 255, L"\\%s", DirEntry->FileName);
-        add_loader_entry(FileName, NULL, DeviceHandle, RootDir, VolName, VolBadgeImage);
+        add_loader_entry(FileName, NULL, Volume);
     }
     Status = DirIterClose(&DirIter);
     if (Status != EFI_NOT_FOUND) {
@@ -432,79 +349,48 @@ static void loader_scan_dir(IN EFI_FILE *RootDir, IN CHAR16 *Path, IN EFI_HANDLE
 static void loader_scan(void)
 {
     EFI_STATUS              Status;
-    UINTN                   HandleCount = 0;
-    UINTN                   HandleIndex;
-    EFI_HANDLE              *Handles;
-    EFI_HANDLE              DeviceHandle;
-    EFI_FILE                *RootDir;
-    EFI_FILE_SYSTEM_INFO    *FileSystemInfoPtr;
-    CHAR16                  *VolName;
-    REFIT_IMAGE             *VolBadgeImage;
+    UINTN                   VolumeIndex;
+    REFIT_VOLUME            *Volume;
     REFIT_DIR_ITER          EfiDirIter;
     EFI_FILE_INFO           *EfiDirEntry;
     CHAR16                  FileName[256];
     
     Print(L"Scanning for boot loaders...\n");
     
-    // get all filesystem handles
-    Status = LibLocateHandle(ByProtocol, &FileSystemProtocol, NULL, &HandleCount, &Handles);
-    if (Status == EFI_NOT_FOUND)
-        return;  // no filesystems. strange, but true...
-    if (CheckError(Status, L"while listing all file systems"))
-        return;
-    // iterate over the filesystem handles
-    for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
-        DeviceHandle = Handles[HandleIndex];
-        
-        RootDir = LibOpenRoot(DeviceHandle);
-        if (RootDir == NULL) {
-            Print(L"Error: Can't open volume.\n");
-            // TODO: signal that we had an error
+    for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
+        Volume = Volumes[VolumeIndex];
+        if (Volume->RootDir == NULL || Volume->VolName == NULL)
             continue;
-        }
-        
-        // get volume name and icon
-        FileSystemInfoPtr = LibFileSystemInfo(RootDir);
-        if (FileSystemInfoPtr != NULL) {
-            Print(L"  Volume %s\n", FileSystemInfoPtr->VolumeLabel);
-            VolName = StrDuplicate(FileSystemInfoPtr->VolumeLabel);
-            FreePool(FileSystemInfoPtr);
-        } else {
-            Print(L"Error: Can't get volume info.\n");
-            RootDir->Close(RootDir);
-            continue;
-        }
-        VolBadgeImage = get_volume_icon(RootDir, DeviceHandle);
         
         // check for Mac OS X boot loader
         StrCpy(FileName, MACOSX_LOADER_PATH);
-        if (FileExists(RootDir, FileName)) {
+        if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Mac OS X boot file found\n");
-            add_loader_entry(FileName, L"Mac OS X", DeviceHandle, RootDir, VolName, VolBadgeImage);
+            add_loader_entry(FileName, L"Mac OS X", Volume);
         }
         
         // check for XOM
         StrCpy(FileName, L"\\System\\Library\\CoreServices\\xom.efi");
-        if (FileExists(RootDir, FileName)) {
-            add_loader_entry(FileName, L"Windows XP (XoM)", DeviceHandle, RootDir, VolName, VolBadgeImage);
+        if (FileExists(Volume->RootDir, FileName)) {
+            add_loader_entry(FileName, L"Windows XP (XoM)", Volume);
         }
         
         // check for Microsoft boot loader/menu
         StrCpy(FileName, L"\\EFI\\Microsoft\\Boot\\Bootmgfw.efi");
-        if (FileExists(RootDir, FileName)) {
+        if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Microsoft boot menu found\n");
-            add_loader_entry(FileName, L"Microsoft boot menu", DeviceHandle, RootDir, VolName, VolBadgeImage);
+            add_loader_entry(FileName, L"Microsoft boot menu", Volume);
         }
         
         // scan the root directory for EFI executables
-        loader_scan_dir(RootDir, NULL, DeviceHandle, VolName, VolBadgeImage);
+        loader_scan_dir(Volume, NULL);
         // scan the elilo directory (as used on gimli's first Live CD)
-        loader_scan_dir(RootDir, L"elilo", DeviceHandle, VolName, VolBadgeImage);
+        loader_scan_dir(Volume, L"elilo");
         // scan the boot directory
-        loader_scan_dir(RootDir, L"boot", DeviceHandle, VolName, VolBadgeImage);
+        loader_scan_dir(Volume, L"boot");
         
         // scan subdirectories of the EFI directory (as per the standard)
-        DirIterOpen(RootDir, L"EFI", &EfiDirIter);
+        DirIterOpen(Volume->RootDir, L"EFI", &EfiDirIter);
         while (DirIterNext(&EfiDirIter, 1, NULL, &EfiDirEntry)) {
             if (StriCmp(EfiDirEntry->FileName, L"TOOLS") == 0 || EfiDirEntry->FileName[0] == '.')
                 continue;   // skip this, doesn't contain boot loaders
@@ -513,7 +399,7 @@ static void loader_scan(void)
             Print(L"  - Directory EFI\\%s found\n", EfiDirEntry->FileName);
             
             SPrint(FileName, 255, L"EFI\\%s", EfiDirEntry->FileName);
-            loader_scan_dir(RootDir, FileName, DeviceHandle, VolName, VolBadgeImage);
+            loader_scan_dir(Volume, FileName);
         }
         Status = DirIterClose(&EfiDirIter);
         if (Status != EFI_NOT_FOUND)
@@ -521,16 +407,11 @@ static void loader_scan(void)
         
         // check for Apple hardware diagnostics
         StrCpy(FileName, L"\\System\\Library\\CoreServices\\.diagnostics\\diags.efi");
-        if (FileExists(RootDir, FileName)) {
+        if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Apple Hardware Test found\n");
-            add_loader_entry(FileName, L"Apple Hardware Test", DeviceHandle, RootDir, VolName, VolBadgeImage);
+            add_loader_entry(FileName, L"Apple Hardware Test", Volume);
         }
-        
-        RootDir->Close(RootDir);
-        FreePool(VolName);
     }
-    
-    FreePool(Handles);
 }
 
 
@@ -624,14 +505,13 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
     
     // scan for loaders and tools, add them to the menu
+    ScanVolumes();
     loader_scan();
     tool_scan();
     
     // fixed other menu entries
     entry_about.Image = BuiltinIcon(4);
     AddMenuEntry(&main_menu, &entry_about);
-    //entry_exit.Image = BuiltinIcon(5);
-    //AddMenuEntry(&main_menu, &entry_exit);
     entry_reset.Image = BuiltinIcon(6);
     AddMenuEntry(&main_menu, &entry_reset);
     

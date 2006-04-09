@@ -44,6 +44,10 @@ EFI_FILE         *SelfRootDir;
 EFI_FILE         *SelfDir;
 CHAR16           *SelfDirPath;
 
+REFIT_VOLUME     *SelfVolume = NULL;
+REFIT_VOLUME     **Volumes = NULL;
+UINTN            VolumesCount = 0;
+
 //
 // self recognition stuff
 //
@@ -136,6 +140,148 @@ VOID FreeList(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount)
         }
         FreePool(*ListPtr);
     }
+}
+
+//
+// volume functions
+//
+
+static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
+{
+    EFI_STATUS              Status;
+    EFI_DEVICE_PATH         *DevicePath, *NextDevicePath;
+    EFI_DEVICE_PATH         *DiskDevicePath, *RemainingDevicePath;
+    EFI_HANDLE              DiskHandle;
+    EFI_BLOCK_IO            *DiskBlockIO;
+    UINTN                   PartialLength;
+    EFI_FILE_SYSTEM_INFO    *FileSystemInfoPtr;
+    
+    // get device path
+    Volume->DevicePath = DevicePathFromHandle(Volume->DeviceHandle);
+    //if (Volume->DevicePath != NULL)
+    //    Print(L"  * %s\n", DevicePathToStr(Volume->DevicePath));
+    
+    // detect device type
+    Volume->DiskKind = DISK_KIND_INTERNAL;  // default
+    DevicePath = Volume->DevicePath;
+    while (DevicePath != NULL && !IsDevicePathEndType(DevicePath)) {
+        NextDevicePath = NextDevicePathNode(DevicePath);
+        
+        if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH &&
+            (DevicePathSubType(DevicePath) == MSG_USB_DP ||
+             DevicePathSubType(DevicePath) == MSG_USB_CLASS_DP ||
+             DevicePathSubType(DevicePath) == MSG_1394_DP ||
+             DevicePathSubType(DevicePath) == MSG_FIBRECHANNEL_DP))
+            Volume->DiskKind = DISK_KIND_EXTERNAL;    // USB/FireWire/FC device -> external
+        if (DevicePathType(DevicePath) == MEDIA_DEVICE_PATH &&
+            DevicePathSubType(DevicePath) == MEDIA_CDROM_DP)
+            Volume->DiskKind = DISK_KIND_OPTICAL;     // El Torito entry -> optical disk
+        
+        if (DevicePathType(DevicePath) == MEDIA_DEVICE_PATH &&
+            DevicePathSubType(DevicePath) == MEDIA_VENDOR_DP)
+            Volume->IsLegacy = TRUE;                  // legacy BIOS device entry
+        
+        if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH) {
+            // make a device path for the whole device
+            PartialLength = (UINT8 *)NextDevicePath - (UINT8 *)(Volume->DevicePath);
+            DiskDevicePath = (EFI_DEVICE_PATH *)AllocatePool(PartialLength + sizeof(EFI_DEVICE_PATH));
+            CopyMem(DiskDevicePath, Volume->DevicePath, PartialLength);
+            CopyMem((UINT8 *)DiskDevicePath + PartialLength, EndDevicePath, sizeof(EFI_DEVICE_PATH));
+            
+            // get the handle for that path
+            RemainingDevicePath = DiskDevicePath;
+            //Print(L"  * looking at %s\n", DevicePathToStr(RemainingDevicePath));
+            Status = BS->LocateDevicePath(&BlockIoProtocol, &RemainingDevicePath, &DiskHandle);
+            //Print(L"  * remaining: %s\n", DevicePathToStr(RemainingDevicePath));
+            FreePool(DiskDevicePath);
+            
+            if (!EFI_ERROR(Status)) {
+                //Print(L"  - original handle: %08x - disk handle: %08x\n", (UINT32)DeviceHandle, (UINT32)DiskHandle);
+                
+                // look at the BlockIO protocol
+                Status = BS->HandleProtocol(DiskHandle, &BlockIoProtocol, (VOID **) &DiskBlockIO);
+                if (!EFI_ERROR(Status)) {
+                    
+                    // check the media block size
+                    if (DiskBlockIO->Media->BlockSize == 2048) {
+                        Volume->DiskKind = DISK_KIND_OPTICAL;
+                        break;
+                    }
+                } //else
+                  //  CheckError(Status, L"from HandleProtocol");
+            } //else
+              //  CheckError(Status, L"from LocateDevicePath");
+        }
+        
+        DevicePath = NextDevicePath;
+    }
+    //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
+    
+    // default volume icon based on disk kind
+    if (Volume->DiskKind == DISK_KIND_INTERNAL)
+        Volume->VolBadgeImage = BuiltinIcon(8);
+    else if (Volume->DiskKind == DISK_KIND_EXTERNAL)
+        Volume->VolBadgeImage = BuiltinIcon(9);
+    else if (Volume->DiskKind == DISK_KIND_OPTICAL)
+        Volume->VolBadgeImage = BuiltinIcon(10);
+    
+    // open the root directory of the volume
+    Volume->RootDir = LibOpenRoot(Volume->DeviceHandle);
+    if (Volume->RootDir == NULL) {
+        Print(L"Error: Can't open volume.\n");
+        // TODO: signal that we had an error
+        return;
+    }
+    
+    // get volume name
+    FileSystemInfoPtr = LibFileSystemInfo(Volume->RootDir);
+    if (FileSystemInfoPtr != NULL) {
+        Print(L"  Volume %s\n", FileSystemInfoPtr->VolumeLabel);
+        Volume->VolName = StrDuplicate(FileSystemInfoPtr->VolumeLabel);
+        FreePool(FileSystemInfoPtr);
+    } else {
+        Print(L"Error: Can't get volume info.\n");
+        return;
+        // NOTE: this is normal for Apple's VenMedia device paths
+    }
+    
+    // get custom volume icon if present
+    if (FileExists(Volume->RootDir, L".VolumeIcon.icns"))
+        Volume->VolBadgeImage = LoadIcns(Volume->RootDir, L".VolumeIcon.icns", 32);
+}
+
+VOID ScanVolumes(VOID)
+{
+    EFI_STATUS              Status;
+    UINTN                   HandleCount = 0;
+    UINTN                   HandleIndex;
+    EFI_HANDLE              *Handles;
+    REFIT_VOLUME            *Volume;
+    
+    Print(L"Scanning volumes...\n");
+    
+    // get all filesystem handles
+    Status = LibLocateHandle(ByProtocol, &FileSystemProtocol, NULL, &HandleCount, &Handles);
+    // TODO: actually search for BlockIO instead
+    if (Status == EFI_NOT_FOUND)
+        return;  // no filesystems. strange, but true...
+    if (CheckError(Status, L"while listing all file systems"))
+        return;
+    
+    // iterate over the filesystem handles
+    for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
+        
+        Volume = AllocateZeroPool(sizeof(REFIT_VOLUME));
+        Volume->DeviceHandle = Handles[HandleIndex];
+        ScanVolume(Volume);
+        
+        AddListElement((VOID ***) &Volumes, &VolumesCount, Volume);
+        
+    }
+    
+    // TODO: handling of "Self*" stuff
+    
+    FreePool(Handles);
 }
 
 //
