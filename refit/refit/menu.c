@@ -204,12 +204,12 @@ static VOID UpdateScroll(IN OUT SCROLL_STATE *State, IN UINTN Movement)
 
 VOID AddMenuInfoLine(IN REFIT_MENU_SCREEN *Screen, IN CHAR16 *InfoLine)
 {
-    AddListElement(&(Screen->InfoLines), &(Screen->InfoLineCount), InfoLine);
+    AddListElement((VOID ***) &(Screen->InfoLines), &(Screen->InfoLineCount), InfoLine);
 }
 
 VOID AddMenuEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry)
 {
-    AddListElement(&(Screen->Entries), &(Screen->EntryCount), Entry);
+    AddListElement((VOID ***) &(Screen->Entries), &(Screen->EntryCount), Entry);
 }
 
 VOID FreeMenu(IN REFIT_MENU_SCREEN *Screen)

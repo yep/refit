@@ -55,8 +55,8 @@ static VOID PauseForKey(VOID);
 static EFI_GUID gEfiUgaDrawProtocolGuid = EFI_UGA_DRAW_PROTOCOL_GUID;
 static EFI_UGA_DRAW_PROTOCOL *UGA;
 
-UINTN UGAWidth;
-UINTN UGAHeight;
+UINT32 UGAWidth;
+UINT32 UGAHeight;
 BOOLEAN AllowGraphicsMode;
 
 static BOOLEAN InGraphicsMode;
@@ -87,11 +87,11 @@ VOID InitScreen(VOID)
     UINTN i;
     
     // get protocols
-    Status = BS->LocateProtocol(&gEfiConsoleControlProtocolGuid, NULL, &ConsoleControl);
+    Status = BS->LocateProtocol(&gEfiConsoleControlProtocolGuid, NULL, (VOID **) &ConsoleControl);
     if (Status != EFI_SUCCESS)
         ConsoleControl = NULL;
 #ifndef TEXTONLY
-    Status = BS->LocateProtocol(&gEfiUgaDrawProtocolGuid, NULL, &UGA);
+    Status = BS->LocateProtocol(&gEfiUgaDrawProtocolGuid, NULL, (VOID **) &UGA);
     if (Status != EFI_SUCCESS)
         UGA = NULL;
 #endif  /* !TEXTONLY */
