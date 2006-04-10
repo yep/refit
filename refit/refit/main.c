@@ -47,6 +47,11 @@ typedef struct {
     CHAR16           *LoadOptions;
 } LOADER_ENTRY;
 
+typedef struct {
+    REFIT_MENU_ENTRY me;
+    REFIT_VOLUME     *Volume;
+} LEGACY_ENTRY;
+
 // variables
 
 #define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
@@ -56,6 +61,7 @@ typedef struct {
 #define TAG_ABOUT  (3)
 #define TAG_LOADER (4)
 #define TAG_TOOL   (5)
+#define TAG_LEGACY (6)
 
 static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
 static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
@@ -415,6 +421,131 @@ static void loader_scan(void)
 }
 
 
+#define LEGACY_OPTION_HD_SIZE (0x4E)
+#define LEGACY_OPTION_CD_SIZE (0x4E)
+
+static UINT8 legacy_option_hd[LEGACY_OPTION_HD_SIZE] = {
+    0x01, 0x00, 0x00, 0x00, 0x30, 0x00, 0x4D, 0x00,
+    0x61, 0x00, 0x63, 0x00, 0x20, 0x00, 0x4F, 0x00,
+    0x53, 0x00, 0x20, 0x00, 0x58, 0x00, 0x00, 0x00,
+    0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0xFF, 0xFF, 0xF9, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
+    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
+    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
+    'H',  0x00, 'D',  0x00, 0x00, 0x00
+};
+static UINT8 legacy_option_cd[LEGACY_OPTION_CD_SIZE] = {
+    0x01, 0x00, 0x00, 0x00, 0x30, 0x00, 0x4D, 0x00,
+    0x61, 0x00, 0x63, 0x00, 0x20, 0x00, 0x4F, 0x00,
+    0x53, 0x00, 0x20, 0x00, 0x58, 0x00, 0x00, 0x00,
+    0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0xFF, 0xFF, 0xF9, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
+    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
+    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
+    'C',  0x00, 'D',  0x00, 0x00, 0x00
+};
+static EFI_GUID GlobalVarVendorId = EFI_GLOBAL_VARIABLE;
+
+static void start_legacy(IN LEGACY_ENTRY *Entry)
+{
+    EFI_STATUS              Status;
+    UINT8                   *BootOptionData;
+    UINTN                   BootOptionSize;
+    UINT16                  BootNextData;
+    
+    BeginExternalScreen(1, L"Initiating Legacy Boot");
+    
+    // decide which kind of media to use
+    if (Entry->Volume->DiskKind == DISK_KIND_OPTICAL) {
+        BootOptionData = legacy_option_cd;
+        BootOptionSize = LEGACY_OPTION_CD_SIZE;
+    } else {
+        BootOptionData = legacy_option_hd;
+        BootOptionSize = LEGACY_OPTION_HD_SIZE;
+    }
+    
+    // set the boot option data
+    Status = RT->SetVariable(L"BootC0DE", &GlobalVarVendorId,
+                             EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+                             BootOptionSize, (VOID *) BootOptionData);
+    if (CheckError(Status, L"while setting BootC0DE variable"))
+        goto bailout;
+    
+    // arrange for it to be used on next boot only
+    BootNextData = 0xC0DE;
+    Status = RT->SetVariable(L"BootNext", &GlobalVarVendorId,
+                             EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
+                             sizeof(UINT16), (VOID *) &BootNextData);
+    if (CheckError(Status, L"while setting BootNext variable"))
+        goto bailout;
+    
+    // reboot system
+    RT->ResetSystem(EfiResetWarm, EFI_SUCCESS, 0, NULL);
+    CheckError(EFI_LOAD_ERROR, L"when trying to reboot");
+    
+bailout:
+    FinishExternalScreen();
+}
+
+static void add_legacy_entry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
+{
+    LEGACY_ENTRY            *Entry, *SubEntry;
+    REFIT_MENU_SCREEN       *SubScreen;
+    CHAR16                  *VolDesc;
+    
+    if (LoaderTitle == NULL)
+        LoaderTitle = L"Legacy OS";
+    if (Volume->VolName != NULL)
+        VolDesc = Volume->VolName;
+    else
+        VolDesc = (Volume->DiskKind == DISK_KIND_OPTICAL) ? L"CD" : L"HD";
+    
+    // prepare the menu entry
+    Entry = AllocateZeroPool(sizeof(LEGACY_ENTRY));
+    Entry->me.Title        = PoolPrint(L"Boot %s from %s", LoaderTitle, VolDesc);
+    Entry->me.Tag          = TAG_LEGACY;
+    Entry->me.Row          = 0;
+    Entry->me.Image        = BuiltinIcon(12);  // os_legacy
+    Entry->me.BadgeImage   = Volume->VolBadgeImage;
+    Entry->Volume          = Volume;
+    
+    // create the submenu
+    SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
+    SubScreen->Title = PoolPrint(L"Boot Options for %s on %s", LoaderTitle, VolDesc);
+    SubScreen->TitleImage = Entry->me.Image;
+    
+    // default entry
+    SubEntry = AllocateZeroPool(sizeof(LEGACY_ENTRY));
+    SubEntry->me.Title        = PoolPrint(L"Boot %s", LoaderTitle);
+    SubEntry->me.Tag          = TAG_LEGACY;
+    SubEntry->Volume          = Entry->Volume;
+    AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+    
+    AddMenuEntry(SubScreen, &submenu_exit_entry);
+    Entry->me.SubScreen = SubScreen;
+    AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+}
+
+static void legacy_scan(void)
+{
+    UINTN                   VolumeIndex;
+    REFIT_VOLUME            *Volume;
+    
+    Print(L"Scanning for legacy boot volumes...\n");
+    
+    for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
+        Volume = Volumes[VolumeIndex];
+        //Print(L" %d %s %d %s\n", VolumeIndex, Volume->VolName ? Volume->VolName : L"(no name)", Volume->DiskKind, Volume->IsLegacy ? L"L" : L"N");
+        if (Volume->IsLegacy)
+            add_legacy_entry(NULL, Volume);
+    }
+}
+
+
 static void start_tool(IN LOADER_ENTRY *Entry)
 {
     EFI_STATUS              Status;
@@ -507,6 +638,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     // scan for loaders and tools, add them to the menu
     ScanVolumes();
     loader_scan();
+    legacy_scan();
     tool_scan();
     
     // fixed other menu entries
@@ -538,6 +670,10 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
                 
             case TAG_LOADER:   // Boot OS via .EFI loader
                 start_loader((LOADER_ENTRY *)chosenEntry);
+                break;
+                
+            case TAG_LEGACY:   // Boot legacy OS
+                start_legacy((LEGACY_ENTRY *)chosenEntry);
                 break;
                 
             case TAG_TOOL:     // Start a EFI tool

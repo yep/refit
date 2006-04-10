@@ -158,8 +158,10 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
     
     // get device path
     Volume->DevicePath = DevicePathFromHandle(Volume->DeviceHandle);
-    //if (Volume->DevicePath != NULL)
+    //if (Volume->DevicePath != NULL) {
     //    Print(L"  * %s\n", DevicePathToStr(Volume->DevicePath));
+    //    DumpHex(2, 0, DevicePathSize(Volume->DevicePath), Volume->DevicePath);
+    //}
     
     // detect device type
     Volume->DiskKind = DISK_KIND_INTERNAL;  // default
@@ -203,10 +205,8 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
                 if (!EFI_ERROR(Status)) {
                     
                     // check the media block size
-                    if (DiskBlockIO->Media->BlockSize == 2048) {
+                    if (DiskBlockIO->Media->BlockSize == 2048)
                         Volume->DiskKind = DISK_KIND_OPTICAL;
-                        break;
-                    }
                 } //else
                   //  CheckError(Status, L"from HandleProtocol");
             } //else
@@ -215,7 +215,6 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
         
         DevicePath = NextDevicePath;
     }
-    //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
     
     // default volume icon based on disk kind
     if (Volume->DiskKind == DISK_KIND_INTERNAL)
@@ -240,7 +239,7 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
         Volume->VolName = StrDuplicate(FileSystemInfoPtr->VolumeLabel);
         FreePool(FileSystemInfoPtr);
     } else {
-        Print(L"Error: Can't get volume info.\n");
+        Print(L"Warning: Can't get volume info.\n");
         return;
         // NOTE: this is normal for Apple's VenMedia device paths
     }
@@ -282,6 +281,8 @@ VOID ScanVolumes(VOID)
     // TODO: handling of "Self*" stuff
     
     FreePool(Handles);
+    
+    //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
 }
 
 //
