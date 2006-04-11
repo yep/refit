@@ -1,4 +1,4 @@
-{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf350
+{\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf330
 \readonlydoc1{\fonttbl\f0\fnil\fcharset77 LucidaGrande;\f1\fnil\fcharset77 LucidaGrande-Bold;}
 {\colortbl;\red255\green255\blue255;}
 \paperw11900\paperh16840\margl1440\margr1440\vieww12240\viewh11260\viewkind0
@@ -7,14 +7,16 @@
 \f0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\qc\pardirnatural
 
-\f1\b\fs36 \cf0 rEFIt 0.4 ReadMe
+\f1\b\fs36 \cf0 rEFIt 0.5 ReadMe
 \f0\b0\fs28 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 \cf0 \
 rEFIt is a boot menu and maintenance toolkit for Intel-based Macs. You can use it to boot multiple operating systems without needing a blessed HFS+ partition for each one. It also provides an easy way to enter and explore the EFI environment.\
 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f1\b\fs32 \cf0 Installing rEFIt\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
@@ -31,11 +33,11 @@ rEFIt is a boot menu and maintenance toolkit for Intel-based Macs. You can use i
 
 \f0\b0 \cf0 When you\'d5re ready to use rEFIt for dual-booting (or even triple-booting), you can install it on a hard disk or USB flash drive. It is recommended to install it on a separate volume, but you can also choose to install rEFIt on your Mac OS X volume.\
 \
-rEFIt must be installed on a HFS+ partition. The Intel Mac firmware will not boot from FAT (\'d2MS-DOS\'d3) volumes. The kind of partition table doesn\'d5t matter.\
+rEFIt should be installed on a HFS+ partition. While it is possible to install rEFIt on a FAT volume like the hidden EFI System Partition and persuade the firmware to boot it, that procedure is quite complex. In any case, the kind of partition table doesn\'d5t matter.\
 \
 Copy the \'d2efi\'d3 folder from the distribution to the root level of the destination volume. Do not put it inside another folder, or some functions won\'d5t work.\
 \
-Open a Terminal window and navigate to the \'d2refit\'d3 folder inside the \'d2efi\'d3 folder. Run \'d2./enable.sh\'d3 to make the partition bootable. You must do this under Mac OS X on an Intel-based Macintosh, and you will need your administrator password.\
+Open a Terminal window and change to the \'d2refit\'d3 folder inside the \'d2efi\'d3 folder, e.g. \'d2cd /efi/refit\'d3. Run \'d2./enable.sh\'d3 to make the partition bootable. You must do this under Mac OS X on an Intel-based Macintosh, and you will need your administrator password.\
 \
 If you are installing rEFIt to a separate volume, you can use the \'d2rEFIt.icns\'d3 icon as a volume icon.\
 \
@@ -55,13 +57,17 @@ If you are installing rEFIt to a separate volume, you can use the \'d2rEFIt.icns
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b \cf0 Disabling rEFIt\
+\f1\b \cf0 Uninstalling rEFIt\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f0\b0 \cf0 If you install rEFIt on your Mac OS X partition, you loose the ability to select that volume in the built-in volume chooser to boot directly into Mac OS X. In case something goes wrong, you can disable rEFIt by selecting the volume in the \'d2Startup Disk\'d3 preference pane and clicking \'d2Restart\'d3. (You can do this from the Mac OS X install disk if necessary.)\
+\f0\b0 \cf0 To get rid of rEFIt, open the \'d2Startup Disk\'d3 preference pane and select \'d2Mac OS X\'d3 as the operating system to boot. This will re-bless your Mac OS X volume and instruct the firmware to boot from it. After this, you can remove the \'d2efi\'d3 folder.\
 \
+In case your Mac OS X installation on the hard disk no longer boots, you can boot from the Mac OS X Install Disc (hold down the \'d4C\'d5 key while booting) and run \'d2Startup Disk\'d3 from the \'d2Utilities\'d3 menu.\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f1\b\fs32 \cf0 Using rEFIt\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
@@ -84,11 +90,18 @@ You can configure your Mac to automatically start the rEFIt menu even when it is
 \
 The upper row shows all operating system loaders detected on the available storage media. The Mac OS X installation on the internal disk will usually be the first entry. Each entry is badged with a small icon representing the volume it is on. Each boot entry also has a submenu with additional boot options. It can be accessed by pressing \'d4+\'d5 or F2.\
 \
-The second row of icons contains additional functions, like starting the EFI shell or restarting the computer. The \'d2Exit to built-in Boot Manager\'d3 item needs some more explanation. It terminates rEFIt and returns control to the system firmware. What happens next depends on the model you have. On the early iMacs you enter the low-level boot manager of Intel\'d5s EFI implementation (upon which Apple\'d5s firmware is built). On later models like the MacBook Pro, control returns to Apple\'d5s custom boot manager, and in most cases Mac OS X will boot up.\
+The second row of icons contains additional functions, like starting the EFI shell or restarting the computer.\
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b \cf0 The EFI Shell\
+\f1\b \cf0 Boot Camp support
+\f0\b0 \
+When you have used Boot Camp to install Windows XP (or another legacy-booting operating system) on your Mac, rEFIt will detect that and display the Boot Camp icon in the menu. The entry will be labeled \'d2Legacy OS\'d3 because rEFIt currently cannot detect exactly which operating system you have installed.\
+\
+After you select this entry, your Mac will reboot, then start Windows without showing the rEFIt menu first. This is by design. Apple has not yet published the necessary technical documentation on Boot Camp that would allow rEFIt to boot Windows directly.\
+\
+
+\f1\b The EFI Shell\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0 \cf0 The shell allows you to explore the EFI environment by entering text commands. You can also browse disk volumes and start EFI applications. Enter \'d2help\'d3 to see a list of built-in commands. To get back to the rEFIt menu, leave the shell with the \'d2exit\'d3 command.\
@@ -129,8 +142,10 @@ To customize the icon only for a specific boot entry (e.g. Mac OS X on the inter
 
 \f0\b0 \cf0 Starting with version 0.3, the rEFIt distribution contains an alternative version of the boot menu that operates in text mode only, like previous versions of rEFIt did. It is in the \'d2efi/refitl\'d3 folder and has its own \'d2enable.sh\'d3 script. Simply use the \'d2enable.sh\'d3 script for the version you prefer.\
 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f1\b\fs32 \cf0 Miscellaneous Information\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
@@ -207,6 +222,12 @@ dhclient.efi\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0 \cf0 \
+Version 0.5:\
+\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
+\cf0 \'a5	Supports legacy operating systems installed via Boot Camp.\
+\'a5	Improved boot options for elilo and XOM.\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
 Version 0.4:\
 \pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
 \cf0 \'a5	The boot menu now has a timeout of 20 seconds. When no key is pressed during that time, rEFIt will start the first entry, which will usually be Mac OS X on the internal hard disk.\
@@ -241,12 +262,11 @@ First public release.\
 \f0\b0 \
 Here are some ideas how rEFIt might evolve in the future:\
 \pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	Port GNU parted to the EFI environment. GNU parted is a disk partitioning tool capable of resizing most common file system types without losing data.\
+\cf0 \'a5	Make the boot menu configurable, e.g. with a default entry and a timeout.\
+\'a5	Port GNU parted to the EFI environment. GNU parted is a disk partitioning tool capable of resizing most common file system types without losing data.\
 \'a5	Add menu entries to configure the network.\
 \'a5	Make EFI drivers for various file systems like ext2 (the code in grub should be a good starting point) to make them accessible in EFI space.\
-\'a5	Add a CSM (i.e. legacy BIOS emulation) and appropriate boot loaders to boot other operating systems (e.g. MS Windows XP) to the distribution.\
 \'a5	Add various diagnostics to the boot menu.\
-\'a5	Make the boot menu configurable, e.g. with a default entry and a timeout.\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
