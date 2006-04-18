@@ -65,7 +65,7 @@ typedef struct {
 
 static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
 static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
-static REFIT_MENU_SCREEN main_menu    = { L"Main Menu", NULL, 0, NULL, 0, NULL, 20, L"Automatic boot" };
+static REFIT_MENU_SCREEN main_menu    = { L"Main Menu", NULL, 0, NULL, 0, NULL, 0, L"Automatic boot" };
 
 static REFIT_MENU_SCREEN about_menu   = { L"About", NULL, 0, NULL, 0, NULL, 0, NULL };
 
@@ -635,8 +635,13 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     
     BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
     
-    // scan for loaders and tools, add them to the menu
     ScanVolumes();
+    ReadConfig();
+    //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
+    
+    main_menu.TimeoutSeconds = GlobalConfig.Timeout;
+    
+    // scan for loaders and tools, add them to the menu
     loader_scan();
     legacy_scan();
     tool_scan();

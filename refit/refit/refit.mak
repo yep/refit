@@ -53,6 +53,7 @@ all : dirs $(LIBS) $(OBJECTS)
 
 OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\main.obj \
+    $(BUILD_DIR)\config.obj  \
     $(BUILD_DIR)\menu.obj \
     $(BUILD_DIR)\screen.obj \
     $(BUILD_DIR)\icns.obj \
@@ -65,6 +66,7 @@ OBJECTS = $(OBJECTS) \
 #
 
 $(BUILD_DIR)\main.obj       : $(*B).c $(INC_DEPS) lib.h
+$(BUILD_DIR)\config.obj     : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\menu.obj       : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\screen.obj     : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\icns.obj       : $(*B).c $(INC_DEPS) lib.h

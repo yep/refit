@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8DD76FAC0486AB0100D96B5E /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* main.c */; settings = {ATTRIBUTES = (); }; };
+		9D47400809F54B7500C70CF4 /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D47400709F54B7500C70CF4 /* config.c */; };
 		9D574B2109E907BE00EFE8D2 /* eei.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1809E907BE00EFE8D2 /* eei.c */; };
 		9D574B2209E907BF00EFE8D2 /* eei.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D574B1909E907BE00EFE8D2 /* eei.h */; };
 		9D574B2309E907BF00EFE8D2 /* icns.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1A09E907BE00EFE8D2 /* icns.c */; };
@@ -49,6 +50,7 @@
 
 /* Begin PBXFileReference section */
 		08FB7796FE84155DC02AAC07 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		9D47400709F54B7500C70CF4 /* config.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = config.c; sourceTree = "<group>"; };
 		9D574B1809E907BE00EFE8D2 /* eei.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = eei.c; sourceTree = "<group>"; };
 		9D574B1909E907BE00EFE8D2 /* eei.h */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.h; path = eei.h; sourceTree = "<group>"; };
 		9D574B1A09E907BE00EFE8D2 /* icns.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = icns.c; sourceTree = "<group>"; };
@@ -86,6 +88,7 @@
 			children = (
 				9D574B1D09E907BE00EFE8D2 /* lib.h */,
 				08FB7796FE84155DC02AAC07 /* main.c */,
+				9D47400709F54B7500C70CF4 /* config.c */,
 				9D574B1F09E907BE00EFE8D2 /* menu.c */,
 				9D574B2009E907BE00EFE8D2 /* screen.c */,
 				9D574B1A09E907BE00EFE8D2 /* icns.c */,
@@ -168,6 +171,7 @@
 				9D574B2509E907BF00EFE8D2 /* lib.c in Sources */,
 				9D574B2809E907BF00EFE8D2 /* menu.c in Sources */,
 				9D574B2909E907BF00EFE8D2 /* screen.c in Sources */,
+				9D47400809F54B7500C70CF4 /* config.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

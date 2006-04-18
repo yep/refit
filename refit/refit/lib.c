@@ -276,13 +276,15 @@ VOID ScanVolumes(VOID)
         
         AddListElement((VOID ***) &Volumes, &VolumesCount, Volume);
         
+        if (Volume->DeviceHandle == SelfLoadedImage->DeviceHandle)
+            SelfVolume = Volume;
+        
     }
     
-    // TODO: handling of "Self*" stuff
+    if (SelfVolume == NULL)
+        Print(L"WARNING: SelfVolume not found");
     
     FreePool(Handles);
-    
-    //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
 }
 
 //

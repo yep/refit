@@ -205,4 +205,26 @@ VOID FreeMenu(IN REFIT_MENU_SCREEN *Screen);
 UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
 UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
 
+//
+// config module
+//
+
+typedef struct {
+    UINT8   *Buffer;
+    UINTN   BufferSize;
+    UINTN   Encoding;
+    CHAR8   *Current8Ptr;
+    CHAR8   *End8Ptr;
+    CHAR16  *Current16Ptr;
+    CHAR16  *End16Ptr;
+} REFIT_FILE;
+
+typedef struct {
+    UINTN   Timeout;
+} REFIT_CONFIG;
+
+extern REFIT_CONFIG GlobalConfig;
+
+VOID ReadConfig(VOID);
+
 /* EOF */
