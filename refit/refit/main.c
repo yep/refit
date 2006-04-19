@@ -50,6 +50,7 @@ typedef struct {
 typedef struct {
     REFIT_MENU_ENTRY me;
     REFIT_VOLUME     *Volume;
+    CHAR16           *LoadOptions;
 } LEGACY_ENTRY;
 
 // variables
@@ -72,6 +73,9 @@ static REFIT_MENU_SCREEN about_menu   = { L"About", NULL, 0, NULL, 0, NULL, 0, N
 static REFIT_MENU_ENTRY submenu_exit_entry = { L"Return to Main Menu", TAG_RETURN, 0, NULL, NULL, NULL };
 
 
+//
+// misc functions
+//
 
 static void about_refit(void)
 {
@@ -87,6 +91,9 @@ static void about_refit(void)
     RunMenu(&about_menu, NULL);
 }
 
+//
+// EFI OS loader functions
+//
 
 static void start_loader(IN LOADER_ENTRY *Entry)
 {
@@ -420,74 +427,59 @@ static void loader_scan(void)
     }
 }
 
+//
+// legacy boot functions
+//
 
-#define LEGACY_OPTION_HD_SIZE (0x4E)
-#define LEGACY_OPTION_CD_SIZE (0x4E)
-
-static UINT8 legacy_option_hd[LEGACY_OPTION_HD_SIZE] = {
-    0x01, 0x00, 0x00, 0x00, 0x30, 0x00, 0x4D, 0x00,
-    0x61, 0x00, 0x63, 0x00, 0x20, 0x00, 0x4F, 0x00,
-    0x53, 0x00, 0x20, 0x00, 0x58, 0x00, 0x00, 0x00,
+static UINT8 LegacyLoaderDevicePathData[] = {
     0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
     0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
     0xFF, 0xFF, 0xF9, 0xFF, 0x00, 0x00, 0x00, 0x00,
     0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
     0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
     0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
-    'H',  0x00, 'D',  0x00, 0x00, 0x00
 };
-static UINT8 legacy_option_cd[LEGACY_OPTION_CD_SIZE] = {
-    0x01, 0x00, 0x00, 0x00, 0x30, 0x00, 0x4D, 0x00,
-    0x61, 0x00, 0x63, 0x00, 0x20, 0x00, 0x4F, 0x00,
-    0x53, 0x00, 0x20, 0x00, 0x58, 0x00, 0x00, 0x00,
-    0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
-    0xFF, 0xFF, 0xF9, 0xFF, 0x00, 0x00, 0x00, 0x00,
-    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
-    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
-    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
-    'C',  0x00, 'D',  0x00, 0x00, 0x00
-};
-static EFI_GUID GlobalVarVendorId = EFI_GLOBAL_VARIABLE;
 
 static void start_legacy(IN LEGACY_ENTRY *Entry)
 {
     EFI_STATUS              Status;
-    UINT8                   *BootOptionData;
-    UINTN                   BootOptionSize;
-    UINT16                  BootNextData;
+    EFI_DEVICE_PATH         *LegacyLoaderDevicePath;
+    EFI_HANDLE              ChildImageHandle;
+    EFI_LOADED_IMAGE        *ChildLoadedImage;
+    CHAR16                  *FullLoadOptions = NULL;
     
-    BeginExternalScreen(1, L"Initiating Legacy Boot");
+    BeginExternalScreen(1, L"Booting Legacy OS");
     
-    // decide which kind of media to use
-    if (Entry->Volume->DiskKind == DISK_KIND_OPTICAL) {
-        BootOptionData = legacy_option_cd;
-        BootOptionSize = LEGACY_OPTION_CD_SIZE;
-    } else {
-        BootOptionData = legacy_option_hd;
-        BootOptionSize = LEGACY_OPTION_HD_SIZE;
+    // load the image into memory
+    LegacyLoaderDevicePath = (EFI_DEVICE_PATH *)LegacyLoaderDevicePathData;
+    Status = BS->LoadImage(FALSE, SelfImageHandle, LegacyLoaderDevicePath, NULL, 0, &ChildImageHandle);
+    if (CheckError(Status, L"while loading legacy loader"))
+        goto bailout;
+    
+    // set load options
+    if (Entry->LoadOptions != NULL) {
+        Status = BS->HandleProtocol(ChildImageHandle, &LoadedImageProtocol, (VOID **) &ChildLoadedImage);
+        if (CheckError(Status, L"while getting a LoadedImageProtocol handle"))
+            goto bailout_unload;
+        
+        FullLoadOptions = PoolPrint(L"%s", Entry->LoadOptions);
+        ChildLoadedImage->LoadOptions = (VOID *)FullLoadOptions;
+        ChildLoadedImage->LoadOptionsSize = (StrLen(FullLoadOptions) + 1) * sizeof(CHAR16);
+        Print(L"Using load options '%s'\n", FullLoadOptions);
     }
     
-    // set the boot option data
-    Status = RT->SetVariable(L"BootC0DE", &GlobalVarVendorId,
-                             EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                             BootOptionSize, (VOID *) BootOptionData);
-    if (CheckError(Status, L"while setting BootC0DE variable"))
-        goto bailout;
+    // turn control over to the image
+    // TODO: re-enable the EFI watchdog timer!
+    Status = BS->StartImage(ChildImageHandle, NULL, NULL);
+    // control returns here when the child image calls Exit()
+    CheckError(Status, L"returned from legacy loader");
     
-    // arrange for it to be used on next boot only
-    BootNextData = 0xC0DE;
-    Status = RT->SetVariable(L"BootNext", &GlobalVarVendorId,
-                             EFI_VARIABLE_NON_VOLATILE | EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS,
-                             sizeof(UINT16), (VOID *) &BootNextData);
-    if (CheckError(Status, L"while setting BootNext variable"))
-        goto bailout;
-    
-    // reboot system
-    RT->ResetSystem(EfiResetWarm, EFI_SUCCESS, 0, NULL);
-    CheckError(EFI_LOAD_ERROR, L"when trying to reboot");
-    
+bailout_unload:
+    // unload the image, we don't care if it works or not...
+    Status = BS->UnloadImage(ChildImageHandle);
 bailout:
+    if (FullLoadOptions != NULL)
+        FreePool(FullLoadOptions);
     FinishExternalScreen();
 }
 
@@ -512,6 +504,7 @@ static void add_legacy_entry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
     Entry->me.Image        = BuiltinIcon(12);  // os_legacy
     Entry->me.BadgeImage   = Volume->VolBadgeImage;
     Entry->Volume          = Volume;
+    Entry->LoadOptions     = (Volume->DiskKind == DISK_KIND_OPTICAL) ? L"CD" : L"HD";
     
     // create the submenu
     SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
@@ -523,6 +516,7 @@ static void add_legacy_entry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
     SubEntry->me.Title        = PoolPrint(L"Boot %s", LoaderTitle);
     SubEntry->me.Tag          = TAG_LEGACY;
     SubEntry->Volume          = Entry->Volume;
+    SubEntry->LoadOptions     = Entry->LoadOptions;
     AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
     
     AddMenuEntry(SubScreen, &submenu_exit_entry);
@@ -545,6 +539,9 @@ static void legacy_scan(void)
     }
 }
 
+//
+// pre-boot tool functions
+//
 
 static void start_tool(IN LOADER_ENTRY *Entry)
 {
@@ -615,6 +612,9 @@ static void tool_scan(void)
     }
 }
 
+//
+// main entry point
+//
 
 EFI_STATUS
 EFIAPI
