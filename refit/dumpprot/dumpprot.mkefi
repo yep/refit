@@ -1,0 +1,11 @@
+#
+# mkefi control file for dumpprot
+#
+
+name dumpprot
+type app
+entrypoint efi_main
+
+source dumpprot.c
+
+# EOF

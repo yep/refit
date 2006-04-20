@@ -24,6 +24,10 @@ all :
 	nmake -f TextMode.mak all
 	cd $(SOURCE_DIR)
 
+	cd $(SOURCE_DIR)\dumpprot
+	nmake -f dumpprot.mak all
+	cd $(SOURCE_DIR)
+
 !IF "$(PROCESSOR)" == "Ia64"
 
 
