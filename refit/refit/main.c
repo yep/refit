@@ -157,7 +157,9 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN R
     Entry->me.Title        = PoolPrint(L"Boot %s from %s", (LoaderTitle != NULL) ? LoaderTitle : LoaderPath + 1, Volume->VolName);
     Entry->me.Tag          = TAG_LOADER;
     Entry->me.Row          = 0;
-    Entry->me.BadgeImage   = Volume->VolBadgeImage;
+    if (GlobalConfig.HideBadges == 0 ||
+        (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
+        Entry->me.BadgeImage   = Volume->VolBadgeImage;
     Entry->LoaderPath      = StrDuplicate(LoaderPath);
     Entry->VolName         = Volume->VolName;
     Entry->DevicePath      = FileDevicePath(Volume->DeviceHandle, Entry->LoaderPath);
@@ -502,7 +504,9 @@ static void add_legacy_entry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
     Entry->me.Tag          = TAG_LEGACY;
     Entry->me.Row          = 0;
     Entry->me.Image        = BuiltinIcon(12);  // os_legacy
-    Entry->me.BadgeImage   = Volume->VolBadgeImage;
+    if (GlobalConfig.HideBadges == 0 ||
+        (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
+        Entry->me.BadgeImage   = Volume->VolBadgeImage;
     Entry->Volume          = Volume;
     Entry->LoadOptions     = (Volume->DiskKind == DISK_KIND_OPTICAL) ? L"CD" : L"HD";
     

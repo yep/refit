@@ -127,6 +127,7 @@ extern UINTN UGAHeight;
 extern BOOLEAN AllowGraphicsMode;
 
 VOID InitScreen(VOID);
+VOID SetTextOnly(VOID);
 VOID BeginTextScreen(IN CHAR16 *Title);
 VOID FinishTextScreen(IN BOOLEAN WaitAlways);
 VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title);
@@ -221,6 +222,7 @@ typedef struct {
 
 typedef struct {
     UINTN   Timeout;
+    UINTN   HideBadges;
 } REFIT_CONFIG;
 
 extern REFIT_CONFIG GlobalConfig;

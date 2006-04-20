@@ -165,6 +165,12 @@ VOID InitScreen(VOID)
     DrawScreenHeader(L"Initializing...");
 }
 
+VOID SetTextOnly(VOID)
+{
+    AllowGraphicsMode = FALSE;
+    SwitchToText(TRUE);
+}
+
 VOID BeginTextScreen(IN CHAR16 *Title)
 {
     DrawScreenHeader(Title);

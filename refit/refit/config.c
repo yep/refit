@@ -46,7 +46,7 @@
 
 // global configuration with default values
 
-REFIT_CONFIG        GlobalConfig = { 20 };
+REFIT_CONFIG        GlobalConfig = { 20, 0 };
 
 //
 // read a file into a buffer
@@ -255,8 +255,34 @@ static VOID HandleInt(IN CHAR16 **TokenList, IN UINTN TokenCount, OUT UINTN *Val
 }
 
 //
+// handle an enumeration parameter
+//
+
+static VOID HandleEnum(IN CHAR16 **TokenList, IN UINTN TokenCount, IN CHAR16 **EnumList, IN UINTN EnumCount, OUT UINTN *Value)
+{
+    UINTN i;
+    
+    if (TokenCount < 2) {
+        return;
+    }
+    if (TokenCount > 2) {
+        return;
+    }
+    // look for the enum value
+    for (i = 0; i < EnumCount; i++)
+        if (StriCmp(EnumList[i], TokenList[1]) == 0) {
+            *Value = i;
+            return;
+        }
+    // try to handle an int instead
+    *Value = Atoi(TokenList[1]);
+}
+
+//
 // read config file
 //
+
+static CHAR16 *HideBadgesEnum[3] = { L"none", L"internal", L"all" };
 
 VOID ReadConfig(VOID)
 {
@@ -287,6 +313,10 @@ VOID ReadConfig(VOID)
         
         if (StriCmp(TokenList[0], L"timeout") == 0) {
             HandleInt(TokenList, TokenCount, &(GlobalConfig.Timeout));
+        } else if (StriCmp(TokenList[0], L"hidebadges") == 0) {
+            HandleEnum(TokenList, TokenCount, HideBadgesEnum, 3, &(GlobalConfig.HideBadges));
+        } else if (StriCmp(TokenList[0], L"textonly") == 0) {
+            SetTextOnly();
         } else {
             Print(L" unknown configuration command: '%s'\n", TokenList[0]);
         }
