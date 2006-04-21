@@ -91,11 +91,9 @@ static void about_refit(void)
     RunMenu(&about_menu, NULL);
 }
 
-//
-// EFI OS loader functions
-//
-
-static void start_loader(IN LOADER_ENTRY *Entry)
+static VOID StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
+                          IN CHAR16 *LoadOptions, IN CHAR16 *LoadOptionsPrefix,
+                          IN CHAR16 *ImageTitle)
 {
     EFI_STATUS              Status;
     EFI_HANDLE              ChildImageHandle;
@@ -103,35 +101,38 @@ static void start_loader(IN LOADER_ENTRY *Entry)
     CHAR16                  ErrorInfo[256];
     CHAR16                  *FullLoadOptions = NULL;
     
-    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"Booting OS");
-    Print(L"Starting %s\n", Basename(Entry->LoaderPath));
+    Print(L"Starting %s\n", ImageTitle);
     
     // load the image into memory
-    Status = BS->LoadImage(FALSE, SelfImageHandle, Entry->DevicePath, NULL, 0, &ChildImageHandle);
-    SPrint(ErrorInfo, 255, L"while loading %s on %s", Entry->LoaderPath, Entry->VolName);
+    Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
+    SPrint(ErrorInfo, 255, L"while loading %s", ImageTitle);
     if (CheckError(Status, ErrorInfo))
         goto bailout;
     
     // set load options
-    if (Entry->LoadOptions != NULL) {
+    if (LoadOptions != NULL) {
         Status = BS->HandleProtocol(ChildImageHandle, &LoadedImageProtocol, (VOID **) &ChildLoadedImage);
         if (CheckError(Status, L"while getting a LoadedImageProtocol handle"))
             goto bailout_unload;
         
-        FullLoadOptions = PoolPrint(L"%s %s ", Basename(Entry->LoaderPath), Entry->LoadOptions);
-        // NOTE: That last space is also added by the EFI shell and seems to be significant
-        //  when passing options to Apple's boot.efi... We also include the terminating null
-        //  in the length for safety.
-        ChildLoadedImage->LoadOptions = (VOID *)FullLoadOptions;
-        ChildLoadedImage->LoadOptionsSize = (StrLen(FullLoadOptions) + 1) * sizeof(CHAR16);
-        Print(L"Using load options '%s'\n", FullLoadOptions);
+        if (LoadOptionsPrefix != NULL) {
+            FullLoadOptions = PoolPrint(L"%s %s ", LoadOptionsPrefix, LoadOptions);
+            // NOTE: That last space is also added by the EFI shell and seems to be significant
+            //  when passing options to Apple's boot.efi...
+            LoadOptions = FullLoadOptions;
+        }
+        // NOTE: We also include the terminating null in the length for safety.
+        ChildLoadedImage->LoadOptions = (VOID *)LoadOptions;
+        ChildLoadedImage->LoadOptionsSize = (StrLen(LoadOptions) + 1) * sizeof(CHAR16);
+        Print(L"Using load options '%s'\n", LoadOptions);
     }
     
     // turn control over to the image
-    // TODO: re-enable the EFI watchdog timer!
+    // TODO: (optionally) re-enable the EFI watchdog timer!
     Status = BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
-    CheckError(Status, L"returned from loader");
+    SPrint(ErrorInfo, 255, L"returned from %s", ImageTitle);
+    CheckError(Status, ErrorInfo);
     
 bailout_unload:
     // unload the image, we don't care if it works or not...
@@ -140,6 +141,16 @@ bailout:
     if (FullLoadOptions != NULL)
         FreePool(FullLoadOptions);
     FinishExternalScreen();
+}
+
+//
+// EFI OS loader functions
+//
+
+static void start_loader(IN LOADER_ENTRY *Entry)
+{
+    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"Booting OS");
+    StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
 }
 
 static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
@@ -444,45 +455,12 @@ static UINT8 LegacyLoaderDevicePathData[] = {
 
 static void start_legacy(IN LEGACY_ENTRY *Entry)
 {
-    EFI_STATUS              Status;
-    EFI_DEVICE_PATH         *LegacyLoaderDevicePath;
-    EFI_HANDLE              ChildImageHandle;
-    EFI_LOADED_IMAGE        *ChildLoadedImage;
-    CHAR16                  *FullLoadOptions = NULL;
-    
     BeginExternalScreen(1, L"Booting Legacy OS");
     
-    // load the image into memory
-    LegacyLoaderDevicePath = (EFI_DEVICE_PATH *)LegacyLoaderDevicePathData;
-    Status = BS->LoadImage(FALSE, SelfImageHandle, LegacyLoaderDevicePath, NULL, 0, &ChildImageHandle);
-    if (CheckError(Status, L"while loading legacy loader"))
-        goto bailout;
+    // TODO: make the designated partition active in the MBR
     
-    // set load options
-    if (Entry->LoadOptions != NULL) {
-        Status = BS->HandleProtocol(ChildImageHandle, &LoadedImageProtocol, (VOID **) &ChildLoadedImage);
-        if (CheckError(Status, L"while getting a LoadedImageProtocol handle"))
-            goto bailout_unload;
-        
-        FullLoadOptions = PoolPrint(L"%s", Entry->LoadOptions);
-        ChildLoadedImage->LoadOptions = (VOID *)FullLoadOptions;
-        ChildLoadedImage->LoadOptionsSize = (StrLen(FullLoadOptions) + 1) * sizeof(CHAR16);
-        Print(L"Using load options '%s'\n", FullLoadOptions);
-    }
-    
-    // turn control over to the image
-    // TODO: re-enable the EFI watchdog timer!
-    Status = BS->StartImage(ChildImageHandle, NULL, NULL);
-    // control returns here when the child image calls Exit()
-    CheckError(Status, L"returned from legacy loader");
-    
-bailout_unload:
-    // unload the image, we don't care if it works or not...
-    Status = BS->UnloadImage(ChildImageHandle);
-bailout:
-    if (FullLoadOptions != NULL)
-        FreePool(FullLoadOptions);
-    FinishExternalScreen();
+    StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePathData,
+                  Entry->LoadOptions, NULL, L"legacy loader");
 }
 
 static void add_legacy_entry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
@@ -549,28 +527,9 @@ static void legacy_scan(void)
 
 static void start_tool(IN LOADER_ENTRY *Entry)
 {
-    EFI_STATUS              Status;
-    EFI_HANDLE              ChildImageHandle;
-    CHAR16                  ErrorInfo[256];
-    
-    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, Entry->me.Title + 6);  // assumes "Start <title>"
-    
-    // load the image into memory
-    Status = BS->LoadImage(FALSE, SelfImageHandle, Entry->DevicePath, NULL, 0, &ChildImageHandle);
-    SPrint(ErrorInfo, 255, L"while loading %s", Entry->LoaderPath);
-    if (CheckError(Status, ErrorInfo))
-        goto bailout;
-    
-    // turn control over to the image
-    Status = BS->StartImage(ChildImageHandle, NULL, NULL);
-    // control returns here when the child image calls Exit()
-    CheckError(Status, L"returned from tool");
-    
-bailout_unload:
-    // unload the image, we don't care if it works or not...
-    Status = BS->UnloadImage(ChildImageHandle);
-bailout:
-    FinishExternalScreen();
+    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
+    StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath),
+                  Basename(Entry->LoaderPath));
 }
 
 static void add_tool_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IMAGE *Image, BOOLEAN UseGraphicsMode)
