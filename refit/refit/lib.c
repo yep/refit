@@ -151,20 +151,74 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
     EFI_STATUS              Status;
     EFI_DEVICE_PATH         *DevicePath, *NextDevicePath;
     EFI_DEVICE_PATH         *DiskDevicePath, *RemainingDevicePath;
-    EFI_HANDLE              DiskHandle;
-    EFI_BLOCK_IO            *DiskBlockIO;
+    EFI_HANDLE              WholeDiskHandle;
     UINTN                   PartialLength;
     EFI_FILE_SYSTEM_INFO    *FileSystemInfoPtr;
+    UINT8                   SectorBuffer[512];
+    MBR_PARTITION_INFO      *MbrTable;
+    BOOLEAN                 MbrTableFound;
+    UINTN                   i;
     
     // get device path
     Volume->DevicePath = DevicePathFromHandle(Volume->DeviceHandle);
-    //if (Volume->DevicePath != NULL) {
-    //    Print(L"  * %s\n", DevicePathToStr(Volume->DevicePath));
-    //    DumpHex(2, 0, DevicePathSize(Volume->DevicePath), Volume->DevicePath);
-    //}
+    // if (Volume->DevicePath != NULL) {
+    //     Print(L"  * %s\n", DevicePathToStr(Volume->DevicePath));
+    //     DumpHex(2, 0, DevicePathSize(Volume->DevicePath), Volume->DevicePath);
+    // }
+    
+    Volume->DiskKind = DISK_KIND_INTERNAL;  // default
+    
+    // get block i/o
+    Status = BS->HandleProtocol(Volume->DeviceHandle, &BlockIoProtocol, (VOID **) &(Volume->BlockIO));
+    if (EFI_ERROR(Status)) {
+        Volume->BlockIO = NULL;
+        Print(L"Warning: Can't get BlockIO protocol.\n");
+    } else {
+        if (Volume->BlockIO->Media->BlockSize == 2048)
+            Volume->DiskKind = DISK_KIND_OPTICAL;
+        if (Volume->BlockIO->Media->BlockSize == 512) {
+            
+            // look at the boot sector
+            Status = Volume->BlockIO->ReadBlocks(Volume->BlockIO, Volume->BlockIO->Media->MediaId,
+                                                 0, 512, SectorBuffer);
+            if (!EFI_ERROR(Status)) {
+                if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55) {     // NOTE: relies on little-endian CPU
+                    Volume->BootCodeDetected = BOOTCODE_UNKNOWN;
+                    
+                    if (CompareMem(SectorBuffer + 2, "LILO", 4) == 0)
+                        Volume->BootCodeDetected = BOOTCODE_LINUX;
+                    else if (CompareMem(SectorBuffer + 3, "SYSLINUX", 8) == 0)
+                        Volume->BootCodeDetected = BOOTCODE_LINUX;
+                    else if (FindMem(SectorBuffer, 512, "Geom\0Hard Disk\0Read\0 Error\0", 27) >= 0)   // GRUB
+                        Volume->BootCodeDetected = BOOTCODE_LINUX;
+                    // TODO: also detect ISOLINUX, but that requires relaxation of the 512 byte limit above
+                    else if (FindMem(SectorBuffer, 512, "NTLDR", 5) >= 0)
+                        Volume->BootCodeDetected = BOOTCODE_WINDOWS;
+                    
+                    if (FindMem(SectorBuffer, 512, "Non-system disk", 15) >= 0)
+                        Volume->BootCodeDetected = BOOTCODE_NONE;   // dummy FAT boot sector
+                    
+                    // check for MBR partition table
+                    MbrTableFound = FALSE;
+                    MbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
+                    for (i = 0; i < 4; i++)
+                        if (MbrTable[i].StartLBA && MbrTable[i].Size)
+                            MbrTableFound = TRUE;
+                    for (i = 0; i < 4; i++)
+                        if (MbrTable[i].Flags != 0x00 && MbrTable[i].Flags != 0x80)
+                            MbrTableFound = FALSE;
+                    if (MbrTableFound) {
+                        Volume->MbrPartitionTable = AllocatePool(4 * 16);
+                        CopyMem(Volume->MbrPartitionTable, MbrTable, 4 * 16);
+                    }
+                    
+                }
+            }
+            
+        }
+    }
     
     // detect device type
-    Volume->DiskKind = DISK_KIND_INTERNAL;  // default
     DevicePath = Volume->DevicePath;
     while (DevicePath != NULL && !IsDevicePathEndType(DevicePath)) {
         NextDevicePath = NextDevicePathNode(DevicePath);
@@ -180,8 +234,11 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
             Volume->DiskKind = DISK_KIND_OPTICAL;     // El Torito entry -> optical disk
         
         if (DevicePathType(DevicePath) == MEDIA_DEVICE_PATH &&
-            DevicePathSubType(DevicePath) == MEDIA_VENDOR_DP)
-            Volume->IsLegacy = TRUE;                  // legacy BIOS device entry
+            DevicePathSubType(DevicePath) == MEDIA_VENDOR_DP) {
+            Volume->IsAppleLegacy = TRUE;             // legacy BIOS device entry
+            // TODO: also check for Boot Camp GUID
+            Volume->BootCodeDetected = BOOTCODE_NONE; // this handle's BlockIO is just an alias for the whole device
+        }
         
         if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH) {
             // make a device path for the whole device
@@ -193,22 +250,25 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
             // get the handle for that path
             RemainingDevicePath = DiskDevicePath;
             //Print(L"  * looking at %s\n", DevicePathToStr(RemainingDevicePath));
-            Status = BS->LocateDevicePath(&BlockIoProtocol, &RemainingDevicePath, &DiskHandle);
+            Status = BS->LocateDevicePath(&BlockIoProtocol, &RemainingDevicePath, &WholeDiskHandle);
             //Print(L"  * remaining: %s\n", DevicePathToStr(RemainingDevicePath));
             FreePool(DiskDevicePath);
             
             if (!EFI_ERROR(Status)) {
-                //Print(L"  - original handle: %08x - disk handle: %08x\n", (UINT32)DeviceHandle, (UINT32)DiskHandle);
+                //Print(L"  - original handle: %08x - disk handle: %08x\n", (UINT32)DeviceHandle, (UINT32)WholeDiskHandle);
                 
                 // look at the BlockIO protocol
-                Status = BS->HandleProtocol(DiskHandle, &BlockIoProtocol, (VOID **) &DiskBlockIO);
+                Status = BS->HandleProtocol(WholeDiskHandle, &BlockIoProtocol, (VOID **) &(Volume->WholeDiskBlockIO));
                 if (!EFI_ERROR(Status)) {
                     
                     // check the media block size
-                    if (DiskBlockIO->Media->BlockSize == 2048)
+                    if (Volume->WholeDiskBlockIO->Media->BlockSize == 2048)
                         Volume->DiskKind = DISK_KIND_OPTICAL;
-                } //else
-                  //  CheckError(Status, L"from HandleProtocol");
+                    
+                } else {
+                    Volume->WholeDiskBlockIO = NULL;
+                    //CheckError(Status, L"from HandleProtocol");
+                }
             } //else
               //  CheckError(Status, L"from LocateDevicePath");
         }
@@ -240,9 +300,13 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
         FreePool(FileSystemInfoPtr);
     } else {
         Print(L"Warning: Can't get volume info.\n");
-        return;
         // NOTE: this is normal for Apple's VenMedia device paths
     }
+    
+    // TODO: if no official volume name is found or it is empty, use something else, e.g.:
+    //   - name from bytes 3 to 10 of the boot sector
+    //   - partition number
+    //   - name derived from file system type or partition type
     
     // get custom volume icon if present
     if (FileExists(Volume->RootDir, L".VolumeIcon.icns"))
@@ -255,19 +319,23 @@ VOID ScanVolumes(VOID)
     UINTN                   HandleCount = 0;
     UINTN                   HandleIndex;
     EFI_HANDLE              *Handles;
-    REFIT_VOLUME            *Volume;
+    REFIT_VOLUME            *Volume, *WholeDiskVolume;
+    UINTN                   VolumeIndex, VolumeIndex2;
+    MBR_PARTITION_INFO      *MbrTable;
+    UINTN                   PartitionIndex;
+    UINT8                   *SectorBuffer1, *SectorBuffer2;
     
     Print(L"Scanning volumes...\n");
     
     // get all filesystem handles
-    Status = LibLocateHandle(ByProtocol, &FileSystemProtocol, NULL, &HandleCount, &Handles);
-    // TODO: actually search for BlockIO instead
+    Status = LibLocateHandle(ByProtocol, &BlockIoProtocol, NULL, &HandleCount, &Handles);
+    // was: &FileSystemProtocol
     if (Status == EFI_NOT_FOUND)
         return;  // no filesystems. strange, but true...
     if (CheckError(Status, L"while listing all file systems"))
         return;
     
-    // iterate over the filesystem handles
+    // first pass: collect information about all handles
     for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
         
         Volume = AllocateZeroPool(sizeof(REFIT_VOLUME));
@@ -280,11 +348,58 @@ VOID ScanVolumes(VOID)
             SelfVolume = Volume;
         
     }
+    FreePool(Handles);
     
     if (SelfVolume == NULL)
         Print(L"WARNING: SelfVolume not found");
     
-    FreePool(Handles);
+    // second pass: relate partitions and whole disk devices
+    for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
+        Volume = Volumes[VolumeIndex];
+        
+        // search for corresponding whole disk volume entry
+        WholeDiskVolume = NULL;
+        if (Volume->BlockIO != NULL && Volume->WholeDiskBlockIO != NULL &&
+            Volume->BlockIO != Volume->WholeDiskBlockIO) {
+            for (VolumeIndex2 = 0; VolumeIndex2 < VolumesCount; VolumeIndex2++) {
+                if (Volumes[VolumeIndex2]->BlockIO == Volume->WholeDiskBlockIO)
+                    WholeDiskVolume = Volumes[VolumeIndex2];
+            }
+        }
+        if (WholeDiskVolume != NULL && WholeDiskVolume->MbrPartitionTable != NULL) {
+            // check if this volume is one of the partitions in the table
+            MbrTable = WholeDiskVolume->MbrPartitionTable;
+            SectorBuffer1 = AllocatePool(512);
+            SectorBuffer2 = AllocatePool(512);
+            
+            for (PartitionIndex = 0; PartitionIndex < 4; PartitionIndex++) {
+                // check size
+                if ((UINT64)(MbrTable[PartitionIndex].Size) != Volume->BlockIO->Media->LastBlock + 1)
+                    continue;
+                
+                // check boot sector read through offset or directly
+                Status = Volume->BlockIO->ReadBlocks(Volume->BlockIO, Volume->BlockIO->Media->MediaId,
+                                                     0, 512, SectorBuffer1);
+                if (EFI_ERROR(Status))
+                    break;
+                Status = Volume->WholeDiskBlockIO->ReadBlocks(Volume->WholeDiskBlockIO, Volume->WholeDiskBlockIO->Media->MediaId,
+                                                              MbrTable[PartitionIndex].StartLBA, 512, SectorBuffer2);
+                if (EFI_ERROR(Status))
+                    break;
+                if (CompareMem(SectorBuffer1, SectorBuffer2, 512) != 0)
+                    continue;
+                
+                // now we're reasonably sure the association is correct...
+                Volume->IsMbrPartition = TRUE;
+                Volume->MbrPartitionIndex = PartitionIndex;
+                break;
+            }
+            
+            FreePool(SectorBuffer1);
+            FreePool(SectorBuffer2);
+        }
+        
+    }
 }
 
 //
@@ -446,3 +561,24 @@ VOID ReplaceExtension(IN OUT CHAR16 *Path, IN CHAR16 *Extension)
     }
     StrCat(Path, Extension);
 }
+
+//
+// memory string search
+//
+
+INTN FindMem(IN VOID *Buffer, IN UINTN BufferLength, IN VOID *SearchString, IN UINTN SearchStringLength)
+{
+    UINT8 *BufferPtr;
+    UINTN Offset;
+    
+    BufferPtr = Buffer;
+    BufferLength -= SearchStringLength;
+    for (Offset = 0; Offset < BufferLength; Offset++, BufferPtr++) {
+        if (CompareMem(BufferPtr, SearchString, SearchStringLength) == 0)
+            return (INTN)Offset;
+    }
+    
+    return -1;
+}
+
+// EOF

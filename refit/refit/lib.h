@@ -50,9 +50,27 @@ typedef struct {
     EFI_FILE_INFO       *LastFileInfo;
 } REFIT_DIR_ITER;
 
-#define DISK_KIND_INTERNAL (0)
-#define DISK_KIND_EXTERNAL (1)
-#define DISK_KIND_OPTICAL  (2)
+typedef struct {
+    UINT8 Flags;
+    UINT8 StartCHS1;
+    UINT8 StartCHS2;
+    UINT8 StartCHS3;
+    UINT8 Type;
+    UINT8 EndCHS1;
+    UINT8 EndCHS2;
+    UINT8 EndCHS3;
+    UINT32 StartLBA;
+    UINT32 Size;
+} MBR_PARTITION_INFO;
+
+#define DISK_KIND_INTERNAL  (0)
+#define DISK_KIND_EXTERNAL  (1)
+#define DISK_KIND_OPTICAL   (2)
+
+#define BOOTCODE_NONE       (0)
+#define BOOTCODE_UNKNOWN    (1)
+#define BOOTCODE_WINDOWS    (2)
+#define BOOTCODE_LINUX      (3)
 
 struct _REFIT_IMAGE;
 
@@ -63,7 +81,13 @@ typedef struct {
     CHAR16              *VolName;
     struct _REFIT_IMAGE *VolBadgeImage;
     UINTN               DiskKind;
-    BOOLEAN             IsLegacy;
+    BOOLEAN             IsAppleLegacy;
+    UINTN               BootCodeDetected;
+    BOOLEAN             IsMbrPartition;
+    UINTN               MbrPartitionIndex;
+    EFI_BLOCK_IO        *BlockIO;
+    EFI_BLOCK_IO        *WholeDiskBlockIO;
+    MBR_PARTITION_INFO  *MbrPartitionTable;
 } REFIT_VOLUME;
 
 extern EFI_HANDLE       SelfImageHandle;
@@ -94,6 +118,8 @@ EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter);
 
 CHAR16 * Basename(IN CHAR16 *Path);
 VOID ReplaceExtension(IN OUT CHAR16 *Path, IN CHAR16 *Extension);
+
+INTN FindMem(IN VOID *Buffer, IN UINTN BufferLength, IN VOID *SearchString, IN UINTN SearchStringLength);
 
 //
 // screen module

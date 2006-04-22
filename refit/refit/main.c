@@ -451,11 +451,39 @@ static UINT8 LegacyLoaderDevicePathData[] = {
     0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
 };
 
+static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN PartitionIndex)
+{
+    EFI_STATUS          Status;
+    UINT8               SectorBuffer[512];
+    MBR_PARTITION_INFO  *MbrTable;
+    UINTN               i;
+    
+    Status = BlockIO->ReadBlocks(BlockIO, BlockIO->Media->MediaId, 0, 512, SectorBuffer);
+    if (EFI_ERROR(Status))
+        return Status;
+    if (*((UINT16 *)(SectorBuffer + 510)) != 0xaa55)
+        return EFI_NOT_FOUND;
+    MbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
+    
+    for (i = 0; i < 4; i++) {
+        if (MbrTable[i].Flags != 0x00 && MbrTable[i].Flags != 0x80)
+            return EFI_NOT_FOUND;
+        MbrTable[i].Flags = (i == PartitionIndex) ? 0x80 : 0x00;
+    }
+    
+    Status = BlockIO->WriteBlocks(BlockIO, BlockIO->Media->MediaId, 0, 512, SectorBuffer);
+    if (EFI_ERROR(Status))
+        return Status;
+    
+    return EFI_SUCCESS;
+}
+
 static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
     BeginExternalScreen(1, L"Booting Legacy OS");
     
-    // TODO: make the designated partition active in the MBR
+    if (Entry->Volume->IsMbrPartition)
+        ActivateMbrPartition(Entry->Volume->BlockIO, Entry->Volume->MbrPartitionIndex);
     
     StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePathData,
                   Entry->LoadOptions, NULL, L"legacy loader");
@@ -467,8 +495,14 @@ static VOID AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
     REFIT_MENU_SCREEN       *SubScreen;
     CHAR16                  *VolDesc;
     
-    if (LoaderTitle == NULL)
-        LoaderTitle = L"Legacy OS";
+    if (LoaderTitle == NULL) {
+        if (Volume->BootCodeDetected == BOOTCODE_WINDOWS)
+            LoaderTitle = L"Windows";
+        else if (Volume->BootCodeDetected == BOOTCODE_LINUX)
+            LoaderTitle = L"Linux";
+        else
+            LoaderTitle = L"Legacy OS";
+    }
     if (Volume->VolName != NULL)
         VolDesc = Volume->VolName;
     else
@@ -479,7 +513,12 @@ static VOID AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
     Entry->me.Title        = PoolPrint(L"Boot %s from %s", LoaderTitle, VolDesc);
     Entry->me.Tag          = TAG_LEGACY;
     Entry->me.Row          = 0;
-    Entry->me.Image        = BuiltinIcon(12);  // os_legacy
+    if (Volume->BootCodeDetected == BOOTCODE_WINDOWS)
+        Entry->me.Image    = BuiltinIcon(2);   // os_win
+    else if (Volume->BootCodeDetected == BOOTCODE_LINUX)
+        Entry->me.Image    = BuiltinIcon(1);   // os_linux
+    else
+        Entry->me.Image    = BuiltinIcon(12);  // os_legacy
     if (GlobalConfig.HideBadges == 0 ||
         (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
         Entry->me.BadgeImage   = Volume->VolBadgeImage;
@@ -506,15 +545,43 @@ static VOID AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
 
 static VOID ScanLegacy(VOID)
 {
-    UINTN                   VolumeIndex;
+    UINTN                   VolumeIndex, VolumeIndex2;
+    BOOLEAN                 ShowVolume, HideIfOthersFound;
     REFIT_VOLUME            *Volume;
     
     Print(L"Scanning for legacy boot volumes...\n");
     
     for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
         Volume = Volumes[VolumeIndex];
-        //Print(L" %d %s %d %s\n", VolumeIndex, Volume->VolName ? Volume->VolName : L"(no name)", Volume->DiskKind, Volume->IsLegacy ? L"L" : L"N");
-        if (Volume->IsLegacy)
+        /*
+        Print(L" %d %d %d %s %d %s\n",
+              VolumeIndex, Volume->DiskKind, Volume->MbrPartitionIndex,
+              Volume->IsAppleLegacy ? L"AL" : L"--", Volume->BootCodeDetected,
+               Volume->VolName ? Volume->VolName : L"(no name)");
+         */
+        
+        ShowVolume = FALSE;
+        HideIfOthersFound = FALSE;
+        if (Volume->IsAppleLegacy) {
+            ShowVolume = TRUE;
+            HideIfOthersFound = TRUE;
+        } else if (Volume->BootCodeDetected) {
+            ShowVolume = TRUE;
+            if (Volume->BlockIO == Volume->WholeDiskBlockIO &&
+                Volume->BootCodeDetected == BOOTCODE_UNKNOWN)
+                // this is a whole disk entry; hide if we have entries for partitions
+                HideIfOthersFound = TRUE;
+        }
+        if (HideIfOthersFound) {
+            // check for other bootable entries on the same disk
+            for (VolumeIndex2 = 0; VolumeIndex2 < VolumesCount; VolumeIndex2++) {
+                if (VolumeIndex2 != VolumeIndex && Volumes[VolumeIndex2]->BootCodeDetected &&
+                    Volumes[VolumeIndex2]->WholeDiskBlockIO == Volume->WholeDiskBlockIO)
+                    ShowVolume = FALSE;
+            }
+        }
+        
+        if (ShowVolume)
             AddLegacyEntry(NULL, Volume);
     }
 }
