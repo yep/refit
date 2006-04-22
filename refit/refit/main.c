@@ -483,7 +483,7 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     BeginExternalScreen(1, L"Booting Legacy OS");
     
     if (Entry->Volume->IsMbrPartition)
-        ActivateMbrPartition(Entry->Volume->BlockIO, Entry->Volume->MbrPartitionIndex);
+        ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
     
     StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePathData,
                   Entry->LoadOptions, NULL, L"legacy loader");

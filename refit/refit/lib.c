@@ -185,7 +185,7 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
                 if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55) {     // NOTE: relies on little-endian CPU
                     Volume->BootCodeDetected = BOOTCODE_UNKNOWN;
                     
-                    if (CompareMem(SectorBuffer + 2, "LILO", 4) == 0)
+                    if (CompareMem(SectorBuffer + 2, "LILO", 4) == 0 || CompareMem(SectorBuffer + 6, "LILO", 4) == 0)
                         Volume->BootCodeDetected = BOOTCODE_LINUX;
                     else if (CompareMem(SectorBuffer + 3, "SYSLINUX", 8) == 0)
                         Volume->BootCodeDetected = BOOTCODE_LINUX;
@@ -324,6 +324,7 @@ VOID ScanVolumes(VOID)
     MBR_PARTITION_INFO      *MbrTable;
     UINTN                   PartitionIndex;
     UINT8                   *SectorBuffer1, *SectorBuffer2;
+    UINTN                   SectorSum, i;
     
     Print(L"Scanning volumes...\n");
     
@@ -377,7 +378,7 @@ VOID ScanVolumes(VOID)
                 if ((UINT64)(MbrTable[PartitionIndex].Size) != Volume->BlockIO->Media->LastBlock + 1)
                     continue;
                 
-                // check boot sector read through offset or directly
+                // compare boot sector read through offset vs. directly
                 Status = Volume->BlockIO->ReadBlocks(Volume->BlockIO, Volume->BlockIO->Media->MediaId,
                                                      0, 512, SectorBuffer1);
                 if (EFI_ERROR(Status))
@@ -387,6 +388,11 @@ VOID ScanVolumes(VOID)
                 if (EFI_ERROR(Status))
                     break;
                 if (CompareMem(SectorBuffer1, SectorBuffer2, 512) != 0)
+                    continue;
+                SectorSum = 0;
+                for (i = 0; i < 512; i++)
+                    SectorSum += SectorBuffer1[i];
+                if (SectorSum < 1000)
                     continue;
                 
                 // now we're reasonably sure the association is correct...
