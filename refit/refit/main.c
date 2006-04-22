@@ -64,31 +64,29 @@ typedef struct {
 #define TAG_TOOL   (5)
 #define TAG_LEGACY (6)
 
-static REFIT_MENU_ENTRY entry_reset   = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
-static REFIT_MENU_ENTRY entry_about   = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
-static REFIT_MENU_SCREEN main_menu    = { L"Main Menu", NULL, 0, NULL, 0, NULL, 0, L"Automatic boot" };
+static REFIT_MENU_ENTRY MenuEntryReset  = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryAbout  = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryReturn = { L"Return to Main Menu", TAG_RETURN, 0, NULL, NULL, NULL };
 
-static REFIT_MENU_SCREEN about_menu   = { L"About", NULL, 0, NULL, 0, NULL, 0, NULL };
-
-static REFIT_MENU_ENTRY submenu_exit_entry = { L"Return to Main Menu", TAG_RETURN, 0, NULL, NULL, NULL };
-
+static REFIT_MENU_SCREEN MainMenu       = { L"Main Menu", NULL, 0, NULL, 0, NULL, 0, L"Automatic boot" };
+static REFIT_MENU_SCREEN AboutMenu      = { L"About", NULL, 0, NULL, 0, NULL, 0, NULL };
 
 //
 // misc functions
 //
 
-static void about_refit(void)
+static VOID AboutRefit(VOID)
 {
-    if (about_menu.EntryCount == 0) {
-        about_menu.TitleImage = BuiltinIcon(4);
-        AddMenuInfoLine(&about_menu, L"rEFIt Version 0.5");
-        AddMenuInfoLine(&about_menu, L"");
-        AddMenuInfoLine(&about_menu, L"Copyright (c) 2006 Christoph Pfisterer");
-        AddMenuInfoLine(&about_menu, L"Portions Copyright (c) Intel Corporation and others");
-        AddMenuEntry(&about_menu, &submenu_exit_entry);
+    if (AboutMenu.EntryCount == 0) {
+        AboutMenu.TitleImage = BuiltinIcon(4);
+        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.5");
+        AddMenuInfoLine(&AboutMenu, L"");
+        AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006 Christoph Pfisterer");
+        AddMenuInfoLine(&AboutMenu, L"Portions Copyright (c) Intel Corporation and others");
+        AddMenuEntry(&AboutMenu, &MenuEntryReturn);
     }
     
-    RunMenu(&about_menu, NULL);
+    RunMenu(&AboutMenu, NULL);
 }
 
 static VOID StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
@@ -147,13 +145,13 @@ bailout:
 // EFI OS loader functions
 //
 
-static void start_loader(IN LOADER_ENTRY *Entry)
+static VOID StartLoader(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"Booting OS");
     StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
 }
 
-static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
+static VOID AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
 {
     CHAR16          *FileName;
     CHAR16          IconFileName[256];
@@ -328,12 +326,12 @@ static void add_loader_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN R
         
     }
     
-    AddMenuEntry(SubScreen, &submenu_exit_entry);
+    AddMenuEntry(SubScreen, &MenuEntryReturn);
     Entry->me.SubScreen = SubScreen;
-    AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+    AddMenuEntry(&MainMenu, (REFIT_MENU_ENTRY *)Entry);
 }
 
-static void free_loader_entry(IN LOADER_ENTRY *Entry)
+static VOID FreeLoaderEntry(IN LOADER_ENTRY *Entry)
 {
     FreePool(Entry->me.Title);
     FreePool(Entry->LoaderPath);
@@ -341,7 +339,7 @@ static void free_loader_entry(IN LOADER_ENTRY *Entry)
     FreePool(Entry->DevicePath);
 }
 
-static void loader_scan_dir(IN REFIT_VOLUME *Volume, IN CHAR16 *Path)
+static VOID ScanLoaderDir(IN REFIT_VOLUME *Volume, IN CHAR16 *Path)
 {
     EFI_STATUS              Status;
     REFIT_DIR_ITER          DirIter;
@@ -360,7 +358,7 @@ static void loader_scan_dir(IN REFIT_VOLUME *Volume, IN CHAR16 *Path)
             SPrint(FileName, 255, L"\\%s\\%s", Path, DirEntry->FileName);
         else
             SPrint(FileName, 255, L"\\%s", DirEntry->FileName);
-        add_loader_entry(FileName, NULL, Volume);
+        AddLoaderEntry(FileName, NULL, Volume);
     }
     Status = DirIterClose(&DirIter);
     if (Status != EFI_NOT_FOUND) {
@@ -372,7 +370,7 @@ static void loader_scan_dir(IN REFIT_VOLUME *Volume, IN CHAR16 *Path)
     }
 }
 
-static void loader_scan(void)
+static VOID ScanLoader(VOID)
 {
     EFI_STATUS              Status;
     UINTN                   VolumeIndex;
@@ -392,28 +390,28 @@ static void loader_scan(void)
         StrCpy(FileName, MACOSX_LOADER_PATH);
         if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Mac OS X boot file found\n");
-            add_loader_entry(FileName, L"Mac OS X", Volume);
+            AddLoaderEntry(FileName, L"Mac OS X", Volume);
         }
         
         // check for XOM
         StrCpy(FileName, L"\\System\\Library\\CoreServices\\xom.efi");
         if (FileExists(Volume->RootDir, FileName)) {
-            add_loader_entry(FileName, L"Windows XP (XoM)", Volume);
+            AddLoaderEntry(FileName, L"Windows XP (XoM)", Volume);
         }
         
         // check for Microsoft boot loader/menu
         StrCpy(FileName, L"\\EFI\\Microsoft\\Boot\\Bootmgfw.efi");
         if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Microsoft boot menu found\n");
-            add_loader_entry(FileName, L"Microsoft boot menu", Volume);
+            AddLoaderEntry(FileName, L"Microsoft boot menu", Volume);
         }
         
         // scan the root directory for EFI executables
-        loader_scan_dir(Volume, NULL);
+        ScanLoaderDir(Volume, NULL);
         // scan the elilo directory (as used on gimli's first Live CD)
-        loader_scan_dir(Volume, L"elilo");
+        ScanLoaderDir(Volume, L"elilo");
         // scan the boot directory
-        loader_scan_dir(Volume, L"boot");
+        ScanLoaderDir(Volume, L"boot");
         
         // scan subdirectories of the EFI directory (as per the standard)
         DirIterOpen(Volume->RootDir, L"EFI", &EfiDirIter);
@@ -425,7 +423,7 @@ static void loader_scan(void)
             Print(L"  - Directory EFI\\%s found\n", EfiDirEntry->FileName);
             
             SPrint(FileName, 255, L"EFI\\%s", EfiDirEntry->FileName);
-            loader_scan_dir(Volume, FileName);
+            ScanLoaderDir(Volume, FileName);
         }
         Status = DirIterClose(&EfiDirIter);
         if (Status != EFI_NOT_FOUND)
@@ -435,7 +433,7 @@ static void loader_scan(void)
         StrCpy(FileName, L"\\System\\Library\\CoreServices\\.diagnostics\\diags.efi");
         if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Apple Hardware Test found\n");
-            add_loader_entry(FileName, L"Apple Hardware Test", Volume);
+            AddLoaderEntry(FileName, L"Apple Hardware Test", Volume);
         }
     }
 }
@@ -453,7 +451,7 @@ static UINT8 LegacyLoaderDevicePathData[] = {
     0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
 };
 
-static void start_legacy(IN LEGACY_ENTRY *Entry)
+static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
     BeginExternalScreen(1, L"Booting Legacy OS");
     
@@ -463,7 +461,7 @@ static void start_legacy(IN LEGACY_ENTRY *Entry)
                   Entry->LoadOptions, NULL, L"legacy loader");
 }
 
-static void add_legacy_entry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
+static VOID AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
 {
     LEGACY_ENTRY            *Entry, *SubEntry;
     REFIT_MENU_SCREEN       *SubScreen;
@@ -501,12 +499,12 @@ static void add_legacy_entry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
     SubEntry->LoadOptions     = Entry->LoadOptions;
     AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
     
-    AddMenuEntry(SubScreen, &submenu_exit_entry);
+    AddMenuEntry(SubScreen, &MenuEntryReturn);
     Entry->me.SubScreen = SubScreen;
-    AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+    AddMenuEntry(&MainMenu, (REFIT_MENU_ENTRY *)Entry);
 }
 
-static void legacy_scan(void)
+static VOID ScanLegacy(VOID)
 {
     UINTN                   VolumeIndex;
     REFIT_VOLUME            *Volume;
@@ -517,7 +515,7 @@ static void legacy_scan(void)
         Volume = Volumes[VolumeIndex];
         //Print(L" %d %s %d %s\n", VolumeIndex, Volume->VolName ? Volume->VolName : L"(no name)", Volume->DiskKind, Volume->IsLegacy ? L"L" : L"N");
         if (Volume->IsLegacy)
-            add_legacy_entry(NULL, Volume);
+            AddLegacyEntry(NULL, Volume);
     }
 }
 
@@ -525,14 +523,14 @@ static void legacy_scan(void)
 // pre-boot tool functions
 //
 
-static void start_tool(IN LOADER_ENTRY *Entry)
+static VOID StartTool(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
     StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath),
                   Basename(Entry->LoaderPath));
 }
 
-static void add_tool_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IMAGE *Image, BOOLEAN UseGraphicsMode)
+static VOID AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IMAGE *Image, BOOLEAN UseGraphicsMode)
 {
     LOADER_ENTRY *Entry;
     
@@ -546,17 +544,17 @@ static void add_tool_entry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_
     Entry->DevicePath = FileDevicePath(SelfLoadedImage->DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = UseGraphicsMode;
     
-    AddMenuEntry(&main_menu, (REFIT_MENU_ENTRY *)Entry);
+    AddMenuEntry(&MainMenu, (REFIT_MENU_ENTRY *)Entry);
 }
 
-static void free_tool_entry(IN LOADER_ENTRY *Entry)
+static VOID FreeToolEntry(IN LOADER_ENTRY *Entry)
 {
     FreePool(Entry->me.Title);
     FreePool(Entry->LoaderPath);
     FreePool(Entry->DevicePath);
 }
 
-static void tool_scan(void)
+static VOID ScanTool(VOID)
 {
     //EFI_STATUS              Status;
     CHAR16                  FileName[256];
@@ -566,11 +564,11 @@ static void tool_scan(void)
     // look for the EFI shell
     SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
     if (FileExists(SelfRootDir, FileName)) {
-        add_tool_entry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
+        AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
     } else {
         StrCpy(FileName, L"\\efi\\tools\\shell.efi");
         if (FileExists(SelfRootDir, FileName)) {
-            add_tool_entry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
+            AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
         }
     }
 }
@@ -579,14 +577,18 @@ static void tool_scan(void)
 // main entry point
 //
 
+#ifdef __GNUC__
+#define RefitMain efi_main
+#endif
+
 EFI_STATUS
 EFIAPI
 RefitMain (IN EFI_HANDLE           ImageHandle,
            IN EFI_SYSTEM_TABLE     *SystemTable)
 {
     EFI_STATUS Status;
-    BOOLEAN mainLoopRunning = TRUE;
-    REFIT_MENU_ENTRY *chosenEntry;
+    BOOLEAN MainLoopRunning = TRUE;
+    REFIT_MENU_ENTRY *ChosenEntry;
     UINTN MenuExit;
     UINTN i;
     
@@ -602,65 +604,65 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     ReadConfig();
     //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
     
-    main_menu.TimeoutSeconds = GlobalConfig.Timeout;
+    MainMenu.TimeoutSeconds = GlobalConfig.Timeout;
     
     // scan for loaders and tools, add them to the menu
-    loader_scan();
-    legacy_scan();
-    tool_scan();
+    ScanLoader();
+    ScanLegacy();
+    ScanTool();
     
     // fixed other menu entries
-    entry_about.Image = BuiltinIcon(4);
-    AddMenuEntry(&main_menu, &entry_about);
-    entry_reset.Image = BuiltinIcon(6);
-    AddMenuEntry(&main_menu, &entry_reset);
+    MenuEntryAbout.Image = BuiltinIcon(4);
+    AddMenuEntry(&MainMenu, &MenuEntryAbout);
+    MenuEntryReset.Image = BuiltinIcon(6);
+    AddMenuEntry(&MainMenu, &MenuEntryReset);
     
     // wait for user ACK when there were errors
     FinishTextScreen(FALSE);
     
-    while (mainLoopRunning) {
-        MenuExit = RunMainMenu(&main_menu, &chosenEntry);
+    while (MainLoopRunning) {
+        MenuExit = RunMainMenu(&MainMenu, &ChosenEntry);
         
-        if (MenuExit == MENU_EXIT_ESCAPE || chosenEntry->Tag == TAG_EXIT)
+        if (MenuExit == MENU_EXIT_ESCAPE || ChosenEntry->Tag == TAG_EXIT)
             break;
         
-        switch (chosenEntry->Tag) {
+        switch (ChosenEntry->Tag) {
             
             case TAG_RESET:    // Reboot
                 TerminateScreen();
                 RT->ResetSystem(EfiResetCold, EFI_SUCCESS, 0, NULL);
-                mainLoopRunning = FALSE;   // just in case we get this far
+                MainLoopRunning = FALSE;   // just in case we get this far
                 break;
                 
             case TAG_ABOUT:    // About rEFIt
-                about_refit();
+                AboutRefit();
                 break;
                 
             case TAG_LOADER:   // Boot OS via .EFI loader
-                start_loader((LOADER_ENTRY *)chosenEntry);
+                StartLoader((LOADER_ENTRY *)ChosenEntry);
                 break;
                 
             case TAG_LEGACY:   // Boot legacy OS
-                start_legacy((LEGACY_ENTRY *)chosenEntry);
+                StartLegacy((LEGACY_ENTRY *)ChosenEntry);
                 break;
                 
             case TAG_TOOL:     // Start a EFI tool
-                start_tool((LOADER_ENTRY *)chosenEntry);
+                StartTool((LOADER_ENTRY *)ChosenEntry);
                 break;
                 
         }
     }
     
-    for (i = 0; i < main_menu.EntryCount; i++) {
-        if (main_menu.Entries[i]->Tag == TAG_LOADER) {
-            free_loader_entry((LOADER_ENTRY *)(main_menu.Entries[i]));
-            FreePool(main_menu.Entries[i]);
-        } else if (main_menu.Entries[i]->Tag == TAG_TOOL) {
-            free_tool_entry((LOADER_ENTRY *)(main_menu.Entries[i]));
-            FreePool(main_menu.Entries[i]);
+    for (i = 0; i < MainMenu.EntryCount; i++) {
+        if (MainMenu.Entries[i]->Tag == TAG_LOADER) {
+            FreeLoaderEntry((LOADER_ENTRY *)(MainMenu.Entries[i]));
+            FreePool(MainMenu.Entries[i]);
+        } else if (MainMenu.Entries[i]->Tag == TAG_TOOL) {
+            FreeToolEntry((LOADER_ENTRY *)(MainMenu.Entries[i]));
+            FreePool(MainMenu.Entries[i]);
         }
     }
-    FreePool(main_menu.Entries);
+    FreePool(MainMenu.Entries);
     
     // clear screen completely
     TerminateScreen();
