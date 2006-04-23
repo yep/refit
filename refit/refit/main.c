@@ -55,7 +55,8 @@ typedef struct {
 
 // variables
 
-#define MACOSX_LOADER_PATH L"\\System\\Library\\CoreServices\\boot.efi"
+#define MACOSX_LOADER_PATH      L"\\System\\Library\\CoreServices\\boot.efi"
+#define MACOSX_HIBERNATE_PATH   L"\\var\\vm\\sleepimage"
 
 #define TAG_EXIT   (1)
 #define TAG_RESET  (2)
@@ -151,7 +152,7 @@ static VOID StartLoader(IN LOADER_ENTRY *Entry)
     StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
 }
 
-static VOID AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
+static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
 {
     CHAR16          *FileName;
     CHAR16          IconFileName[256];
@@ -329,13 +330,13 @@ static VOID AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REF
     AddMenuEntry(SubScreen, &MenuEntryReturn);
     Entry->me.SubScreen = SubScreen;
     AddMenuEntry(&MainMenu, (REFIT_MENU_ENTRY *)Entry);
+    return Entry;
 }
 
 static VOID FreeLoaderEntry(IN LOADER_ENTRY *Entry)
 {
     FreePool(Entry->me.Title);
     FreePool(Entry->LoaderPath);
-    FreePool(Entry->VolName);
     FreePool(Entry->DevicePath);
 }
 
@@ -378,6 +379,7 @@ static VOID ScanLoader(VOID)
     REFIT_DIR_ITER          EfiDirIter;
     EFI_FILE_INFO           *EfiDirEntry;
     CHAR16                  FileName[256];
+    LOADER_ENTRY            *Entry;
     
     Print(L"Scanning for boot loaders...\n");
     
@@ -390,7 +392,13 @@ static VOID ScanLoader(VOID)
         StrCpy(FileName, MACOSX_LOADER_PATH);
         if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Mac OS X boot file found\n");
-            AddLoaderEntry(FileName, L"Mac OS X", Volume);
+            Entry = AddLoaderEntry(FileName, L"Mac OS X", Volume);
+            /*
+            if (FileExists(Volume->RootDir, MACOSX_HIBERNATE_PATH)) {
+                // system is suspended in Safe Sleep, skip the menu
+                StartLoader(Entry);
+            }
+             */
         }
         
         // check for XOM
@@ -489,7 +497,7 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
                   Entry->LoadOptions, NULL, L"legacy loader");
 }
 
-static VOID AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
+static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
 {
     LEGACY_ENTRY            *Entry, *SubEntry;
     REFIT_MENU_SCREEN       *SubScreen;
@@ -541,6 +549,7 @@ static VOID AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
     AddMenuEntry(SubScreen, &MenuEntryReturn);
     Entry->me.SubScreen = SubScreen;
     AddMenuEntry(&MainMenu, (REFIT_MENU_ENTRY *)Entry);
+    return Entry;
 }
 
 static VOID ScanLegacy(VOID)
@@ -598,7 +607,7 @@ static VOID StartTool(IN LOADER_ENTRY *Entry)
                   Basename(Entry->LoaderPath));
 }
 
-static VOID AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IMAGE *Image, BOOLEAN UseGraphicsMode)
+static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IMAGE *Image, BOOLEAN UseGraphicsMode)
 {
     LOADER_ENTRY *Entry;
     
@@ -613,6 +622,7 @@ static VOID AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IM
     Entry->UseGraphicsMode = UseGraphicsMode;
     
     AddMenuEntry(&MainMenu, (REFIT_MENU_ENTRY *)Entry);
+    return Entry;
 }
 
 static VOID FreeToolEntry(IN LOADER_ENTRY *Entry)
