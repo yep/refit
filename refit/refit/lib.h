@@ -39,6 +39,8 @@
 
 #include "ConsoleControl.h"
 
+#define REFIT_DEBUG (0)
+
 //
 // lib module
 //
@@ -159,6 +161,11 @@ VOID FinishTextScreen(IN BOOLEAN WaitAlways);
 VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title);
 VOID FinishExternalScreen(VOID);
 VOID TerminateScreen(VOID);
+#if REFIT_DEBUG > 0
+VOID DebugPause(VOID);
+#else
+#define DebugPause()
+#endif
 
 BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
 BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);

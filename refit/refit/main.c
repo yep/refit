@@ -79,7 +79,7 @@ static VOID AboutRefit(VOID)
 {
     if (AboutMenu.EntryCount == 0) {
         AboutMenu.TitleImage = BuiltinIcon(4);
-        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.5");
+        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.6");
         AddMenuInfoLine(&AboutMenu, L"");
         AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006 Christoph Pfisterer");
         AddMenuInfoLine(&AboutMenu, L"Portions Copyright (c) Intel Corporation and others");
@@ -553,12 +553,13 @@ static VOID ScanLegacy(VOID)
     
     for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
         Volume = Volumes[VolumeIndex];
-        /*
-        Print(L" %d %d %d %s %d %s\n",
-              VolumeIndex, Volume->DiskKind, Volume->MbrPartitionIndex,
+#if REFIT_DEBUG > 0
+        Print(L" %d %s\n  %d %d %s %d %s\n",
+              VolumeIndex, DevicePathToStr(Volume->DevicePath),
+              Volume->DiskKind, Volume->MbrPartitionIndex,
               Volume->IsAppleLegacy ? L"AL" : L"--", Volume->BootCodeDetected,
                Volume->VolName ? Volume->VolName : L"(no name)");
-         */
+#endif
         
         ShowVolume = FALSE;
         HideIfOthersFound = FALSE;
@@ -668,15 +669,17 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
     
     ScanVolumes();
-    ReadConfig();
-    //CheckError(EFI_LOAD_ERROR, L"FOR DISLPAY ONLY");
+    DebugPause();
     
+    // read configuration
+    ReadConfig();
     MainMenu.TimeoutSeconds = GlobalConfig.Timeout;
     
     // scan for loaders and tools, add them to the menu
     ScanLoader();
     ScanLegacy();
     ScanTool();
+    DebugPause();
     
     // fixed other menu entries
     MenuEntryAbout.Image = BuiltinIcon(4);

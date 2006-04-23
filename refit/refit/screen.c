@@ -327,6 +327,18 @@ static VOID PauseForKey(VOID)
     Print(L"\n");
 }
 
+#if REFIT_DEBUG > 0
+VOID DebugPause(VOID)
+{
+    // show console and wait for key
+    SwitchToText(FALSE);
+    PauseForKey();
+    
+    // reset error flag
+    haveError = FALSE;
+}
+#endif
+
 //
 // Error handling
 //

@@ -154,19 +154,25 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
     EFI_HANDLE              WholeDiskHandle;
     UINTN                   PartialLength;
     EFI_FILE_SYSTEM_INFO    *FileSystemInfoPtr;
-    UINT8                   SectorBuffer[512];
+    UINT8                   SectorBuffer[2048];
     MBR_PARTITION_INFO      *MbrTable;
-    BOOLEAN                 MbrTableFound;
+    BOOLEAN                 MbrTableFound, Bootable;
     UINTN                   i;
     
     // get device path
     Volume->DevicePath = DevicePathFromHandle(Volume->DeviceHandle);
-    // if (Volume->DevicePath != NULL) {
-    //     Print(L"  * %s\n", DevicePathToStr(Volume->DevicePath));
-    //     DumpHex(2, 0, DevicePathSize(Volume->DevicePath), Volume->DevicePath);
-    // }
+#if REFIT_DEBUG > 0
+    if (Volume->DevicePath != NULL) {
+        Print(L"* %s\n", DevicePathToStr(Volume->DevicePath));
+#if REFIT_DEBUG >= 2
+        DumpHex(1, 0, DevicePathSize(Volume->DevicePath), Volume->DevicePath);
+#endif
+    }
+#endif
     
     Volume->DiskKind = DISK_KIND_INTERNAL;  // default
+    Bootable = FALSE;
+    Volume->BootCodeDetected = BOOTCODE_NONE;
     
     // get block i/o
     Status = BS->HandleProtocol(Volume->DeviceHandle, &BlockIoProtocol, (VOID **) &(Volume->BlockIO));
@@ -176,45 +182,55 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
     } else {
         if (Volume->BlockIO->Media->BlockSize == 2048)
             Volume->DiskKind = DISK_KIND_OPTICAL;
-        if (Volume->BlockIO->Media->BlockSize == 512) {
-            
-            // look at the boot sector
+        
+        if (Volume->BlockIO->Media->BlockSize <= 2048) {
+            // look at the boot sector (this is used for both hard disks and El Torito images!)
             Status = Volume->BlockIO->ReadBlocks(Volume->BlockIO, Volume->BlockIO->Media->MediaId,
-                                                 0, 512, SectorBuffer);
+                                                 0, 2048, SectorBuffer);
             if (!EFI_ERROR(Status)) {
-                if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55) {     // NOTE: relies on little-endian CPU
+                
+                if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55) {
+                    Bootable = TRUE;
                     Volume->BootCodeDetected = BOOTCODE_UNKNOWN;
-                    
-                    if (CompareMem(SectorBuffer + 2, "LILO", 4) == 0 || CompareMem(SectorBuffer + 6, "LILO", 4) == 0)
-                        Volume->BootCodeDetected = BOOTCODE_LINUX;
-                    else if (CompareMem(SectorBuffer + 3, "SYSLINUX", 8) == 0)
-                        Volume->BootCodeDetected = BOOTCODE_LINUX;
-                    else if (FindMem(SectorBuffer, 512, "Geom\0Hard Disk\0Read\0 Error\0", 27) >= 0)   // GRUB
-                        Volume->BootCodeDetected = BOOTCODE_LINUX;
-                    // TODO: also detect ISOLINUX, but that requires relaxation of the 512 byte limit above
-                    else if (FindMem(SectorBuffer, 512, "NTLDR", 5) >= 0)
-                        Volume->BootCodeDetected = BOOTCODE_WINDOWS;
-                    
-                    if (FindMem(SectorBuffer, 512, "Non-system disk", 15) >= 0)
-                        Volume->BootCodeDetected = BOOTCODE_NONE;   // dummy FAT boot sector
-                    
-                    // check for MBR partition table
-                    MbrTableFound = FALSE;
-                    MbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
-                    for (i = 0; i < 4; i++)
-                        if (MbrTable[i].StartLBA && MbrTable[i].Size)
-                            MbrTableFound = TRUE;
-                    for (i = 0; i < 4; i++)
-                        if (MbrTable[i].Flags != 0x00 && MbrTable[i].Flags != 0x80)
-                            MbrTableFound = FALSE;
-                    if (MbrTableFound) {
-                        Volume->MbrPartitionTable = AllocatePool(4 * 16);
-                        CopyMem(Volume->MbrPartitionTable, MbrTable, 4 * 16);
-                    }
-                    
                 }
+                
+                if (CompareMem(SectorBuffer + 2, "LILO", 4) == 0 || CompareMem(SectorBuffer + 6, "LILO", 4) == 0)
+                    Volume->BootCodeDetected = BOOTCODE_LINUX;
+                else if (CompareMem(SectorBuffer + 3, "SYSLINUX", 8) == 0)
+                    Volume->BootCodeDetected = BOOTCODE_LINUX;
+                else if (FindMem(SectorBuffer, 512, "Geom\0Hard Disk\0Read\0 Error\0", 27) >= 0)   // GRUB
+                    Volume->BootCodeDetected = BOOTCODE_LINUX;
+                else if (FindMem(SectorBuffer, 2048, "ISOLINUX", 8) >= 0)
+                    Volume->BootCodeDetected = BOOTCODE_LINUX;
+                else if (FindMem(SectorBuffer, 1024, "NTLDR", 5) >= 0)
+                    Volume->BootCodeDetected = BOOTCODE_WINDOWS;
+                
+#if REFIT_DEBUG > 0
+                Print(L"  Result of bootcode detection: %d\n", Volume->BootCodeDetected);
+#endif
+                
+                if (FindMem(SectorBuffer, 512, "Non-system disk", 15) >= 0)
+                    Volume->BootCodeDetected = BOOTCODE_NONE;   // dummy FAT boot sector
+                
+                // check for MBR partition table
+                MbrTableFound = FALSE;
+                MbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
+                for (i = 0; i < 4; i++)
+                    if (MbrTable[i].StartLBA && MbrTable[i].Size)
+                        MbrTableFound = TRUE;
+                for (i = 0; i < 4; i++)
+                    if (MbrTable[i].Flags != 0x00 && MbrTable[i].Flags != 0x80)
+                        MbrTableFound = FALSE;
+                if (MbrTableFound) {
+                    Volume->MbrPartitionTable = AllocatePool(4 * 16);
+                    CopyMem(Volume->MbrPartitionTable, MbrTable, 4 * 16);
+                }
+                
+            } else {
+#if REFIT_DEBUG > 0
+                CheckError(Status, L"while reading boot sector");
+#endif
             }
-            
         }
     }
     
@@ -230,14 +246,16 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
              DevicePathSubType(DevicePath) == MSG_FIBRECHANNEL_DP))
             Volume->DiskKind = DISK_KIND_EXTERNAL;    // USB/FireWire/FC device -> external
         if (DevicePathType(DevicePath) == MEDIA_DEVICE_PATH &&
-            DevicePathSubType(DevicePath) == MEDIA_CDROM_DP)
+            DevicePathSubType(DevicePath) == MEDIA_CDROM_DP) {
             Volume->DiskKind = DISK_KIND_OPTICAL;     // El Torito entry -> optical disk
+            Bootable = TRUE;
+        }
         
         if (DevicePathType(DevicePath) == MEDIA_DEVICE_PATH &&
             DevicePathSubType(DevicePath) == MEDIA_VENDOR_DP) {
             Volume->IsAppleLegacy = TRUE;             // legacy BIOS device entry
             // TODO: also check for Boot Camp GUID
-            Volume->BootCodeDetected = BOOTCODE_NONE; // this handle's BlockIO is just an alias for the whole device
+            Bootable = FALSE;   // this handle's BlockIO is just an alias for the whole device
         }
         
         if (DevicePathType(DevicePath) == MESSAGING_DEVICE_PATH) {
@@ -274,6 +292,14 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
         }
         
         DevicePath = NextDevicePath;
+    }
+    
+    if (!Bootable) {
+#if REFIT_DEBUG > 0
+        if (Volume->BootCodeDetected != BOOTCODE_NONE)
+            Print(L"  Volume considered non-bootable, but boot code is present\n");
+#endif
+        Volume->BootCodeDetected = BOOTCODE_NONE;
     }
     
     // default volume icon based on disk kind
@@ -398,6 +424,8 @@ VOID ScanVolumes(VOID)
                 // now we're reasonably sure the association is correct...
                 Volume->IsMbrPartition = TRUE;
                 Volume->MbrPartitionIndex = PartitionIndex;
+                if (Volume->VolName == NULL)
+                    Volume->VolName = PoolPrint(L"Partition %d", PartitionIndex + 1);
                 break;
             }
             
