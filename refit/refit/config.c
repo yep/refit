@@ -46,7 +46,7 @@
 
 // global configuration with default values
 
-REFIT_CONFIG        GlobalConfig = { 20, 0 };
+REFIT_CONFIG        GlobalConfig = { 20, 0, FALSE };
 
 //
 // read a file into a buffer
@@ -317,6 +317,8 @@ VOID ReadConfig(VOID)
             HandleEnum(TokenList, TokenCount, HideBadgesEnum, 3, &(GlobalConfig.HideBadges));
         } else if (StriCmp(TokenList[0], L"textonly") == 0) {
             SetTextOnly();
+        } else if (StriCmp(TokenList[0], L"legacyfirst") == 0) {
+            GlobalConfig.LegacyFirst = TRUE;
         } else {
             Print(L" unknown configuration command: '%s'\n", TokenList[0]);
         }

@@ -256,6 +256,7 @@ typedef struct {
 typedef struct {
     UINTN   Timeout;
     UINTN   HideBadges;
+    BOOLEAN LegacyFirst;
 } REFIT_CONFIG;
 
 extern REFIT_CONFIG GlobalConfig;

@@ -686,8 +686,11 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     MainMenu.TimeoutSeconds = GlobalConfig.Timeout;
     
     // scan for loaders and tools, add them to the menu
+    if (GlobalConfig.LegacyFirst)
+        ScanLegacy();
     ScanLoader();
-    ScanLegacy();
+    if (!GlobalConfig.LegacyFirst)
+        ScanLegacy();
     ScanTool();
     DebugPause();
     
