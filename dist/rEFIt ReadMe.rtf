@@ -7,11 +7,11 @@
 \f0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\qc\pardirnatural
 
-\f1\b\fs36 \cf0 rEFIt 0.5 ReadMe
+\f1\b\fs36 \cf0 rEFIt 0.6 ReadMe
 \f0\b0\fs28 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 \cf0 \
-rEFIt is a boot menu and maintenance toolkit for Intel-based Macs. You can use it to boot multiple operating systems without needing a blessed HFS+ partition for each one. It also provides an easy way to enter and explore the EFI environment.\
+rEFIt is a boot menu and maintenance toolkit for Intel-based Macs. You can use it to boot multiple operating systems easily, including triple-boot setups with Boot Camp. It also provides an easy way to enter and explore the EFI environment.\
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
@@ -96,9 +96,13 @@ The second row of icons contains additional functions, like starting the EFI she
 
 \f1\b \cf0 Boot Camp support
 \f0\b0 \
-When you have used Boot Camp to install Windows XP (or another legacy-booting operating system) on your Mac, rEFIt will detect that and display the Boot Camp icon in the menu. The entry will be labeled \'d2Legacy OS\'d3 because rEFIt currently cannot detect exactly which operating system you have installed.\
+When you have used Boot Camp to install Windows XP or other legacy-booting operating systems on your Mac, rEFIt will detect that and display them as choices in the menu. Multiple OSes on separate partitions are detected and supported; rEFIt will change the active partition flag accordingly in the MBR before engaging BIOS booting.\
 \
-After you select this entry, your Mac will reboot, then start Windows without showing the rEFIt menu first. This is by design. Apple has not yet published the necessary technical documentation on Boot Camp that would allow rEFIt to boot Windows directly.\
+Note that starting with version 0.6, rEFIt can boot legacy OSes directly, without the additional reboot used in 0.5. It also recognizes common Linux and Windows boot sectors and displays the appropriate icon.\
+\
+For a triple boot setup (Mac OS X, Windows XP, Linux), the recommendations are to install Windows first, and install LILO into the boot sector of the Linux partition, not in the MBR.\
+\
+For a dual boot setup with just Mac OS X and Linux, you can install LILO in the MBR.\
 \
 
 \f1\b The EFI Shell\
@@ -108,14 +112,36 @@ After you select this entry, your Mac will reboot, then start Windows without sh
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b\fs32 \cf0 Customizing the menu\
+\f1\b\fs32 \cf0 Customizing rEFIt\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
+\f1\b \cf0 Using the configuration file\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0\b0 \cf0 Starting with version 0.6, rEFIt has a configuration file. It must be in the same folder as \'d2refit.efi\'d3 and must be named \'d2refit.conf\'d3. An example file with comments for each option is provided with the binary distribution.\
+\
+The configuration file currently allows you to change the timeout, force text-only mode, hide volume badge icons, and re-order legacy boot entries.\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f1\b \cf0 Customizing icons\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0\b0 \cf0 All icons displayed in the main menu are loaded from .icns files in the \'d2efi/refit/icons\'d3 directory. Changing those affects the default icons. That is, when you replace \'d2os_mac.icns\'d3, it will be used for Mac OS X on the internal disk as well as the Mac OS X install DVD. In any case, make sure that the icon you use has an icon image for the required resolution \'d1 128x128 for os_*, 48x48 for func_* and tool_*, 32x32 for vol_*.\
+\
+To customize the icon only for a specific boot entry (e.g. Mac OS X on the internal disk), put the .icns file into the same directory as the EFI loader and give it the same name, e.g. \'d2efi/linux/elilo.icns\'d3 if you use \'d2elilo.efi\'d3.\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
 \f1\b \cf0 Adding Linux with elilo
 \f0\b0 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li360\ql\qnatural\pardirnatural
+\cf0 NOTE: It is currently recommended to boot Linux through BIOS compatibility mode (a.k.a. Boot Camp) using LILO or GRUB. Otherwise, the fully accelerated ATI and Intel graphics drivers will not work.\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
 To boot Linux through rEFIt, add a folder inside the \'d2efi\'d3 folder. Copy the following files there:\
 \pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
 \cf0 \'a5	elilo (called either \'d2elilo.efi\'d3 or \'d2e.efi\'d3)\
@@ -128,12 +154,10 @@ Make sure that elilo.conf uses relative paths for the \'d2image=\'d3 and \'d2ini
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b \cf0 Customizing icons\
+\f1\b \cf0 Removing the shell\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f0\b0 \cf0 All icons displayed in the main menu are loaded from .icns files in the \'d2efi/refit/icons\'d3 directory. Changing those affects the default icons. That is, when you replace \'d2os_mac.icns\'d3, it will be used for Mac OS X on the internal disk as well as the Mac OS X install DVD. In any case, make sure that the icon you use has an icon image for the required resolution \'d1 128x128 for os_*, 48x48 for func_* and tool_*, 32x32 for vol_*.\
-\
-To customize the icon only for a specific boot entry (e.g. Mac OS X on the internal disk), put the .icns file into the same directory as the loader and give it the same name, e.g. \'d2efi/linux/elilo.icns\'d3 if you use \'d2elilo.efi\'d3.\
+\f0\b0 \cf0 You may want to remove the EFI shell from the menu, for example in a student lab setting. Simply remove the \'d2efi/tools\'d3 folder. (Also remove the \'d2efi/refit/apps\'d3 folder if you still have it from an earlier version of rEFIt.) When the \'d2Shell.efi\'d3 file is not found, the corresponding menu choice disappears automatically.\
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
@@ -222,6 +246,13 @@ dhclient.efi\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0 \cf0 \
+Version 0.6:\
+\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
+\cf0 \'a5	Directly boots into legacy operating systems installed via Boot Camp.\
+\'a5	Supports multiple legacy operating systems by detecting their partitions and changing the active partition flag in the MBR.\
+\'a5	Allows customization through a configuration file.\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
 Version 0.5:\
 \pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
 \cf0 \'a5	Supports legacy operating systems installed via Boot Camp.\
@@ -262,8 +293,7 @@ First public release.\
 \f0\b0 \
 Here are some ideas how rEFIt might evolve in the future:\
 \pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	Make the boot menu configurable, e.g. with a default entry and a timeout.\
-\'a5	Port GNU parted to the EFI environment. GNU parted is a disk partitioning tool capable of resizing most common file system types without losing data.\
+\cf0 \'a5	Port GNU parted to the EFI environment. GNU parted is a disk partitioning tool capable of resizing most common file system types without losing data.\
 \'a5	Add menu entries to configure the network.\
 \'a5	Make EFI drivers for various file systems like ext2 (the code in grub should be a good starting point) to make them accessible in EFI space.\
 \'a5	Add various diagnostics to the boot menu.\
