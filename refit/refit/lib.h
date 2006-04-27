@@ -37,7 +37,8 @@
 #include "efi.h"
 #include "efilib.h"
 
-#include "ConsoleControl.h"
+#include "efiUgaDraw.h"
+#include "efiConsoleControl.h"
 
 #define REFIT_DEBUG (0)
 

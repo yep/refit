@@ -228,16 +228,15 @@ static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC Sty
     EFI_STATUS Status;
     EFI_INPUT_KEY key;
     UINTN index;
-    BOOLEAN HaveTimeout;
-    UINTN TimeoutCountdown;
+    BOOLEAN HaveTimeout = FALSE;
+    UINTN TimeoutCountdown = 0;
     CHAR16 *TimeoutMessage;
     UINTN MenuExit;
     
     if (Screen->TimeoutSeconds > 0) {
         HaveTimeout = TRUE;
         TimeoutCountdown = Screen->TimeoutSeconds * 10;
-    } else
-        HaveTimeout = FALSE;
+    }
     MenuExit = 0;
     
     StyleFunc(Screen, &State, MENU_FUNCTION_INIT, NULL);
@@ -335,7 +334,7 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
 {
     INTN i;
     UINTN MenuWidth, ItemWidth, MenuHeight;
-    static MenuPosY;
+    static UINTN MenuPosY;
     static CHAR16 **DisplayStrings;
     CHAR16 *TimeoutMessage;
     

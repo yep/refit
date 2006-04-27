@@ -148,12 +148,13 @@ static CHAR16 *ReadLine(REFIT_FILE *File)
         if (Line == NULL)
             return NULL;
         
+        q = Line;
         if (File->Encoding == ENCODING_ISO8859_1) {
-            for (p = LineStart, q = Line; p < LineEnd; )
+            for (p = LineStart; p < LineEnd; )
                 *q++ = *p++;
         } else if (File->Encoding == ENCODING_UTF8) {
             // TODO: actually handle UTF-8
-            for (p = LineStart, q = Line; p < LineEnd; )
+            for (p = LineStart; p < LineEnd; )
                 *q++ = *p++;
         }
         *q = 0;

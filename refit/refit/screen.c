@@ -87,11 +87,11 @@ VOID InitScreen(VOID)
     UINTN i;
     
     // get protocols
-    Status = BS->LocateProtocol(&gEfiConsoleControlProtocolGuid, NULL, (VOID **) &ConsoleControl);
+    Status = LibLocateProtocol(&gEfiConsoleControlProtocolGuid, (VOID **) &ConsoleControl);
     if (Status != EFI_SUCCESS)
         ConsoleControl = NULL;
 #ifndef TEXTONLY
-    Status = BS->LocateProtocol(&gEfiUgaDrawProtocolGuid, NULL, (VOID **) &UGA);
+    Status = LibLocateProtocol(&gEfiUgaDrawProtocolGuid, (VOID **) &UGA);
     if (Status != EFI_SUCCESS)
         UGA = NULL;
 #endif  /* !TEXTONLY */
