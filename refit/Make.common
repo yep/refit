@@ -11,7 +11,7 @@ EFICRT0         = /usr/lib
 ARCH            = $(shell uname -m | sed s,i[3456789]86,ia32,)
 CPPFLAGS        = -I$(EFIINC) -I$(EFIINC)/$(ARCH) -I$(EFIINC)/protocol -DCONFIG_$(ARCH)
 
-OPTIMFLAGS      = -O2 
+OPTIMFLAGS      = -O2 -fno-strict-aliasing
 DEBUGFLAGS      = -Wall
 CFLAGS          = $(OPTIMFLAGS) -mcpu=i386 -fpic -fshort-wchar $(DEBUGFLAGS)
 LDFLAGS         = -nostdlib -znocombreloc
