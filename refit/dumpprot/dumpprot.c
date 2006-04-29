@@ -41,7 +41,7 @@
 #include "efilib.h"
 #include "efiUgaDraw.h"
 #include "efiUgaIo.h"
-#include "ConsoleControl.h"
+#include "efiConsoleControl.h"
 
 //
 // helper functions

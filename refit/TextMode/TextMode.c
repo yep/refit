@@ -35,7 +35,7 @@
  */
 
 #include "efi.h"
-#include "ConsoleControl.h"
+#include "efiConsoleControl.h"
 
 EFI_GUID gEfiConsoleControlProtocolGuid = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
 
