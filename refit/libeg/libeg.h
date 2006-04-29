@@ -71,6 +71,7 @@ typedef struct {
 
 VOID egInitScreen(VOID);
 VOID egGetScreenSize(OUT UINTN *ScreenWidth, OUT UINTN *ScreenHeight);
+// FUTURE: text vs. graphics handling
 
 EG_IMAGE * egCreateImage(IN UINTN Width, IN UINTN Height, IN BOOLEAN HasAlpha);
 EG_IMAGE * egCreateFilledImage(IN UINTN Width, IN UINTN Height, IN BOOLEAN HasAlpha, IN EG_PIXEL *Color);
@@ -82,13 +83,15 @@ EG_IMAGE * egLoadIcon(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN 
 EG_IMAGE * egPrepareEmbeddedImage(IN EG_EMBEDDED_IMAGE *EmbeddedImage, IN BOOLEAN WantAlpha);
 
 VOID egFillImage(IN OUT EG_IMAGE *CompImage, IN EG_PIXEL *Color);
+VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
+                     IN UINTN PosX, IN UINTN PosY, IN UINTN Width, IN UINTN Height,
+                     IN EG_PIXEL *Color);
 VOID egComposeImage(IN OUT EG_IMAGE *CompImage, IN EG_IMAGE *TopImage, IN UINTN PosX, IN UINTN PosY);
-// FUTURE: egFillImageArea
 
 VOID egClearScreen(IN EG_PIXEL *Color);
 VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY);
 // FUTURE: egDrawImageArea
 
-// text
+// FUTURE: text functions
 
 /* EOF */

@@ -307,14 +307,65 @@ EG_IMAGE * egPrepareEmbeddedImage(IN EG_EMBEDDED_IMAGE *EmbeddedImage, IN BOOLEA
 // Compositing
 //
 
+static VOID egCalculateOverlap(IN UINTN SrcWidth, IN UINTN SrcHeight,
+                               IN UINTN DestWidth, IN UINTN DestHeight,
+                               IN UINTN PosXInDest, IN UINTN PosYInDest,
+                               OUT UINTN *CompWidthOut, OUT UINTN *CompHeightOut)
+{
+    UINTN CompWidth, CompHeight;
+    
+    if (PosXInDest >= DestWidth || PosYInDest >= DestHeight) {
+        // out of bounds, operation has no effect
+        CompWidth = 0;
+        CompHeight = 0;
+    } else {
+        // calculate affected area
+        CompWidth  = DestWidth  - PosXInDest;
+        CompHeight = DestHeight - PosYInDest;
+        if (CompWidth  > SrcWidth)
+            CompWidth  = SrcWidth;
+        if (CompHeight > SrcHeight)
+            CompHeight = SrcHeight;
+    }
+    *CompWidthOut  = CompWidth;
+    *CompHeightOut = CompHeight;
+    
+    // FUTURE: use signed ints, do clipping in all directions
+}
+
 VOID egFillImage(IN OUT EG_IMAGE *CompImage, IN EG_PIXEL *Color)
 {
-    EG_PIXEL    *PixelPtr;
     UINTN       i;
+    EG_PIXEL    *PixelPtr;
     
     PixelPtr = CompImage->PixelData;
     for (i = 0; i < CompImage->Width * CompImage->Height; i++, PixelPtr++)
         *PixelPtr = *Color;
+}
+
+VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
+                     IN UINTN PosX, IN UINTN PosY, IN UINTN Width, IN UINTN Height,
+                     IN EG_PIXEL *Color)
+{
+    UINTN       x, y;
+    UINTN       CompWidth, CompHeight;
+    EG_PIXEL    *PixelPtr;
+    EG_PIXEL    *PixelBasePtr;
+    
+    egCalculateOverlap(Width, Height,
+                       CompImage->Width, CompImage->Height,
+                       PosX, PosY,
+                       &CompWidth, &CompHeight);
+    
+    if (CompWidth > 0) {
+        PixelBasePtr = CompImage->PixelData + PosY * CompImage->Width + PosX;
+        for (y = 0; y < CompHeight; y++) {
+            PixelPtr = PixelBasePtr;
+            for (x = 0; x < CompWidth; x++, PixelPtr++)
+                *PixelPtr = *Color;
+            PixelBasePtr += CompImage->Width;
+        }
+    }
 }
 
 static VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
@@ -344,22 +395,17 @@ static VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
 
 VOID egComposeImage(IN OUT EG_IMAGE *CompImage, IN EG_IMAGE *TopImage, IN UINTN PosX, IN UINTN PosY)
 {
-    UINTN CompWidth, CompHeight;
+    UINTN       CompWidth, CompHeight;
     
-    if (PosX >= CompImage->Width || PosY >= CompImage->Height)
-        return;   // operation has no effect
-    
-    // calculate affected area
-    CompWidth  = CompImage->Width  - PosX;
-    CompHeight = CompImage->Height - PosY;
-    if (CompWidth  > TopImage->Width)
-        CompWidth  = TopImage->Width;
-    if (CompHeight > TopImage->Height)
-        CompHeight = TopImage->Height;
+    egCalculateOverlap(TopImage->Width,  TopImage->Height,
+                       CompImage->Width, CompImage->Height,
+                       PosX, PosY,
+                       &CompWidth, &CompHeight);
     
     // compose
-    egRawCompose(CompImage->PixelData + PosY * CompImage->Width + PosX, TopImage->PixelData,
-                 CompWidth, CompHeight, CompImage->Width, TopImage->Width);
+    if (CompWidth > 0)
+        egRawCompose(CompImage->PixelData + PosY * CompImage->Width + PosX, TopImage->PixelData,
+                     CompWidth, CompHeight, CompImage->Width, TopImage->Width);
 }
 
 //
