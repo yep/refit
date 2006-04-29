@@ -1,6 +1,6 @@
 /*
- * libeg/libegint.h
- * EFI graphics library internal header
+ * libeg/text.c
+ * Text drawing functions
  *
  * Copyright (c) 2006 Christoph Pfisterer
  * All rights reserved.
@@ -34,29 +34,60 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <efi.h>
-#include <efilib.h>
+#include "libegint.h"
 
-#include "libeg.h"
+#include "egemb_font.h"
+#define FONT_CELL_WIDTH (7)
+#define FONT_CELL_HEIGHT (12)
 
-/* types */
+static EG_IMAGE *FontImage = NULL;
 
-typedef EG_IMAGE * (*EG_LOADER_FUNC)(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha);
+//
+// Text rendering
+//
 
-/* functions */
+VOID egMeasureText(IN CHAR16 *Text, OUT UINTN *Width, OUT UINTN *Height)
+{
+    if (Width != NULL)
+        *Width = StrLen(Text) * FONT_CELL_WIDTH;
+    if (Height != NULL)
+        *Height = FONT_CELL_HEIGHT;
+}
 
-VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
-                  IN UINTN Width, IN UINTN Height,
-                  IN UINTN CompLineOffset, IN UINTN TopLineOffset);
-
-#define PLPTR(imagevar, colorname) ((UINT8 *) &((imagevar)->PixelData->colorname))
-
-VOID egDecompressIcnsRLE(IN OUT UINT8 **CompData, IN OUT UINTN *CompLen, IN UINT8 *DestPlanePtr, IN UINTN PixelCount);
-VOID egInsertPlane(IN UINT8 *SrcDataPtr, IN UINT8 *DestPlanePtr, IN UINTN PixelCount);
-VOID egSetPlane(IN UINT8 *DestPlanePtr, IN UINT8 Value, IN UINTN PixelCount);
-VOID egCopyPlane(IN UINT8 *SrcPlanePtr, IN UINT8 *DestPlanePtr, IN UINTN PixelCount);
-
-EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha);
-EG_IMAGE * egLoadICNSIcon(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha);
+VOID egRenderText(IN CHAR16 *Text, IN OUT EG_IMAGE *CompImage, IN UINTN PosX, IN UINTN PosY)
+{
+    EG_PIXEL        *BufferPtr;
+    EG_PIXEL        *FontPixelData;
+    UINTN           BufferLineOffset, FontLineOffset;
+    UINTN           TextLength;
+    UINTN           i, c;
+    
+    // clip the text
+    TextLength = StrLen(Text);
+    if (TextLength * FONT_CELL_WIDTH + PosX > CompImage->Width)
+        TextLength = (CompImage->Width - PosX) / FONT_CELL_WIDTH;
+    
+    // load the font
+    if (FontImage == NULL)
+        FontImage = egPrepareEmbeddedImage(&egemb_font, TRUE);
+    
+    // render it
+    BufferPtr = CompImage->PixelData;
+    BufferLineOffset = CompImage->Width;
+    BufferPtr += PosX + PosY * BufferLineOffset;
+    FontPixelData = FontImage->PixelData;
+    FontLineOffset = FontImage->Width;
+    for (i = 0; i < TextLength; i++) {
+        c = Text[i];
+        if (c < 32 || c >= 127)
+            c = 95;
+        else
+            c -= 32;
+        egRawCompose(BufferPtr, FontPixelData + c * FONT_CELL_WIDTH,
+                     FONT_CELL_WIDTH, FONT_CELL_HEIGHT,
+                     BufferLineOffset, FontLineOffset);
+        BufferPtr += FONT_CELL_WIDTH;
+    }
+}
 
 /* EOF */

@@ -368,9 +368,9 @@ VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
     }
 }
 
-static VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
-                         IN UINTN Width, IN UINTN Height,
-                         IN UINTN CompLineOffset, IN UINTN TopLineOffset)
+VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
+                  IN UINTN Width, IN UINTN Height,
+                  IN UINTN CompLineOffset, IN UINTN TopLineOffset)
 {
     UINTN       x, y;
     EG_PIXEL    *TopPtr, *CompPtr;

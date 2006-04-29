@@ -5,7 +5,7 @@
 
 LOCAL_CPPFLAGS  = -I.
 
-OBJS            = screen.o image.o load_bmp.o load_icns.o
+OBJS            = screen.o image.o text.o load_bmp.o load_icns.o
 TARGET          = libeg.a
 
 all: $(TARGET)

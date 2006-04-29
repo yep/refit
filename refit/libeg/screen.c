@@ -42,13 +42,13 @@
 // Console defines and variables
 
 static EFI_GUID ConsoleControlProtocolGuid = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
-static EFI_CONSOLE_CONTROL_PROTOCOL *ConsoleControl;
+static EFI_CONSOLE_CONTROL_PROTOCOL *ConsoleControl = NULL;
 
 static EFI_GUID UgaDrawProtocolGuid = EFI_UGA_DRAW_PROTOCOL_GUID;
-static EFI_UGA_DRAW_PROTOCOL *UgaDraw;
+static EFI_UGA_DRAW_PROTOCOL *UgaDraw = NULL;
 
-UINTN egScreenWidth  = 800;
-UINTN egScreenHeight = 600;
+static UINTN egScreenWidth  = 800;
+static UINTN egScreenHeight = 600;
 
 //
 // Screen handling
@@ -57,7 +57,6 @@ UINTN egScreenHeight = 600;
 VOID egInitScreen(VOID)
 {
     EFI_STATUS Status;
-    //EFI_CONSOLE_CONTROL_SCREEN_MODE CurrentMode;
     UINT32 UGAWidth, UGAHeight, UGADepth, UGARefreshRate;
     
     // get protocols
@@ -87,6 +86,38 @@ VOID egGetScreenSize(OUT UINTN *ScreenWidth, OUT UINTN *ScreenHeight)
         *ScreenWidth = egScreenWidth;
     if (ScreenHeight != NULL)
         *ScreenHeight = egScreenHeight;
+}
+
+BOOLEAN egHasGraphicsMode(VOID)
+{
+    return (UgaDraw != NULL) ? TRUE : FALSE;
+}
+
+BOOLEAN egIsGraphicsModeEnabled(VOID)
+{
+    EFI_CONSOLE_CONTROL_SCREEN_MODE CurrentMode;
+    
+    if (ConsoleControl != NULL) {
+        ConsoleControl->GetMode(ConsoleControl, &CurrentMode, NULL, NULL);
+        return (CurrentMode == EfiConsoleControlScreenGraphics) ? TRUE : FALSE;
+    }
+    
+    return FALSE;
+}
+
+VOID egSetGraphicsModeEnabled(IN BOOLEAN Enable)
+{
+    EFI_CONSOLE_CONTROL_SCREEN_MODE CurrentMode;
+    EFI_CONSOLE_CONTROL_SCREEN_MODE NewMode;
+    
+    if (ConsoleControl != NULL) {
+        ConsoleControl->GetMode(ConsoleControl, &CurrentMode, NULL, NULL);
+        
+        NewMode = Enable ? EfiConsoleControlScreenGraphics
+                         : EfiConsoleControlScreenText;
+        if (CurrentMode != NewMode)
+            ConsoleControl->SetMode(ConsoleControl, NewMode);
+    }
 }
 
 //

@@ -71,7 +71,13 @@ typedef struct {
 
 VOID egInitScreen(VOID);
 VOID egGetScreenSize(OUT UINTN *ScreenWidth, OUT UINTN *ScreenHeight);
-// FUTURE: text vs. graphics handling
+BOOLEAN egHasGraphicsMode(VOID);
+BOOLEAN egIsGraphicsModeEnabled(VOID);
+VOID egSetGraphicsModeEnabled(IN BOOLEAN Enable);
+// NOTE: Even when egHasGraphicsMode() returns FALSE, you should
+//  call egSetGraphicsModeEnabled(FALSE) to ensure the system
+//  is running in text mode. egHasGraphicsMode() only determines
+//  if libeg can draw to the screen in graphics mode.
 
 EG_IMAGE * egCreateImage(IN UINTN Width, IN UINTN Height, IN BOOLEAN HasAlpha);
 EG_IMAGE * egCreateFilledImage(IN UINTN Width, IN UINTN Height, IN BOOLEAN HasAlpha, IN EG_PIXEL *Color);
@@ -88,10 +94,11 @@ VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
                      IN EG_PIXEL *Color);
 VOID egComposeImage(IN OUT EG_IMAGE *CompImage, IN EG_IMAGE *TopImage, IN UINTN PosX, IN UINTN PosY);
 
+VOID egMeasureText(IN CHAR16 *Text, OUT UINTN *Width, OUT UINTN *Height);
+VOID egRenderText(IN CHAR16 *Text, IN OUT EG_IMAGE *CompImage, IN UINTN PosX, IN UINTN PosY);
+
 VOID egClearScreen(IN EG_PIXEL *Color);
 VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY);
 // FUTURE: egDrawImageArea
-
-// FUTURE: text functions
 
 /* EOF */
