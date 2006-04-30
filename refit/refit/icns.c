@@ -48,7 +48,7 @@ typedef struct {
     UINTN       PixelSize;
 } BUILTIN_ICON;
 
-BUILTIN_ICON BuiltinIconTable[] = {
+BUILTIN_ICON BuiltinIconTable[BUILTIN_ICON_COUNT] = {
     { NULL, L"\\icons\\os_mac.icns", 128 },
     { NULL, L"\\icons\\os_linux.icns", 128 },
     { NULL, L"\\icons\\os_win.icns", 128 },
@@ -63,7 +63,6 @@ BUILTIN_ICON BuiltinIconTable[] = {
     { NULL, L"\\icons\\os_hwtest.icns", 128 },
     { NULL, L"\\icons\\os_legacy.icns", 128 },
 };
-#define BUILTIN_ICON_COUNT (13)
 
 EG_IMAGE * BuiltinIcon(IN UINTN Id)
 {

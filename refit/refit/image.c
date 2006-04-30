@@ -58,7 +58,7 @@ typedef struct {
     EG_IMAGE *Image;
 } BUILTIN_IMAGE;
 
-BUILTIN_IMAGE BuiltinImageTable[] = {
+BUILTIN_IMAGE BuiltinImageTable[BUILTIN_IMAGE_COUNT] = {
     { NULL, NULL },
     { &egemb_refit_banner, NULL },
     { &egemb_back_normal_big, NULL },
@@ -66,7 +66,6 @@ BUILTIN_IMAGE BuiltinImageTable[] = {
     { &egemb_back_normal_small, NULL },
     { &egemb_back_selected_small, NULL },
 };
-#define BUILTIN_IMAGE_COUNT (6)
 
 //
 // image retrieval

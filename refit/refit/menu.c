@@ -588,14 +588,14 @@ static VOID DrawMainMenuEntry(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN X
     
     if (Entry->Row == 0) {
         if (selected)
-            BackgroundImage = BuiltinImage(3);  // image_back_selected_big
+            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_SELECTED_BIG);
         else
-            BackgroundImage = BuiltinImage(2);  // image_back_normal_big
+            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_NORMAL_BIG);
     } else {
         if (selected)
-            BackgroundImage = BuiltinImage(5);  // image_back_selected_small
+            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_SELECTED_SMALL);
         else
-            BackgroundImage = BuiltinImage(4);  // image_back_normal_small
+            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_NORMAL_SMALL);
     }
     BltImageCompositeBadge(BackgroundImage, Entry->Image, Entry->BadgeImage, XPos, YPos);
 }

@@ -31,13 +31,15 @@ BUILD_DIR  = $(SDK_BUILD_DIR)\refit\$(BASE_NAME)
 !include $(SDK_INSTALL_DIR)\include\$(EFI_INC_DIR)\makefile.hdr
 INC = -I $(SDK_INSTALL_DIR)\include\$(EFI_INC_DIR) \
       -I $(SDK_INSTALL_DIR)\include\$(EFI_INC_DIR)\$(PROCESSOR) \
-      -I $(SDK_INSTALL_DIR)\refit\include $(INC)
+      -I $(SDK_INSTALL_DIR)\refit\include \
+      -I $(SDK_INSTALL_DIR)\refit\libeg $(INC)
 
 #
 # Libraries
 #
 
-LIBS = $(LIBS) $(SDK_BUILD_DIR)\lib\libefi\libefi.lib
+LIBS = $(LIBS) $(SDK_BUILD_DIR)\lib\libefi\libefi.lib \
+               $(SDK_BUILD_DIR)\refit\libeg\libeg.lib
 
 #
 # Default target
@@ -58,8 +60,7 @@ OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\screen.obj \
     $(BUILD_DIR)\icns.obj \
     $(BUILD_DIR)\image.obj \
-    $(BUILD_DIR)\eei.obj \
-    $(BUILD_DIR)\lib.obj  \
+    $(BUILD_DIR)\lib.obj \
 
 #
 # Source file dependencies
@@ -71,7 +72,6 @@ $(BUILD_DIR)\menu.obj       : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\screen.obj     : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\icns.obj       : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\image.obj      : $(*B).c $(INC_DEPS) lib.h
-$(BUILD_DIR)\eei.obj        : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\lib.obj        : $(*B).c $(INC_DEPS) lib.h
 
 #

@@ -334,7 +334,7 @@ VOID BltClearScreen(IN BOOLEAN ShowBanner)
 {
     egClearScreen(&BackgroundPixel);
     if (ShowBanner) {
-        EG_IMAGE *banner = BuiltinImage(1);
+        EG_IMAGE *banner = BuiltinImage(BUILTIN_IMAGE_BANNER);
         BltImage(banner, (UGAWidth - banner->Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
     }
     GraphicsScreenDirty = FALSE;

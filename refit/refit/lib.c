@@ -304,11 +304,11 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
     
     // default volume icon based on disk kind
     if (Volume->DiskKind == DISK_KIND_INTERNAL)
-        Volume->VolBadgeImage = BuiltinIcon(8);
+        Volume->VolBadgeImage = BuiltinIcon(BUILTIN_ICON_VOL_INTERNAL);
     else if (Volume->DiskKind == DISK_KIND_EXTERNAL)
-        Volume->VolBadgeImage = BuiltinIcon(9);
+        Volume->VolBadgeImage = BuiltinIcon(BUILTIN_ICON_VOL_EXTERNAL);
     else if (Volume->DiskKind == DISK_KIND_OPTICAL)
-        Volume->VolBadgeImage = BuiltinIcon(10);
+        Volume->VolBadgeImage = BuiltinIcon(BUILTIN_ICON_VOL_OPTICAL);
     
     // open the root directory of the volume
     Volume->RootDir = LibOpenRoot(Volume->DeviceHandle);

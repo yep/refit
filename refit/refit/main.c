@@ -79,7 +79,7 @@ static REFIT_MENU_SCREEN AboutMenu      = { L"About", NULL, 0, NULL, 0, NULL, 0,
 static VOID AboutRefit(VOID)
 {
     if (AboutMenu.EntryCount == 0) {
-        AboutMenu.TitleImage = BuiltinIcon(4);
+        AboutMenu.TitleImage = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
         AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.6");
         AddMenuInfoLine(&AboutMenu, L"");
         AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006 Christoph Pfisterer");
@@ -187,28 +187,28 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
     LoaderKind = 0;
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
         if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(0);  // os_mac
+            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_MAC);
         Entry->UseGraphicsMode = TRUE;
         LoaderKind = 1;
     } else if (StriCmp(FileName, L"diags.efi") == 0) {
         if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(11); // os_hwtest
+            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_HWTEST);
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
         if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(1);  // os_linux
+            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_LINUX);
         LoaderKind = 2;
     } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
         if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(2);  // os_win
+            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_WIN);
     } else if (StriCmp(FileName, L"xom.efi") == 0) {
         if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(2);  // os_win
+            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_WIN);
         Entry->UseGraphicsMode = TRUE;
         LoaderKind = 3;
     }
     if (Entry->me.Image == NULL)
-        Entry->me.Image = BuiltinIcon(3);  // os_unknown
+        Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_UNKNOWN);
     
     // create the submenu
     SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
@@ -522,11 +522,11 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
     Entry->me.Tag          = TAG_LEGACY;
     Entry->me.Row          = 0;
     if (Volume->BootCodeDetected == BOOTCODE_WINDOWS)
-        Entry->me.Image    = BuiltinIcon(2);   // os_win
+        Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_WIN);
     else if (Volume->BootCodeDetected == BOOTCODE_LINUX)
-        Entry->me.Image    = BuiltinIcon(1);   // os_linux
+        Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LINUX);
     else
-        Entry->me.Image    = BuiltinIcon(12);  // os_legacy
+        Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LEGACY);
     if (GlobalConfig.HideBadges == 0 ||
         (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
         Entry->me.BadgeImage   = Volume->VolBadgeImage;
@@ -642,11 +642,11 @@ static VOID ScanTool(VOID)
     // look for the EFI shell
     SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
     if (FileExists(SelfRootDir, FileName)) {
-        AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
+        AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
     } else {
         StrCpy(FileName, L"\\efi\\tools\\shell.efi");
         if (FileExists(SelfRootDir, FileName)) {
-            AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(7), FALSE);
+            AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
         }
     }
 }
@@ -695,9 +695,9 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     DebugPause();
     
     // fixed other menu entries
-    MenuEntryAbout.Image = BuiltinIcon(4);
+    MenuEntryAbout.Image = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
     AddMenuEntry(&MainMenu, &MenuEntryAbout);
-    MenuEntryReset.Image = BuiltinIcon(6);
+    MenuEntryReset.Image = BuiltinIcon(BUILTIN_ICON_FUNC_RESET);
     AddMenuEntry(&MainMenu, &MenuEntryReset);
     
     // wait for user ACK when there were errors
