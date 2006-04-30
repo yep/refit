@@ -40,7 +40,7 @@
 // Load BMP image
 //
 
-EG_IMAGE * egLoadBMPIcon(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha)
+EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha)
 {
     // TODO
     
