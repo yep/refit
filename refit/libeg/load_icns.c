@@ -56,7 +56,7 @@ VOID egDecompressIcnsRLE(IN OUT UINT8 **CompData, IN OUT UINTN *CompLen, IN UINT
     pp_left = PixelCount;
     
     // decode
-    while (cp + 1 < cp_end) {
+    while (cp + 1 < cp_end && pp_left > 0) {
         len = *cp++;
         if (len & 0x80) {   // compressed data: repeat next byte
             len -= 125;
@@ -77,6 +77,10 @@ VOID egDecompressIcnsRLE(IN OUT UINT8 **CompData, IN OUT UINTN *CompLen, IN UINT
             }
         }
         pp_left -= len;
+    }
+    
+    if (pp_left > 0) {
+        Print(L" egDecompressIcnsRLE: still need %d bytes of pixel data\n", pp_left);
     }
     
     // record what's left of the compressed data stream
@@ -190,6 +194,9 @@ EG_IMAGE * egLoadICNSIcon(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
         egDecompressIcnsRLE(&CompData, &CompLen, PLPTR(NewImage, g), PixelCount);
         egDecompressIcnsRLE(&CompData, &CompLen, PLPTR(NewImage, b), PixelCount);
         // possible assertion: CompLen == 0
+        if (CompLen > 0) {
+            Print(L" egLoadICNSIcon: %d bytes of compressed data left\n", CompLen);
+        }
         
     } else {
         
