@@ -76,7 +76,7 @@ static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
 #define TILE_XSPACING (8)
 #define TILE_YSPACING (16)
 
-static REFIT_IMAGE TextBuffer = { NULL, LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT };
+static EG_IMAGE *TextBuffer = NULL; // = { LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT };
 
 #endif  /* !TEXTONLY */
 
@@ -448,39 +448,24 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
 // graphical generic style
 //
 
+static EG_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
+static EG_PIXEL SelectionBackgroundPixel = { 0xff, 0xff, 0xff, 0 };
+
 static VOID DrawMenuText(IN CHAR16 *Text, IN UINTN SelectedWidth, IN UINTN XPos, IN UINTN YPos)
 {
-    UINT8 *Ptr;
-    UINTN i, x, y;
+    if (TextBuffer == NULL)
+        TextBuffer = egCreateImage(LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT, FALSE);
     
-    if (TextBuffer.PixelData == NULL)
-        TextBuffer.PixelData = AllocatePool(TextBuffer.Width * TextBuffer.Height * 4);
-    
-    // clear the buffer
-    Ptr = TextBuffer.PixelData;
-    for (i = 0; i < TextBuffer.Width * TextBuffer.Height; i++) {
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0;
-    }
-    
-    // draw selection background
+    egFillImage(TextBuffer, &BackgroundPixel);
     if (SelectedWidth > 0) {
-        for (y = 0; y < TextBuffer.Height; y++) {
-            Ptr = TextBuffer.PixelData + y * TextBuffer.Width * 4;
-            for (x = 0; x < SelectedWidth; x++) {
-                *Ptr++ = 0xff;
-                *Ptr++ = 0xff;
-                *Ptr++ = 0xff;
-                *Ptr++ = 0;
-            }
-        }
+        // draw selection bar background
+        egFillImageArea(TextBuffer, 0, 0, SelectedWidth, TextBuffer->Height,
+                        &SelectionBackgroundPixel);
     }
     
     // render the text
-    RenderText(Text, &TextBuffer, TEXT_XMARGIN, TEXT_YMARGIN);
-    BltImage(&TextBuffer, XPos, YPos);
+    egRenderText(Text, TextBuffer, TEXT_XMARGIN, TEXT_YMARGIN);
+    BltImage(TextBuffer, XPos, YPos);
 }
 
 static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, IN UINTN Function, IN CHAR16 *ParamText)
@@ -519,7 +504,7 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
             
             // initial painting
             SwitchToGraphicsAndClear();
-            MeasureText(Screen->Title, &ItemWidth, NULL);
+            egMeasureText(Screen->Title, &ItemWidth, NULL);
             DrawMenuText(Screen->Title, 0, ((UGAWidth - ItemWidth) >> 1) - TEXT_XMARGIN, EntriesPosY - TEXT_LINE_HEIGHT * 2);
             if (Screen->TitleImage)
                 BltImageAlpha(Screen->TitleImage, EntriesPosX - (Screen->TitleImage->Width + TITLEICON_SPACING), EntriesPosY);
@@ -599,7 +584,7 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
 
 static VOID DrawMainMenuEntry(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN XPos, UINTN YPos)
 {
-    REFIT_IMAGE *BackgroundImage;
+    EG_IMAGE *BackgroundImage;
     
     if (Entry->Row == 0) {
         if (selected)
@@ -617,25 +602,17 @@ static VOID DrawMainMenuEntry(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN X
 
 static VOID DrawMainMenuText(IN CHAR16 *Text, IN UINTN XPos, IN UINTN YPos)
 {
-    UINT8 *Ptr;
-    UINTN TextWidth, i;
+    UINTN TextWidth;
     
-    if (TextBuffer.PixelData == NULL)
-        TextBuffer.PixelData = AllocatePool(TextBuffer.Width * TextBuffer.Height * 4);
+    if (TextBuffer == NULL)
+        TextBuffer = egCreateImage(LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT, FALSE);
     
-    // clear the buffer
-    Ptr = TextBuffer.PixelData;
-    for (i = 0; i < TextBuffer.Width * TextBuffer.Height; i++) {
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0xbf;
-        *Ptr++ = 0;
-    }
+    egFillImage(TextBuffer, &BackgroundPixel);
     
     // render the text
-    MeasureText(Text, &TextWidth, NULL);
-    RenderText(Text, &TextBuffer, (TextBuffer.Width - TextWidth) >> 1, 0);
-    BltImage(&TextBuffer, XPos, YPos);
+    egMeasureText(Text, &TextWidth, NULL);
+    egRenderText(Text, TextBuffer, (TextBuffer->Width - TextWidth) >> 1, 0);
+    BltImage(TextBuffer, XPos, YPos);
 }
 
 static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, IN UINTN Function, IN CHAR16 *ParamText)
@@ -694,7 +671,7 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
                                   (Screen->Entries[i]->Row == 0) ? row0PosY : row1PosY);
             }
             DrawMainMenuText(Screen->Entries[State->CurrentSelection]->Title,
-                             (UGAWidth - TextBuffer.Width) >> 1, textPosY);
+                             (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
             break;
             
         case MENU_FUNCTION_PAINT_SELECTION:
@@ -705,11 +682,11 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
                               itemPosX[State->CurrentSelection],
                               (Screen->Entries[State->CurrentSelection]->Row == 0) ? row0PosY : row1PosY);
             DrawMainMenuText(Screen->Entries[State->CurrentSelection]->Title,
-                             (UGAWidth - TextBuffer.Width) >> 1, textPosY);
+                             (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
             break;
             
         case MENU_FUNCTION_PAINT_TIMEOUT:
-            DrawMainMenuText(ParamText, (UGAWidth - TextBuffer.Width) >> 1, textPosY + TEXT_LINE_HEIGHT);
+            DrawMainMenuText(ParamText, (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY + TEXT_LINE_HEIGHT);
             break;
             
     }

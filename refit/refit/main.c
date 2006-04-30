@@ -607,7 +607,7 @@ static VOID StartTool(IN LOADER_ENTRY *Entry)
                   Basename(Entry->LoaderPath));
 }
 
-static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, REFIT_IMAGE *Image, BOOLEAN UseGraphicsMode)
+static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, EG_IMAGE *Image, BOOLEAN UseGraphicsMode)
 {
     LOADER_ENTRY *Entry;
     

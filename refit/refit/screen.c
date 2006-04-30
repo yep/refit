@@ -38,9 +38,6 @@
 
 // Console defines and variables
 
-static EFI_GUID gEfiConsoleControlProtocolGuid = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
-static EFI_CONSOLE_CONTROL_PROTOCOL *ConsoleControl;
-
 UINTN ConWidth;
 UINTN ConHeight;
 CHAR16 *BlankLine;
@@ -52,19 +49,15 @@ static VOID PauseForKey(VOID);
 
 // UGA defines and variables
 
-static EFI_GUID gEfiUgaDrawProtocolGuid = EFI_UGA_DRAW_PROTOCOL_GUID;
-static EFI_UGA_DRAW_PROTOCOL *UGA;
-
-UINT32 UGAWidth;
-UINT32 UGAHeight;
+UINTN UGAWidth;
+UINTN UGAHeight;
 BOOLEAN AllowGraphicsMode;
 
-static BOOLEAN InGraphicsMode;
 static BOOLEAN GraphicsScreenDirty;
 
 #ifndef TEXTONLY
 
-static EFI_UGA_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
+static EG_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
 
 #endif  /* !TEXTONLY */
 
@@ -78,75 +71,33 @@ static BOOLEAN haveError = FALSE;
 
 VOID InitScreen(VOID)
 {
-    EFI_STATUS Status;
-    EFI_CONSOLE_CONTROL_SCREEN_MODE CurrentMode;
-#ifndef TEXTONLY
-    UINT32 UGADepth;
-    UINT32 UGARefreshRate;
-#endif  /* !TEXTONLY */
     UINTN i;
     
-    // get protocols
-    Status = LibLocateProtocol(&gEfiConsoleControlProtocolGuid, (VOID **) &ConsoleControl);
-    if (Status != EFI_SUCCESS)
-        ConsoleControl = NULL;
-#ifndef TEXTONLY
-    Status = LibLocateProtocol(&gEfiUgaDrawProtocolGuid, (VOID **) &UGA);
-    if (Status != EFI_SUCCESS)
-        UGA = NULL;
-#endif  /* !TEXTONLY */
+    // initialize libeg
+    egInitScreen();
     
-    // now, look at what we have and at the current mode
-    if (ConsoleControl == NULL) {
-        // no ConSplitter, assume text-only
-        InGraphicsMode = FALSE;
-        AllowGraphicsMode = FALSE;
-        
+#ifndef TEXTONLY
+    if (egHasGraphicsMode()) {
+        egGetScreenSize(&UGAWidth, &UGAHeight);
+        AllowGraphicsMode = TRUE;
     } else {
-        // we have a ConSplitter, check current mode
-        ConsoleControl->GetMode(ConsoleControl, &CurrentMode, NULL, NULL);
-#ifndef TEXTONLY
-        if (UGA == NULL) {
 #endif  /* !TEXTONLY */
-            // ...but no graphics. Strange, but still run in text-only mode
-            if (CurrentMode == EfiConsoleControlScreenGraphics)
-                ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenText);
-            InGraphicsMode = FALSE;
-            AllowGraphicsMode = FALSE;
-            
+        AllowGraphicsMode = FALSE;
+        egSetGraphicsModeEnabled(FALSE);
 #ifndef TEXTONLY
-        } else {
-            // we have everything, horray!
-            // get screen size
-            Status = UGA->GetMode(UGA, &UGAWidth, &UGAHeight, &UGADepth, &UGARefreshRate);
-            if (EFI_ERROR(Status)) {
-                // TODO: error message
-                // fall back to text mode
-                if (CurrentMode == EfiConsoleControlScreenGraphics)
-                    ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenText);
-                InGraphicsMode = FALSE;
-                AllowGraphicsMode = FALSE;
-                
-            } else {
-                InGraphicsMode = (CurrentMode == EfiConsoleControlScreenGraphics) ? TRUE : FALSE;
-                AllowGraphicsMode = TRUE;
-            }
-        }
-#endif  /* !TEXTONLY */
     }
+#endif  /* !TEXTONLY */
     
     GraphicsScreenDirty = TRUE;
 #ifndef TEXTONLY
-    if (AllowGraphicsMode && InGraphicsMode) {
+    if (AllowGraphicsMode) {
         // display banner during init phase
         BltClearScreen(TRUE);
     }
 #endif  /* !TEXTONLY */
     
-    if (!InGraphicsMode) {
-        // disable cursor
-        ST->ConOut->EnableCursor(ST->ConOut, FALSE);
-    }
+    // disable cursor
+    ST->ConOut->EnableCursor(ST->ConOut, FALSE);
     
     // get size of text console
     if (ST->ConOut->QueryMode(ST->ConOut, ST->ConOut->Mode->Mode, &ConWidth, &ConHeight) != EFI_SUCCESS) {
@@ -222,11 +173,6 @@ VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title)
 VOID FinishExternalScreen(VOID)
 {
     // sync our internal state
-    if (ConsoleControl != NULL) {
-        EFI_CONSOLE_CONTROL_SCREEN_MODE CurrentMode;
-        ConsoleControl->GetMode(ConsoleControl, &CurrentMode, NULL, NULL);
-        InGraphicsMode = (CurrentMode == EfiConsoleControlScreenGraphics) ? TRUE : FALSE;
-    }
     GraphicsScreenDirty = TRUE;
     
     if (haveError) {
@@ -240,11 +186,9 @@ VOID FinishExternalScreen(VOID)
 
 VOID TerminateScreen(VOID)
 {
-    if (!InGraphicsMode) {
-        // clear text screen
-        ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
-        ST->ConOut->ClearScreen(ST->ConOut);
-    }
+    // clear text screen
+    ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
+    ST->ConOut->ClearScreen(ST->ConOut);
     
     // enable cursor
     ST->ConOut->EnableCursor(ST->ConOut, TRUE);
@@ -252,18 +196,14 @@ VOID TerminateScreen(VOID)
 
 static VOID SwitchToText(IN BOOLEAN CursorEnabled)
 {
-    if (InGraphicsMode && ConsoleControl != NULL) {
-        ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenText);
-        InGraphicsMode = FALSE;
-    }
+    egSetGraphicsModeEnabled(FALSE);
     ST->ConOut->EnableCursor(ST->ConOut, CursorEnabled);
 }
 
 static VOID SwitchToGraphics(VOID)
 {
-    if (!InGraphicsMode && AllowGraphicsMode) {
-        ConsoleControl->SetMode(ConsoleControl, EfiConsoleControlScreenGraphics);
-        InGraphicsMode = TRUE;
+    if (AllowGraphicsMode && !egIsGraphicsModeEnabled()) {
+        egSetGraphicsModeEnabled(TRUE);
         GraphicsScreenDirty = TRUE;
     }
 }
@@ -392,86 +332,43 @@ VOID SwitchToGraphicsAndClear(VOID)
 
 VOID BltClearScreen(IN BOOLEAN ShowBanner)
 {
-    UGA->Blt(UGA, &BackgroundPixel, EfiUgaVideoFill, 0, 0, 0, 0, UGAWidth, UGAHeight, 0);
+    egClearScreen(&BackgroundPixel);
     if (ShowBanner) {
-        REFIT_IMAGE *banner = BuiltinImage(1);
+        EG_IMAGE *banner = BuiltinImage(1);
         BltImage(banner, (UGAWidth - banner->Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
     }
     GraphicsScreenDirty = FALSE;
 }
 
-VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
+VOID BltImage(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
 {
-    UGA->Blt(UGA, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
-             0, 0, XPos, YPos, Image->Width, Image->Height, 0);
+    egDrawImage(Image, XPos, YPos);
     GraphicsScreenDirty = TRUE;
 }
 
-static VOID Compose(IN EFI_UGA_PIXEL *TopBasePtr, IN OUT EFI_UGA_PIXEL *CompBasePtr,
-                    IN UINTN Width, IN UINTN Height,
-                    IN UINTN TopLineOffset, IN UINTN CompLineOffset)
+VOID BltImageAlpha(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
 {
-    UINTN x, y;
-    EFI_UGA_PIXEL *TopPtr, *CompPtr;
-    UINTN Alpha;
-    UINTN RevAlpha;
+    EG_IMAGE *CompImage;
     
-    for (y = 0; y < Height; y++) {
-        TopPtr = TopBasePtr;
-        CompPtr = CompBasePtr;
-        for (x = 0; x < Width; x++) {
-            Alpha = TopPtr->Reserved;
-            RevAlpha = 255 - Alpha;
-            CompPtr->Blue  = ((UINTN)CompPtr->Blue  * RevAlpha + (UINTN)TopPtr->Blue  * Alpha) / 255;
-            CompPtr->Green = ((UINTN)CompPtr->Green * RevAlpha + (UINTN)TopPtr->Green * Alpha) / 255;
-            CompPtr->Red   = ((UINTN)CompPtr->Red   * RevAlpha + (UINTN)TopPtr->Red   * Alpha) / 255;
-            TopPtr++, CompPtr++;
-        }
-        TopBasePtr += TopLineOffset;
-        CompBasePtr += CompLineOffset;
-    }
-}
-
-VOID BltImageAlpha(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
-{
-    EFI_UGA_PIXEL *CompositeData, *Ptr;
-    UINTN TotalWidth, TotalHeight, i;
-    
-    // initialize buffer with base image
-    TotalWidth  = Image->Width;
-    TotalHeight = Image->Height;
-    CompositeData = AllocatePool(TotalWidth * TotalHeight * 4);
-    Ptr = CompositeData;
-    for (i = 0; i < TotalWidth * TotalHeight; i++) {
-        Ptr->Blue  = 0xbf;
-        Ptr->Green = 0xbf;
-        Ptr->Red   = 0xbf;
-        Ptr->Reserved = 0;
-        Ptr++;
-    }
-    
-    // compose
-    Compose((EFI_UGA_PIXEL *)(Image->PixelData),
-            CompositeData,
-            TotalWidth, TotalHeight, TotalWidth, TotalWidth);
+    // compose on standard background
+    CompImage = egCreateFilledImage(Image->Width, Image->Height, FALSE, &BackgroundPixel);
+    egComposeImage(CompImage, Image, 0, 0);
     
     // blit to screen and clean up
-    UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
-             0, 0, XPos, YPos, TotalWidth, TotalHeight, 0);
-    FreePool(CompositeData);
+    egDrawImage(CompImage, XPos, YPos);
+    egFreeImage(CompImage);
     GraphicsScreenDirty = TRUE;
 }
 
-VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos)
+VOID BltImageComposite(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos)
 {
-    EFI_UGA_PIXEL *CompositeData;
     UINTN TotalWidth, TotalHeight, CompWidth, CompHeight, OffsetX, OffsetY;
+    EG_IMAGE *CompImage;
     
     // initialize buffer with base image
+    CompImage = egCopyImage(BaseImage);
     TotalWidth  = BaseImage->Width;
     TotalHeight = BaseImage->Height;
-    CompositeData = AllocatePool(TotalWidth * TotalHeight * 4);
-    CopyMem(CompositeData, (VOID *)BaseImage->PixelData, TotalWidth * TotalHeight * 4);
     
     // place the top image
     CompWidth = TopImage->Width;
@@ -482,29 +379,23 @@ VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN U
     if (CompHeight > TotalHeight)
         CompHeight = TotalHeight;
     OffsetY = (TotalHeight - CompHeight) >> 1;
-    
-    // compose
-    Compose((EFI_UGA_PIXEL *)(TopImage->PixelData),
-            CompositeData + OffsetY * TotalWidth + OffsetX,
-            CompWidth, CompHeight, TopImage->Width, TotalWidth);
+    egComposeImage(CompImage, TopImage, OffsetX, OffsetY);
     
     // blit to screen and clean up
-    UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
-             0, 0, XPos, YPos, TotalWidth, TotalHeight, 0);
-    FreePool(CompositeData);
+    egDrawImage(CompImage, XPos, YPos);
+    egFreeImage(CompImage);
     GraphicsScreenDirty = TRUE;
 }
 
-VOID BltImageCompositeBadge(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN REFIT_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos)
+VOID BltImageCompositeBadge(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN EG_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos)
 {
-    EFI_UGA_PIXEL *CompositeData;
     UINTN TotalWidth, TotalHeight, CompWidth, CompHeight, OffsetX, OffsetY;
+    EG_IMAGE *CompImage;
     
     // initialize buffer with base image
+    CompImage = egCopyImage(BaseImage);
     TotalWidth  = BaseImage->Width;
     TotalHeight = BaseImage->Height;
-    CompositeData = AllocatePool(TotalWidth * TotalHeight * 4);
-    CopyMem(CompositeData, (VOID *)BaseImage->PixelData, TotalWidth * TotalHeight * 4);
     
     // place the top image
     CompWidth = TopImage->Width;
@@ -515,76 +406,19 @@ VOID BltImageCompositeBadge(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage,
     if (CompHeight > TotalHeight)
         CompHeight = TotalHeight;
     OffsetY = (TotalHeight - CompHeight) >> 1;
-    
-    // compose top image
-    Compose((EFI_UGA_PIXEL *)(TopImage->PixelData),
-            CompositeData + OffsetY * TotalWidth + OffsetX,
-            CompWidth, CompHeight, TopImage->Width, TotalWidth);
+    egComposeImage(CompImage, TopImage, OffsetX, OffsetY);
     
     // place the badge image
     if (BadgeImage != NULL && (BadgeImage->Width + 8) < CompWidth && (BadgeImage->Height + 8) < CompHeight) {
         OffsetX += CompWidth  - 8 - BadgeImage->Width;
         OffsetY += CompHeight - 8 - BadgeImage->Height;
-        
-        // compose badge image
-        Compose((EFI_UGA_PIXEL *)(BadgeImage->PixelData),
-                CompositeData + OffsetY * TotalWidth + OffsetX,
-                BadgeImage->Width, BadgeImage->Height, BadgeImage->Width, TotalWidth);
+        egComposeImage(CompImage, BadgeImage, OffsetX, OffsetY);
     }
     
     // blit to screen and clean up
-    UGA->Blt(UGA, CompositeData, EfiUgaBltBufferToVideo,
-             0, 0, XPos, YPos, TotalWidth, TotalHeight, 0);
-    FreePool(CompositeData);
+    egDrawImage(CompImage, XPos, YPos);
+    egFreeImage(CompImage);
     GraphicsScreenDirty = TRUE;
-}
-
-VOID MeasureText(IN CHAR16 *Text, OUT UINTN *Width, OUT UINTN *Height)
-{
-    if (Width != NULL)
-        *Width = StrLen(Text) * FONT_CELL_WIDTH;
-    if (Height != NULL)
-        *Height = FONT_CELL_HEIGHT;
-}
-
-VOID RenderText(IN CHAR16 *Text, IN REFIT_IMAGE *BackBuffer, IN UINTN XPos, IN UINTN YPos)
-{
-    REFIT_IMAGE *FontImage;
-    EFI_UGA_PIXEL *BufferPtr;
-    EFI_UGA_PIXEL *FontPixelData;
-    UINTN BufferLineOffset, FontLineOffset;
-    UINTN TextLength;
-    UINTN i, c;
-    
-    // clip the text
-    if (XPos < 0)
-        XPos = 0;
-    if (YPos < 0)
-        YPos = 0;
-    TextLength = StrLen(Text);
-    if (TextLength * FONT_CELL_WIDTH + XPos > BackBuffer->Width)
-        TextLength = (BackBuffer->Width - XPos) / FONT_CELL_WIDTH;
-    
-    // load the font
-    FontImage = BuiltinImage(0);
-    
-    // render it
-    BufferPtr = (EFI_UGA_PIXEL *)BackBuffer->PixelData;
-    BufferLineOffset = BackBuffer->Width;
-    BufferPtr += XPos + YPos * BufferLineOffset;
-    FontPixelData = (EFI_UGA_PIXEL *)FontImage->PixelData;
-    FontLineOffset = FontImage->Width;
-    for (i = 0; i < TextLength; i++) {
-        c = Text[i];
-        if (c < 32 || c >= 127)
-            c = 95;
-        else
-            c -= 32;
-        Compose(FontPixelData + c * FONT_CELL_WIDTH, BufferPtr,
-                FONT_CELL_WIDTH, FONT_CELL_HEIGHT,
-                FontLineOffset, BufferLineOffset);
-        BufferPtr += FONT_CELL_WIDTH;
-    }
 }
 
 #endif  /* !TEXTONLY */

@@ -4,10 +4,10 @@
 #
 
 LOCAL_CPPFLAGS  = -I. -I../include -I../libeg
-#LOCAL_LDFLAGS   = -L../libeg
-#LOCAL_LIBS      = -leg
+LOCAL_LDFLAGS   = -L../libeg
+LOCAL_LIBS      = -leg
 
-OBJS            = main.o config.o menu.o screen.o icns.o image.o eei.o lib.o
+OBJS            = main.o config.o menu.o screen.o icns.o image.o lib.o
 TARGET          = refit.efi
 
 all: $(TARGET)

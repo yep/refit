@@ -37,8 +37,7 @@
 #include "efi.h"
 #include "efilib.h"
 
-#include "efiUgaDraw.h"
-#include "efiConsoleControl.h"
+#include "libeg.h"
 
 #define REFIT_DEBUG (0)
 
@@ -75,14 +74,12 @@ typedef struct {
 #define BOOTCODE_WINDOWS    (2)
 #define BOOTCODE_LINUX      (3)
 
-struct _REFIT_IMAGE;
-
 typedef struct {
     EFI_DEVICE_PATH     *DevicePath;
     EFI_HANDLE          DeviceHandle;
     EFI_FILE            *RootDir;
     CHAR16              *VolName;
-    struct _REFIT_IMAGE *VolBadgeImage;
+    EG_IMAGE            *VolBadgeImage;
     UINTN               DiskKind;
     BOOLEAN             IsAppleLegacy;
     UINTN               BootCodeDetected;
@@ -142,11 +139,6 @@ INTN FindMem(IN VOID *Buffer, IN UINTN BufferLength, IN VOID *SearchString, IN U
 #define FONT_CELL_WIDTH (7)
 #define FONT_CELL_HEIGHT (12)
 
-typedef struct _REFIT_IMAGE {
-    UINT8 *PixelData;
-    UINTN Width, Height;
-} REFIT_IMAGE;
-
 extern UINTN ConWidth;
 extern UINTN ConHeight;
 extern CHAR16 *BlankLine;
@@ -175,13 +167,10 @@ BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
 
 VOID SwitchToGraphicsAndClear(VOID);
 VOID BltClearScreen(IN BOOLEAN ShowBanner);
-VOID BltImage(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
-VOID BltImageAlpha(IN REFIT_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
-VOID BltImageComposite(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
-VOID BltImageCompositeBadge(IN REFIT_IMAGE *BaseImage, IN REFIT_IMAGE *TopImage, IN REFIT_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos);
-
-VOID MeasureText(IN CHAR16 *Text, OUT UINTN *Width, OUT UINTN *Height);
-VOID RenderText(IN CHAR16 *Text, IN REFIT_IMAGE *BackBuffer, IN UINTN XPos, IN UINTN YPos);
+VOID BltImage(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
+VOID BltImageAlpha(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
+VOID BltImageComposite(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
+VOID BltImageCompositeBadge(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN EG_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos);
 
 #endif  /* !TEXTONLY */
 
@@ -189,17 +178,17 @@ VOID RenderText(IN CHAR16 *Text, IN REFIT_IMAGE *BackBuffer, IN UINTN XPos, IN U
 // icns loader module
 //
 
-REFIT_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
-REFIT_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
-REFIT_IMAGE * DummyImage(IN UINTN PixelSize);
+EG_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
+EG_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
+EG_IMAGE * DummyImage(IN UINTN PixelSize);
 
-REFIT_IMAGE * BuiltinIcon(IN UINTN Id);
+EG_IMAGE * BuiltinIcon(IN UINTN Id);
 
 //
 // image module
 //
 
-REFIT_IMAGE * BuiltinImage(IN UINTN Id);
+EG_IMAGE * BuiltinImage(IN UINTN Id);
 
 //
 // menu module
@@ -215,23 +204,23 @@ REFIT_IMAGE * BuiltinImage(IN UINTN Id);
 struct _refit_menu_screen;
 
 typedef struct _refit_menu_entry {
-    CHAR16 *Title;
-    UINTN Tag;
-    UINTN Row;
-    REFIT_IMAGE *Image;
-    REFIT_IMAGE *BadgeImage;
+    CHAR16      *Title;
+    UINTN       Tag;
+    UINTN       Row;
+    EG_IMAGE    *Image;
+    EG_IMAGE    *BadgeImage;
     struct _refit_menu_screen *SubScreen;
 } REFIT_MENU_ENTRY;
 
 typedef struct _refit_menu_screen {
-    CHAR16 *Title;
-    REFIT_IMAGE *TitleImage;
-    UINTN InfoLineCount;
-    CHAR16 **InfoLines;
-    UINTN EntryCount;
+    CHAR16      *Title;
+    EG_IMAGE    *TitleImage;
+    UINTN       InfoLineCount;
+    CHAR16      **InfoLines;
+    UINTN       EntryCount;
     REFIT_MENU_ENTRY **Entries;
-    UINTN TimeoutSeconds;
-    CHAR16 *TimeoutText;
+    UINTN       TimeoutSeconds;
+    CHAR16      *TimeoutText;
 } REFIT_MENU_SCREEN;
 
 VOID AddMenuInfoLine(IN REFIT_MENU_SCREEN *Screen, IN CHAR16 *InfoLine);

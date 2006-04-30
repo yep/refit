@@ -6,8 +6,10 @@ name refit
 type app
 entrypoint RefitMain
 
-includedir . ../include
+includedir . ../include ../libeg
+libdir ../libeg
+lib eg
 
-source main.c config.c menu.c screen.c icns.c image.c lib.c eei.c
+source main.c config.c menu.c screen.c icns.c image.c lib.c
 
 # EOF

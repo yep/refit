@@ -38,38 +38,33 @@
 
 #ifndef TEXTONLY
 
-#include "eei.h"
-
 //
 // image data
 //
 
-#include "eei_font.h"
-#include "eei_refit_banner.h"
+#include "egemb_refit_banner.h"
 
-#include "eei_back_normal_big.h"
-#include "eei_back_normal_small.h"
-#include "eei_back_selected_big.h"
-#include "eei_back_selected_small.h"
+#include "egemb_back_normal_big.h"
+#include "egemb_back_normal_small.h"
+#include "egemb_back_selected_big.h"
+#include "egemb_back_selected_small.h"
 
 //
 // table of images
 //
 
 typedef struct {
-    EEI_IMAGE *EEI;
-    REFIT_IMAGE Image;
+    EG_EMBEDDED_IMAGE *EmbImage;
+    EG_IMAGE *Image;
 } BUILTIN_IMAGE;
 
-#define EMPTY_IMAGE { NULL, 0, 0 }
-
 BUILTIN_IMAGE BuiltinImageTable[] = {
-    { &eei_font, EMPTY_IMAGE },
-    { &eei_refit_banner, EMPTY_IMAGE },
-    { &eei_back_normal_big, EMPTY_IMAGE },
-    { &eei_back_selected_big, EMPTY_IMAGE },
-    { &eei_back_normal_small, EMPTY_IMAGE },
-    { &eei_back_selected_small, EMPTY_IMAGE },
+    { NULL, NULL },
+    { &egemb_refit_banner, NULL },
+    { &egemb_back_normal_big, NULL },
+    { &egemb_back_selected_big, NULL },
+    { &egemb_back_normal_small, NULL },
+    { &egemb_back_selected_small, NULL },
 };
 #define BUILTIN_IMAGE_COUNT (6)
 
@@ -77,27 +72,20 @@ BUILTIN_IMAGE BuiltinImageTable[] = {
 // image retrieval
 //
 
-REFIT_IMAGE * BuiltinImage(IN UINTN Id)
+EG_IMAGE * BuiltinImage(IN UINTN Id)
 {
     if (Id >= BUILTIN_IMAGE_COUNT)
         return NULL;
     
-    if (BuiltinImageTable[Id].Image.PixelData == NULL) {
-        
-        EEIPrepareImage(BuiltinImageTable[Id].EEI);
-        
-        BuiltinImageTable[Id].Image.PixelData = (UINT8 *)(BuiltinImageTable[Id].EEI->PixelData);
-        BuiltinImageTable[Id].Image.Width = BuiltinImageTable[Id].EEI->Width;
-        BuiltinImageTable[Id].Image.Height = BuiltinImageTable[Id].EEI->Height;
-        
-    }
+    if (BuiltinImageTable[Id].Image == NULL)
+        BuiltinImageTable[Id].Image = egPrepareEmbeddedImage(BuiltinImageTable[Id].EmbImage, FALSE);
     
-    return &(BuiltinImageTable[Id].Image);
+    return BuiltinImageTable[Id].Image;
 }
 
 #else   /* !TEXTONLY */
 
-REFIT_IMAGE * BuiltinImage(IN UINTN Id)
+EG_IMAGE * BuiltinImage(IN UINTN Id)
 {
     return NULL;
 }
