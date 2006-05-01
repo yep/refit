@@ -8,12 +8,12 @@ SOURCE_DIR = $(SDK_INSTALL_DIR)\refit
 !include $(SDK_INSTALL_DIR)\build\$(SDK_BUILD_ENV)\sdk.env
 
 all :
-	cd $(SOURCE_DIR)\refit
-	nmake -f refit.mak all
+	cd $(SOURCE_DIR)\libeg
+	nmake -f libeg.mak all
 	cd $(SOURCE_DIR)
 
-	cd $(SOURCE_DIR)\refitl
-	nmake -f refitl.mak all
+	cd $(SOURCE_DIR)\refit
+	nmake -f refit.mak all
 	cd $(SOURCE_DIR)
 
 	cd $(SOURCE_DIR)\ebounce
@@ -27,9 +27,4 @@ all :
 	cd $(SOURCE_DIR)\dumpprot
 	nmake -f dumpprot.mak all
 	cd $(SOURCE_DIR)
-
-!IF "$(PROCESSOR)" == "Ia64"
-
-
-!ENDIF
 
