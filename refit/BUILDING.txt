@@ -2,33 +2,61 @@
  Building rEFIt
 ================
 
-To build the rEFIt EFI components, you'll need the EFI Application
-Toolkit from Intel. It is available under a BSD license and can be
-downloaded from
+There are three different build environments that you can use to build
+the rEFIt EFI components. The recommended (and traditional) way is
+with Intel's EFI Application Toolkit. Recently, it has become possible
+to build rEFIt with gnu-efi on Linux, and with the newly developed
+cross-platform 'efironment' package.
+
+ With the EFI Application Toolkit
+----------------------------------
+
+You'll need the EFI Application Toolkit from Intel. It is available
+under a BSD license and can be downloaded from
 <http://www.intel.com/technology/efi/toolkit_overview.htm>.
 
-After installing the Toolkit, edit the 'build.cmd' script at the root
-of the Toolkit directory tree. Set 'SDK_INSTALL_DIR' to the correct
-path for the Toolkit and change 'EFI_APPLICATION_COMPATIBILITY' to
-'EFI_APP_110'.
-
-Copy the outer 'refit' directory with the source into the Toolkit's
-root directory. To build just the rEFIt components, follow these
-instructions:
+After installing the Toolkit, copy the outer 'refit' directory with
+the source into the Toolkit's root directory. To build just the rEFIt
+components, follow these instructions:
 
  * Open a command prompt window that has the paths set for the Visual
    Studio tools. (Visual Studio installs a Start Menu item for this.)
 
- * Change to the Toolkit's root directory and run 'build bios32'.
+ * Change to the 'refit' directory and run 'build.bat'.
 
- * Change to the 'refit' directory and run 'nmake -f refit.mak'.
+After a successful build, the 'refit.efi' file can be found in the
+'refit\refit' directory (i.e. in the source directory).
 
-After a successful build, the 'refit.efi' file (and others) can be
-found in the 'build\bios32\bin' directory.
+To build all rEFIt components as part of a complete Toolkit build,
+edit the main 'makefile' appropriately. It should also be possible to
+build rEFIt for the IA64 architecture, but this has not been tested at
+all.
 
-To build all rEFIt components as part of a complete build, edit the
-main 'makefile' appropriately. It should also be possible to build
-rEFIt for the IA64 architecture, but this has not been tested at all.
+ With gnu-efi
+--------------
+
+You can use gnu-efi 3.0a or later to build rEFIt on a Linux
+system. After unpacking the source distribution, check the
+'Make.common' file and make sure the paths to the compiler and gnu-efi
+libraries are correct. (It should work out-of-the-box on a Debian
+system.)
+
+To build refit.efi, first run 'make' in the 'libeg' directory, then
+run 'make' in the 'refit' directory.
+
+ With efironment
+-----------------
+
+As a third alternative, you can use the cross-platform 'efironment'
+build environment. The development of efironment was sparked out of
+frustration with both gnu-efi and Intel's various build environments
+(EFI Application Toolkit, TianoCore). The goal is to have single,
+up-to-date package that compiles with Visual Studio on Windows as well
+as gcc on Linux (and with some limitations, on Mac OS X).
+
+A current snapshot is available from the rEFIt project's Subversion
+repository. After setting up efironment, you can use the 'mkefi'
+command to build first libeg, the refit.efi itself.
 
 
 EOF
