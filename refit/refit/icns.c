@@ -36,8 +36,6 @@
 
 #include "lib.h"
 
-#ifndef TEXTONLY
-
 //
 // well-known icons
 //
@@ -122,25 +120,6 @@ EG_IMAGE * DummyImage(IN UINTN PixelSize)
     
     return Image;
 }
-
-#else   /* !TEXTONLY */
-
-EG_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize)
-{
-    return NULL;
-}
-
-EG_IMAGE * DummyImage(IN UINTN PixelSize)
-{
-    return NULL;
-}
-
-EG_IMAGE * BuiltinIcon(IN UINTN Id)
-{
-    return NULL;
-}
-
-#endif  /* !TEXTONLY */
 
 EG_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize)
 {

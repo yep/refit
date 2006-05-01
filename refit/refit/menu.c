@@ -64,8 +64,6 @@ typedef VOID (*MENU_STYLE_FUNC)(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *S
 static CHAR16 ArrowUp[2] = { ARROW_UP, 0 };
 static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
 
-#ifndef TEXTONLY
-
 #define TEXT_YMARGIN (2)
 #define TEXT_XMARGIN (8)
 #define TEXT_LINE_HEIGHT (FONT_CELL_HEIGHT + TEXT_YMARGIN * 2)
@@ -77,8 +75,6 @@ static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
 #define TILE_YSPACING (16)
 
 static EG_IMAGE *TextBuffer = NULL; // = { LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT };
-
-#endif  /* !TEXTONLY */
 
 //
 // Scrolling functions
@@ -442,8 +438,6 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
     }
 }
 
-#ifndef TEXTONLY
-
 //
 // graphical generic style
 //
@@ -692,8 +686,6 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
     }
 }
 
-#endif  /* !TEXTONLY */
-
 //
 // user-callable dispatcher functions
 //
@@ -702,10 +694,8 @@ UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
     MENU_STYLE_FUNC Style = TextMenuStyle;
     
-#ifndef TEXTONLY
     if (AllowGraphicsMode)
         Style = GraphicsMenuStyle;
-#endif  /* !TEXTONLY */
     
     return RunGenericMenu(Screen, Style, ChosenEntry);
 }
@@ -717,12 +707,10 @@ UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEnt
     REFIT_MENU_ENTRY *TempChosenEntry;
     UINTN MenuExit = 0;
     
-#ifndef TEXTONLY
     if (AllowGraphicsMode) {
         Style = GraphicsMenuStyle;
         MainStyle = MainMenuStyle;
     }
-#endif  /* !TEXTONLY */
     
     while (!MenuExit) {
         MenuExit = RunGenericMenu(Screen, MainStyle, &TempChosenEntry);

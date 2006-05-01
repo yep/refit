@@ -80,7 +80,7 @@ static VOID AboutRefit(VOID)
 {
     if (AboutMenu.EntryCount == 0) {
         AboutMenu.TitleImage = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
-        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.6");
+        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.7");
         AddMenuInfoLine(&AboutMenu, L"");
         AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006 Christoph Pfisterer");
         AddMenuInfoLine(&AboutMenu, L"Portions Copyright (c) Intel Corporation and others");
@@ -175,13 +175,11 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
     Entry->DevicePath      = FileDevicePath(Volume->DeviceHandle, Entry->LoaderPath);
     Entry->UseGraphicsMode = FALSE;
     
-#ifndef TEXTONLY
     // locate a custom icon for the loader
     StrCpy(IconFileName, LoaderPath);
     ReplaceExtension(IconFileName, L".icns");
     if (FileExists(Volume->RootDir, IconFileName))
         Entry->me.Image = LoadIcns(Volume->RootDir, IconFileName, 128);
-#endif  /* !TEXTONLY */
     
     // detect specific loaders
     LoaderKind = 0;

@@ -163,16 +163,12 @@ VOID DebugPause(VOID);
 BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
 BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
 
-#ifndef TEXTONLY
-
 VOID SwitchToGraphicsAndClear(VOID);
 VOID BltClearScreen(IN BOOLEAN ShowBanner);
 VOID BltImage(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageAlpha(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageComposite(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageCompositeBadge(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN EG_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos);
-
-#endif  /* !TEXTONLY */
 
 //
 // icns loader module

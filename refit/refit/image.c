@@ -36,8 +36,6 @@
 
 #include "lib.h"
 
-#ifndef TEXTONLY
-
 //
 // image data
 //
@@ -81,12 +79,3 @@ EG_IMAGE * BuiltinImage(IN UINTN Id)
     
     return BuiltinImageTable[Id].Image;
 }
-
-#else   /* !TEXTONLY */
-
-EG_IMAGE * BuiltinImage(IN UINTN Id)
-{
-    return NULL;
-}
-
-#endif  /* !TEXTONLY */

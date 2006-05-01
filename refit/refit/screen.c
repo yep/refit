@@ -55,11 +55,7 @@ BOOLEAN AllowGraphicsMode;
 
 static BOOLEAN GraphicsScreenDirty;
 
-#ifndef TEXTONLY
-
 static EG_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
-
-#endif  /* !TEXTONLY */
 
 // general defines and variables
 
@@ -76,25 +72,21 @@ VOID InitScreen(VOID)
     // initialize libeg
     egInitScreen();
     
-#ifndef TEXTONLY
     if (egHasGraphicsMode()) {
         egGetScreenSize(&UGAWidth, &UGAHeight);
         AllowGraphicsMode = TRUE;
     } else {
-#endif  /* !TEXTONLY */
         AllowGraphicsMode = FALSE;
         egSetGraphicsModeEnabled(FALSE);
-#ifndef TEXTONLY
     }
-#endif  /* !TEXTONLY */
     
     GraphicsScreenDirty = TRUE;
-#ifndef TEXTONLY
+    // TODO: delay this until after the configuration has been read
+    //  (for text-only mode)
     if (AllowGraphicsMode) {
         // display banner during init phase
         BltClearScreen(TRUE);
     }
-#endif  /* !TEXTONLY */
     
     // disable cursor
     ST->ConOut->EnableCursor(ST->ConOut, FALSE);
@@ -151,12 +143,10 @@ VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title)
     if (!AllowGraphicsMode)
         Mode = 0;
     
-#ifndef TEXTONLY
     if (Mode == 1) {
         SwitchToGraphics();
         BltClearScreen(FALSE);
     }
-#endif  /* !TEXTONLY */
     
     // NOTE: The following happens always, because we might switch back to text mode later
     //       to show errors
@@ -172,7 +162,7 @@ VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title)
 
 VOID FinishExternalScreen(VOID)
 {
-    // sync our internal state
+    // make sure we clean up later
     GraphicsScreenDirty = TRUE;
     
     if (haveError) {
@@ -321,8 +311,6 @@ BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where)
 // Graphics functions
 //
 
-#ifndef TEXTONLY
-
 VOID SwitchToGraphicsAndClear(VOID)
 {
     SwitchToGraphics();
@@ -420,5 +408,3 @@ VOID BltImageCompositeBadge(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN EG
     egFreeImage(CompImage);
     GraphicsScreenDirty = TRUE;
 }
-
-#endif  /* !TEXTONLY */
