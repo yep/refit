@@ -86,9 +86,9 @@ VOID InvLoadedImage(IN EFI_HANDLE Handle, IN VOID *ProtocolInterface)
     
     Status = BS->HandleProtocol(LoadedImage->DeviceHandle, &DevicePathProtocol, (VOID **) &DevicePath);
     if (!EFI_ERROR(Status))
-        Print(L" Device %s", MyDevicePathToStr(DevicePath));
+        Print(L" Device \"%s\"", MyDevicePathToStr(DevicePath));
     
-    Print(L" File %s", MyDevicePathToStr(LoadedImage->FilePath));
+    Print(L" File \"%s\"", MyDevicePathToStr(LoadedImage->FilePath));
 }
 
 VOID InvDevPath(IN EFI_HANDLE Handle, IN VOID *ProtocolInterface)
@@ -106,7 +106,7 @@ VOID InvComponentName(IN EFI_HANDLE Handle, IN VOID *ProtocolInterface)
     
     Status = CompName->GetDriverName(CompName, "eng", &DriverName);
     if (!EFI_ERROR(Status))
-        Print(L" %s", DriverName);
+        Print(L" \"%s\"", DriverName);
     else
         Print(L" (%R)", Status);
 }
