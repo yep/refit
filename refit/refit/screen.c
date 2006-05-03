@@ -325,7 +325,7 @@ VOID SwitchToGraphicsAndClear(VOID)
 VOID BltClearScreen(IN BOOLEAN ShowBanner)
 {
     egClearScreen(&BackgroundPixel);
-    if (ShowBanner) {
+    if (ShowBanner && !(GlobalConfig.HideUIFlags & HIDEUI_FLAG_BANNER)) {
         EG_IMAGE *banner = BuiltinImage(BUILTIN_IMAGE_BANNER);
         BltImage(banner, (UGAWidth - banner->Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
     }

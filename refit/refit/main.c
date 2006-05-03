@@ -657,13 +657,15 @@ static VOID ScanTool(VOID)
     Print(L"Scanning for tools...\n");
     
     // look for the EFI shell
-    SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
-    if (FileExists(SelfRootDir, FileName)) {
-        AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
-    } else {
-        StrCpy(FileName, L"\\efi\\tools\\shell.efi");
+    if (!(GlobalConfig.HideUIFlags & (HIDEUI_FLAG_SHELL | HIDEUI_FLAG_TOOLS))) {
+        SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
         if (FileExists(SelfRootDir, FileName)) {
             AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
+        } else {
+            StrCpy(FileName, L"\\efi\\tools\\shell.efi");
+            if (FileExists(SelfRootDir, FileName)) {
+                AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
+            }
         }
     }
 }
@@ -716,10 +718,12 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     DebugPause();
     
     // fixed other menu entries
-    MenuEntryAbout.Image = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
-    AddMenuEntry(&MainMenu, &MenuEntryAbout);
-    MenuEntryReset.Image = BuiltinIcon(BUILTIN_ICON_FUNC_RESET);
-    AddMenuEntry(&MainMenu, &MenuEntryReset);
+    if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_FUNCS)) {
+        MenuEntryAbout.Image = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
+        AddMenuEntry(&MainMenu, &MenuEntryAbout);
+        MenuEntryReset.Image = BuiltinIcon(BUILTIN_ICON_FUNC_RESET);
+        AddMenuEntry(&MainMenu, &MenuEntryReset);
+    }
     
     // wait for user ACK when there were errors
     FinishTextScreen(FALSE);

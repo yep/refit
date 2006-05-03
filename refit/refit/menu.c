@@ -635,7 +635,10 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             row0PosY = ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + LAYOUT_BANNER_YOFFSET;
             row1PosX = (UGAWidth + TILE_XSPACING - (ROW1_TILESIZE + TILE_XSPACING) * row1Count) >> 1;
             row1PosY = row0PosY + ROW0_TILESIZE + TILE_YSPACING;
-            textPosY = row1PosY + ROW1_TILESIZE + TILE_YSPACING;
+            if (row1Count > 0)
+                textPosY = row1PosY + ROW1_TILESIZE + TILE_YSPACING;
+            else
+                textPosY = row1PosY;
             
             itemPosX = AllocatePool(sizeof(UINTN) * Screen->EntryCount);
             row0PosXRunning = row0PosX;
@@ -664,8 +667,9 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
                                   itemPosX[i],
                                   (Screen->Entries[i]->Row == 0) ? row0PosY : row1PosY);
             }
-            DrawMainMenuText(Screen->Entries[State->CurrentSelection]->Title,
-                             (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
+            if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_LABEL))
+                DrawMainMenuText(Screen->Entries[State->CurrentSelection]->Title,
+                                 (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
             break;
             
         case MENU_FUNCTION_PAINT_SELECTION:
@@ -675,12 +679,14 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             DrawMainMenuEntry(Screen->Entries[State->CurrentSelection], TRUE,
                               itemPosX[State->CurrentSelection],
                               (Screen->Entries[State->CurrentSelection]->Row == 0) ? row0PosY : row1PosY);
-            DrawMainMenuText(Screen->Entries[State->CurrentSelection]->Title,
-                             (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
+            if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_LABEL))
+                DrawMainMenuText(Screen->Entries[State->CurrentSelection]->Title,
+                                 (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY);
             break;
             
         case MENU_FUNCTION_PAINT_TIMEOUT:
-            DrawMainMenuText(ParamText, (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY + TEXT_LINE_HEIGHT);
+            if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_LABEL))
+                DrawMainMenuText(ParamText, (UGAWidth - LAYOUT_TEXT_WIDTH) >> 1, textPosY + TEXT_LINE_HEIGHT);
             break;
             
     }

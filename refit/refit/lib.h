@@ -260,10 +260,18 @@ typedef struct {
     CHAR16  *End16Ptr;
 } REFIT_FILE;
 
+#define HIDEUI_FLAG_BANNER      (0x0001)
+#define HIDEUI_FLAG_SHELL       (0x0002)
+#define HIDEUI_FLAG_TOOLS       (0x0004)
+#define HIDEUI_FLAG_FUNCS       (0x0008)
+#define HIDEUI_FLAG_LABEL       (0x0010)
+#define HIDEUI_ALL              (0x001f)
+
 typedef struct {
     BOOLEAN TextOnly;
     UINTN   Timeout;
     UINTN   HideBadges;
+    UINTN   HideUIFlags;
     BOOLEAN LegacyFirst;
 } REFIT_CONFIG;
 

@@ -47,7 +47,7 @@
 
 // global configuration with default values
 
-REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, FALSE };
+REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, 0, FALSE };
 
 //
 // read a file into a buffer
@@ -293,7 +293,8 @@ VOID ReadConfig(VOID)
     EFI_STATUS      Status;
     REFIT_FILE      File;
     CHAR16          **TokenList;
-    UINTN           TokenCount;
+    CHAR16          *FlagName;
+    UINTN           TokenCount, i;
     
     if (!FileExists(SelfDir, CONFIG_FILE_NAME))
         return;
@@ -310,12 +311,44 @@ VOID ReadConfig(VOID)
         
         if (StriCmp(TokenList[0], L"timeout") == 0) {
             HandleInt(TokenList, TokenCount, &(GlobalConfig.Timeout));
+            
         } else if (StriCmp(TokenList[0], L"hidebadges") == 0) {
             HandleEnum(TokenList, TokenCount, HideBadgesEnum, 3, &(GlobalConfig.HideBadges));
+            
+        } else if (StriCmp(TokenList[0], L"hideui") == 0) {
+            for (i = 1; i < TokenCount; i++) {
+                FlagName = TokenList[i];
+                if (StriCmp(FlagName, L"banner") == 0) {
+                    GlobalConfig.HideUIFlags |= HIDEUI_FLAG_BANNER;
+                } else if (StriCmp(FlagName, L"shell") == 0) {
+                    GlobalConfig.HideUIFlags |= HIDEUI_FLAG_SHELL;
+                } else if (StriCmp(FlagName, L"tools") == 0) {
+                    GlobalConfig.HideUIFlags |= HIDEUI_FLAG_TOOLS;
+                } else if (StriCmp(FlagName, L"funcs") == 0) {
+                    GlobalConfig.HideUIFlags |= HIDEUI_FLAG_FUNCS;
+                } else if (StriCmp(FlagName, L"label") == 0) {
+                    GlobalConfig.HideUIFlags |= HIDEUI_FLAG_LABEL;
+                } else if (StriCmp(FlagName, L"hdbadges") == 0) {
+                    if (GlobalConfig.HideBadges < 1)
+                        GlobalConfig.HideBadges = 1;
+                } else if (StriCmp(FlagName, L"badges") == 0) {
+                    if (GlobalConfig.HideBadges < 2)
+                        GlobalConfig.HideBadges = 2;
+                } else if (StriCmp(FlagName, L"all") == 0) {
+                    GlobalConfig.HideUIFlags |= HIDEUI_ALL;
+                    if (GlobalConfig.HideBadges < 1)
+                        GlobalConfig.HideBadges = 1;
+                } else {
+                    Print(L" unknown hideui flag: '%s'\n", FlagName);
+                }
+            }
+            
         } else if (StriCmp(TokenList[0], L"textonly") == 0) {
             GlobalConfig.TextOnly = TRUE;
+            
         } else if (StriCmp(TokenList[0], L"legacyfirst") == 0) {
             GlobalConfig.LegacyFirst = TRUE;
+            
         } else {
             Print(L" unknown configuration command: '%s'\n", TokenList[0]);
         }
