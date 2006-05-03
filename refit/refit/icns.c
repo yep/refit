@@ -47,32 +47,27 @@ typedef struct {
 } BUILTIN_ICON;
 
 BUILTIN_ICON BuiltinIconTable[BUILTIN_ICON_COUNT] = {
-    { NULL, L"\\icons\\os_mac.icns", 128 },
-    { NULL, L"\\icons\\os_linux.icns", 128 },
-    { NULL, L"\\icons\\os_win.icns", 128 },
-    { NULL, L"\\icons\\os_hwtest.icns", 128 },
-    { NULL, L"\\icons\\os_legacy.icns", 128 },
-    { NULL, L"\\icons\\os_unknown.icns", 128 },
-    { NULL, L"\\icons\\func_about.icns", 48 },
-    { NULL, L"\\icons\\func_reset.icns", 48 },
-    { NULL, L"\\icons\\tool_shell.icns", 48 },
-    { NULL, L"\\icons\\vol_internal.icns", 32 },
-    { NULL, L"\\icons\\vol_external.icns", 32 },
-    { NULL, L"\\icons\\vol_optical.icns", 32 },
+    { NULL, L"icons\\os_mac.icns", 128 },
+    { NULL, L"icons\\os_linux.icns", 128 },
+    { NULL, L"icons\\os_win.icns", 128 },
+    { NULL, L"icons\\os_hwtest.icns", 128 },
+    { NULL, L"icons\\os_legacy.icns", 128 },
+    { NULL, L"icons\\os_unknown.icns", 128 },
+    { NULL, L"icons\\func_about.icns", 48 },
+    { NULL, L"icons\\func_reset.icns", 48 },
+    { NULL, L"icons\\tool_shell.icns", 48 },
+    { NULL, L"icons\\vol_internal.icns", 32 },
+    { NULL, L"icons\\vol_external.icns", 32 },
+    { NULL, L"icons\\vol_optical.icns", 32 },
 };
 
 EG_IMAGE * BuiltinIcon(IN UINTN Id)
 {
-    CHAR16 *FullPath;
-    
     if (Id >= BUILTIN_ICON_COUNT)
         return NULL;
     
-    if (BuiltinIconTable[Id].Image == NULL) {
-        FullPath = PoolPrint(L"%s%s", SelfDirPath, BuiltinIconTable[Id].Path);
-        BuiltinIconTable[Id].Image = LoadIcnsFallback(SelfDir, FullPath, BuiltinIconTable[Id].PixelSize);
-        FreePool(FullPath);
-    }
+    if (BuiltinIconTable[Id].Image == NULL)
+        BuiltinIconTable[Id].Image = LoadIcnsFallback(SelfDir, BuiltinIconTable[Id].Path, BuiltinIconTable[Id].PixelSize);
     
     return BuiltinIconTable[Id].Image;
 }
@@ -83,6 +78,8 @@ EG_IMAGE * BuiltinIcon(IN UINTN Id)
 
 EG_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize)
 {
+    if (GlobalConfig.TextOnly)      // skip loading if it's not used anyway
+        return NULL;
     return egLoadIcon(BaseDir, FileName, PixelSize);
 }
 
@@ -123,6 +120,9 @@ EG_IMAGE * DummyImage(IN UINTN PixelSize)
 EG_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize)
 {
     EG_IMAGE *Image;
+    
+    if (GlobalConfig.TextOnly)      // skip loading if it's not used anyway
+        return NULL;
     
     Image = LoadIcns(BaseDir, FileName, PixelSize);
     if (Image == NULL)

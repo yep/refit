@@ -58,12 +58,11 @@ typedef struct {
 #define MACOSX_LOADER_PATH      L"\\System\\Library\\CoreServices\\boot.efi"
 #define MACOSX_HIBERNATE_PATH   L"\\var\\vm\\sleepimage"
 
-#define TAG_EXIT   (1)
-#define TAG_RESET  (2)
-#define TAG_ABOUT  (3)
-#define TAG_LOADER (4)
+#define TAG_RESET  (1)
+#define TAG_ABOUT  (2)
+#define TAG_LOADER (3)
+#define TAG_LEGACY (4)
 #define TAG_TOOL   (5)
-#define TAG_LEGACY (6)
 
 static REFIT_MENU_ENTRY MenuEntryReset  = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
 static REFIT_MENU_ENTRY MenuEntryAbout  = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
@@ -148,7 +147,7 @@ bailout:
 
 static VOID StartLoader(IN LOADER_ENTRY *Entry)
 {
-    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, L"Booting OS");
+    BeginExternalScreen(Entry->UseGraphicsMode, L"Booting OS");
     StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
 }
 
@@ -486,7 +485,7 @@ static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN Partit
 
 static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
-    BeginExternalScreen(1, L"Booting Legacy OS");
+    BeginExternalScreen(TRUE, L"Booting Legacy OS");
     
     if (Entry->Volume->IsMbrPartition)
         ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
@@ -600,7 +599,7 @@ static VOID ScanLegacy(VOID)
 
 static VOID StartTool(IN LOADER_ENTRY *Entry)
 {
-    BeginExternalScreen(Entry->UseGraphicsMode ? 1 : 0, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
+    BeginExternalScreen(Entry->UseGraphicsMode, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
     StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath),
                   Basename(Entry->LoaderPath));
 }
@@ -668,20 +667,24 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     UINTN MenuExit;
     UINTN i;
     
+    // bootstrap
     InitializeLib(ImageHandle, SystemTable);
     InitScreen();
     Status = InitRefitLib(ImageHandle);
     if (EFI_ERROR(Status))
         return Status;
     
-    BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);   // disable EFI watchdog timer
-    
-    ScanVolumes();
-    DebugPause();
-    
     // read configuration
     ReadConfig();
     MainMenu.TimeoutSeconds = GlobalConfig.Timeout;
+    
+    // disable EFI watchdog timer
+    BS->SetWatchdogTimer(0x0000, 0x0000, 0x0000, NULL);
+    
+    // further bootstrap (now with config available)
+    SetupScreen();
+    ScanVolumes();
+    DebugPause();
     
     // scan for loaders and tools, add them to the menu
     if (GlobalConfig.LegacyFirst)
@@ -704,7 +707,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     while (MainLoopRunning) {
         MenuExit = RunMainMenu(&MainMenu, &ChosenEntry);
         
-        if (MenuExit == MENU_EXIT_ESCAPE || ChosenEntry->Tag == TAG_EXIT)
+        if (MenuExit == MENU_EXIT_ESCAPE)
             break;
         
         switch (ChosenEntry->Tag) {

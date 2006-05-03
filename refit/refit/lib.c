@@ -78,6 +78,7 @@ EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle)
     */
     
     SelfRootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
+    // TODO: error checking here
     
     // find the current directory
     DevicePathAsString = DevicePathToStr(SelfLoadedImage->FilePath);

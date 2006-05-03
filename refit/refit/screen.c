@@ -62,7 +62,7 @@ static EG_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
 static BOOLEAN haveError = FALSE;
 
 //
-// Screen handling
+// Screen initialization and switching
 //
 
 VOID InitScreen(VOID)
@@ -79,14 +79,7 @@ VOID InitScreen(VOID)
         AllowGraphicsMode = FALSE;
         egSetGraphicsModeEnabled(FALSE);
     }
-    
     GraphicsScreenDirty = TRUE;
-    // TODO: delay this until after the configuration has been read
-    //  (for text-only mode)
-    if (AllowGraphicsMode) {
-        // display banner during init phase
-        BltClearScreen(TRUE);
-    }
     
     // disable cursor
     ST->ConOut->EnableCursor(ST->ConOut, FALSE);
@@ -108,11 +101,38 @@ VOID InitScreen(VOID)
     DrawScreenHeader(L"Initializing...");
 }
 
-VOID SetTextOnly(VOID)
+VOID SetupScreen(VOID)
 {
-    AllowGraphicsMode = FALSE;
-    SwitchToText(TRUE);
+    if (GlobalConfig.TextOnly) {
+        // switch to text mode if requested
+        AllowGraphicsMode = FALSE;
+        SwitchToText(FALSE);
+        
+    } else if (AllowGraphicsMode) {
+        // clear screen and show banner
+        // (now we know we'll stay in graphics mode)
+        SwitchToGraphics();
+        BltClearScreen(TRUE);
+    }
 }
+
+static VOID SwitchToText(IN BOOLEAN CursorEnabled)
+{
+    egSetGraphicsModeEnabled(FALSE);
+    ST->ConOut->EnableCursor(ST->ConOut, CursorEnabled);
+}
+
+static VOID SwitchToGraphics(VOID)
+{
+    if (AllowGraphicsMode && !egIsGraphicsModeEnabled()) {
+        egSetGraphicsModeEnabled(TRUE);
+        GraphicsScreenDirty = TRUE;
+    }
+}
+
+//
+// Screen control for running tools
+//
 
 VOID BeginTextScreen(IN CHAR16 *Title)
 {
@@ -134,26 +154,20 @@ VOID FinishTextScreen(IN BOOLEAN WaitAlways)
     haveError = FALSE;
 }
 
-VOID BeginExternalScreen(IN UINTN Mode, IN CHAR16 *Title)
+VOID BeginExternalScreen(IN BOOLEAN UseGraphicsMode, IN CHAR16 *Title)
 {
-    // modes:
-    //  0 text screen with header
-    //  1 graphics, blank grey
-    
     if (!AllowGraphicsMode)
-        Mode = 0;
+        UseGraphicsMode = FALSE;
     
-    if (Mode == 1) {
+    if (UseGraphicsMode) {
         SwitchToGraphics();
         BltClearScreen(FALSE);
     }
     
-    // NOTE: The following happens always, because we might switch back to text mode later
-    //       to show errors
     // show the header
     DrawScreenHeader(Title);
     
-    if (Mode == 0)
+    if (!UseGraphicsMode)
         SwitchToText(TRUE);
     
     // reset error flag
@@ -184,20 +198,6 @@ VOID TerminateScreen(VOID)
     ST->ConOut->EnableCursor(ST->ConOut, TRUE);
 }
 
-static VOID SwitchToText(IN BOOLEAN CursorEnabled)
-{
-    egSetGraphicsModeEnabled(FALSE);
-    ST->ConOut->EnableCursor(ST->ConOut, CursorEnabled);
-}
-
-static VOID SwitchToGraphics(VOID)
-{
-    if (AllowGraphicsMode && !egIsGraphicsModeEnabled()) {
-        egSetGraphicsModeEnabled(TRUE);
-        GraphicsScreenDirty = TRUE;
-    }
-}
-
 static VOID DrawScreenHeader(IN CHAR16 *Title)
 {
     UINTN y;
@@ -221,6 +221,10 @@ static VOID DrawScreenHeader(IN CHAR16 *Title)
     ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
     ST->ConOut->SetCursorPosition(ST->ConOut, 0, 4);
 }
+
+//
+// Keyboard input
+//
 
 static BOOLEAN ReadAllKeyStrokes(VOID)
 {

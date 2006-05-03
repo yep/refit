@@ -72,6 +72,8 @@ EG_IMAGE * BuiltinImage(IN UINTN Id)
 {
     if (Id >= BUILTIN_IMAGE_COUNT)
         return NULL;
+    if (GlobalConfig.TextOnly)      // skip loading if it's not used anyway
+        return NULL;
     
     if (BuiltinImageTable[Id].Image == NULL)
         BuiltinImageTable[Id].Image = egPrepareEmbeddedImage(BuiltinImageTable[Id].EmbImage, FALSE);

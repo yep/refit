@@ -38,7 +38,8 @@
 
 // constants
 
-#define MAXCONFIGFILESIZE (64*1024)
+#define CONFIG_FILE_NAME    L"refit.conf"
+#define MAXCONFIGFILESIZE   (64*1024)
 
 #define ENCODING_ISO8859_1  (0)
 #define ENCODING_UTF8       (1)
@@ -46,13 +47,13 @@
 
 // global configuration with default values
 
-REFIT_CONFIG        GlobalConfig = { 20, 0, FALSE };
+REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, FALSE };
 
 //
 // read a file into a buffer
 //
 
-static EFI_STATUS ReadFile(REFIT_VOLUME *Volume, CHAR16 *FilePath, REFIT_FILE *File)
+static EFI_STATUS ReadFile(IN EFI_FILE_HANDLE BaseDir, CHAR16 *FileName, REFIT_FILE *File)
 {
     EFI_STATUS      Status;
     EFI_FILE_HANDLE FileHandle;
@@ -63,13 +64,14 @@ static EFI_STATUS ReadFile(REFIT_VOLUME *Volume, CHAR16 *FilePath, REFIT_FILE *F
     File->BufferSize = 0;
     
     // read the file, allocating a buffer on the woy
-    Status = Volume->RootDir->Open(Volume->RootDir, &FileHandle, FilePath, EFI_FILE_MODE_READ, 0);
+    Status = BaseDir->Open(BaseDir, &FileHandle, FileName, EFI_FILE_MODE_READ, 0);
     if (CheckError(Status, L"while loading the configuration file"))
         return Status;
     
     FileInfo = LibFileInfo(FileHandle);
     if (FileInfo == NULL) {
         // TODO: print and register the error
+        FileHandle->Close(FileHandle);
         return EFI_LOAD_ERROR;
     }
     ReadSize = FileInfo->FileSize;
@@ -83,6 +85,7 @@ static EFI_STATUS ReadFile(REFIT_VOLUME *Volume, CHAR16 *FilePath, REFIT_FILE *F
     if (CheckError(Status, L"while loading the configuration file")) {
         FreePool(File->Buffer);
         File->Buffer = NULL;
+        FileHandle->Close(FileHandle);
         return Status;
     }
     Status = FileHandle->Close(FileHandle);
@@ -289,21 +292,14 @@ VOID ReadConfig(VOID)
 {
     EFI_STATUS      Status;
     REFIT_FILE      File;
-    CHAR16          *FilePath;
     CHAR16          **TokenList;
     UINTN           TokenCount;
     
-    if (SelfVolume == NULL)
+    if (!FileExists(SelfDir, CONFIG_FILE_NAME))
         return;
-    FilePath = PoolPrint(L"%s\\refit.conf", SelfDirPath);
-    if (!FileExists(SelfVolume->RootDir, FilePath)) {
-        FreePool(FilePath);
-        return;
-    }
     
     Print(L"Reading configuration file...\n");
-    Status = ReadFile(SelfVolume, FilePath, &File);
-    FreePool(FilePath);
+    Status = ReadFile(SelfDir, CONFIG_FILE_NAME, &File);
     if (EFI_ERROR(Status))
         return;
     
@@ -317,7 +313,7 @@ VOID ReadConfig(VOID)
         } else if (StriCmp(TokenList[0], L"hidebadges") == 0) {
             HandleEnum(TokenList, TokenCount, HideBadgesEnum, 3, &(GlobalConfig.HideBadges));
         } else if (StriCmp(TokenList[0], L"textonly") == 0) {
-            SetTextOnly();
+            GlobalConfig.TextOnly = TRUE;
         } else if (StriCmp(TokenList[0], L"legacyfirst") == 0) {
             GlobalConfig.LegacyFirst = TRUE;
         } else {
