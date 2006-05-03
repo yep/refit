@@ -34,6 +34,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef __LIBEG_LIBEGINT_H__
+#define __LIBEG_LIBEGINT_H__
+
+
 #include <efi.h>
 #include <efilib.h>
 
@@ -58,5 +62,8 @@ VOID egCopyPlane(IN UINT8 *SrcPlanePtr, IN UINT8 *DestPlanePtr, IN UINTN PixelCo
 
 EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha);
 EG_IMAGE * egLoadICNSIcon(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha);
+
+
+#endif /* __LIBEG_LIBEGINT_H__ */
 
 /* EOF */

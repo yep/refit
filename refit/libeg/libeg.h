@@ -34,6 +34,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef __LIBEG_LIBEG_H__
+#define __LIBEG_LIBEG_H__
+
+
 /* types */
 
 typedef struct {
@@ -100,5 +104,8 @@ VOID egRenderText(IN CHAR16 *Text, IN OUT EG_IMAGE *CompImage, IN UINTN PosX, IN
 VOID egClearScreen(IN EG_PIXEL *Color);
 VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY);
 // FUTURE: egDrawImageArea
+
+
+#endif /* __LIBEG_LIBEG_H__ */
 
 /* EOF */
