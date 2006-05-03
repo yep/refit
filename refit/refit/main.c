@@ -36,6 +36,8 @@
 
 #include "lib.h"
 
+#include "syslinux_mbr.h"
+
 // types
 
 typedef struct {
@@ -462,20 +464,38 @@ static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN Partit
     UINT8               SectorBuffer[512];
     MBR_PARTITION_INFO  *MbrTable;
     UINTN               i;
+    BOOLEAN             HaveBootCode;
     
+    // read MBR
     Status = BlockIO->ReadBlocks(BlockIO, BlockIO->Media->MediaId, 0, 512, SectorBuffer);
     if (EFI_ERROR(Status))
         return Status;
     if (*((UINT16 *)(SectorBuffer + 510)) != 0xaa55)
-        return EFI_NOT_FOUND;
-    MbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
+        return EFI_NOT_FOUND;  // safety measure #1
     
+    // add boot code if necessary
+    HaveBootCode = FALSE;
+    for (i = 0; i < MBR_BOOTCODE_SIZE; i++) {
+        if (SectorBuffer[i] != 0) {
+            HaveBootCode = TRUE;
+            break;
+        }
+    }
+    if (!HaveBootCode) {
+        // no boot code found in the MBR, add the syslinux MBR code
+        SetMem(SectorBuffer, MBR_BOOTCODE_SIZE, 0);
+        CopyMem(SectorBuffer, syslinux_mbr, SYSLINUX_MBR_SIZE);
+    }
+    
+    // set the partition active
+    MbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
     for (i = 0; i < 4; i++) {
         if (MbrTable[i].Flags != 0x00 && MbrTable[i].Flags != 0x80)
-            return EFI_NOT_FOUND;
+            return EFI_NOT_FOUND;   // safety measure #2
         MbrTable[i].Flags = (i == PartitionIndex) ? 0x80 : 0x00;
     }
     
+    // write MBR
     Status = BlockIO->WriteBlocks(BlockIO, BlockIO->Media->MediaId, 0, 512, SectorBuffer);
     if (EFI_ERROR(Status))
         return Status;
