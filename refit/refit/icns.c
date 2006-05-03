@@ -50,16 +50,15 @@ BUILTIN_ICON BuiltinIconTable[BUILTIN_ICON_COUNT] = {
     { NULL, L"\\icons\\os_mac.icns", 128 },
     { NULL, L"\\icons\\os_linux.icns", 128 },
     { NULL, L"\\icons\\os_win.icns", 128 },
+    { NULL, L"\\icons\\os_hwtest.icns", 128 },
+    { NULL, L"\\icons\\os_legacy.icns", 128 },
     { NULL, L"\\icons\\os_unknown.icns", 128 },
     { NULL, L"\\icons\\func_about.icns", 48 },
-    { NULL, L"\\icons\\func_exit.icns", 48 },  // to delete
     { NULL, L"\\icons\\func_reset.icns", 48 },
     { NULL, L"\\icons\\tool_shell.icns", 48 },
     { NULL, L"\\icons\\vol_internal.icns", 32 },
     { NULL, L"\\icons\\vol_external.icns", 32 },
     { NULL, L"\\icons\\vol_optical.icns", 32 },
-    { NULL, L"\\icons\\os_hwtest.icns", 128 },
-    { NULL, L"\\icons\\os_legacy.icns", 128 },
 };
 
 EG_IMAGE * BuiltinIcon(IN UINTN Id)

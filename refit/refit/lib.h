@@ -183,17 +183,16 @@ EG_IMAGE * BuiltinIcon(IN UINTN Id);
 #define BUILTIN_ICON_OS_MAC         (0)
 #define BUILTIN_ICON_OS_LINUX       (1)
 #define BUILTIN_ICON_OS_WIN         (2)
-#define BUILTIN_ICON_OS_UNKNOWN     (3)
-#define BUILTIN_ICON_FUNC_ABOUT     (4)
-#define BUILTIN_ICON_FUNC_EXIT      (5)
-#define BUILTIN_ICON_FUNC_RESET     (6)
-#define BUILTIN_ICON_TOOL_SHELL     (7)
-#define BUILTIN_ICON_VOL_INTERNAL   (8)
-#define BUILTIN_ICON_VOL_EXTERNAL   (9)
-#define BUILTIN_ICON_VOL_OPTICAL    (10)
-#define BUILTIN_ICON_OS_HWTEST      (11)
-#define BUILTIN_ICON_OS_LEGACY      (12)
-#define BUILTIN_ICON_COUNT          (13)
+#define BUILTIN_ICON_OS_HWTEST      (3)
+#define BUILTIN_ICON_OS_LEGACY      (4)
+#define BUILTIN_ICON_OS_UNKNOWN     (5)
+#define BUILTIN_ICON_FUNC_ABOUT     (6)
+#define BUILTIN_ICON_FUNC_RESET     (7)
+#define BUILTIN_ICON_TOOL_SHELL     (8)
+#define BUILTIN_ICON_VOL_INTERNAL   (9)
+#define BUILTIN_ICON_VOL_EXTERNAL   (10)
+#define BUILTIN_ICON_VOL_OPTICAL    (11)
+#define BUILTIN_ICON_COUNT          (12)
 
 //
 // image module
@@ -201,12 +200,12 @@ EG_IMAGE * BuiltinIcon(IN UINTN Id);
 
 EG_IMAGE * BuiltinImage(IN UINTN Id);
 
-#define BUILTIN_IMAGE_BANNER                (1)
-#define BUILTIN_IMAGE_BACK_NORMAL_BIG       (2)
-#define BUILTIN_IMAGE_BACK_SELECTED_BIG     (3)
-#define BUILTIN_IMAGE_BACK_NORMAL_SMALL     (4)
-#define BUILTIN_IMAGE_BACK_SELECTED_SMALL   (5)
-#define BUILTIN_IMAGE_COUNT                 (6)
+#define BUILTIN_IMAGE_BANNER                (0)
+#define BUILTIN_IMAGE_BACK_NORMAL_BIG       (1)
+#define BUILTIN_IMAGE_BACK_SELECTED_BIG     (2)
+#define BUILTIN_IMAGE_BACK_NORMAL_SMALL     (3)
+#define BUILTIN_IMAGE_BACK_SELECTED_SMALL   (4)
+#define BUILTIN_IMAGE_COUNT                 (5)
 
 //
 // menu module

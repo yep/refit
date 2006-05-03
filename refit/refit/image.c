@@ -57,7 +57,6 @@ typedef struct {
 } BUILTIN_IMAGE;
 
 BUILTIN_IMAGE BuiltinImageTable[BUILTIN_IMAGE_COUNT] = {
-    { NULL, NULL },
     { &egemb_refit_banner, NULL },
     { &egemb_back_normal_big, NULL },
     { &egemb_back_selected_big, NULL },
