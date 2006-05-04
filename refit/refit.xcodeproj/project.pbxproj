@@ -117,6 +117,10 @@
 		9DF0AA2C0A09C58400058459 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DF0AA320A09C59E00058459 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = refit.mak; sourceTree = "<group>"; };
 		9DF0AA340A09C5A200058459 /* build.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build.bat; sourceTree = "<group>"; };
+		9DF0AAB50A0AA07300058459 /* gptsync.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gptsync.c; sourceTree = "<group>"; };
+		9DF0AAB60A0AA07300058459 /* gptsync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gptsync.h; sourceTree = "<group>"; };
+		9DF0AACF0A0AA60700058459 /* os_efi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_efi.c; sourceTree = "<group>"; };
+		9DF0AAE90A0AAA3500058459 /* gptsync.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = gptsync.mak; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -145,6 +149,7 @@
 			children = (
 				9DF0A9DE0A09C39600058459 /* refit */,
 				9DF0A9DF0A09C3C100058459 /* libeg */,
+				9DF0AAAD0A0AA04600058459 /* gptsync */,
 				9DF0AA080A09C45000058459 /* dumpprot */,
 				9DF0A9E00A09C3D400058459 /* include */,
 			);
@@ -224,6 +229,7 @@
 				9DF0AA340A09C5A200058459 /* build.bat */,
 				9DF0AA1A0A09C4DE00058459 /* refit */,
 				9DF0AA1B0A09C51000058459 /* libeg */,
+				9DF0AAD80A0AA9F900058459 /* gptsync */,
 				9DF0AA240A09C55C00058459 /* dumpprot */,
 				9DF0AA120A09C4BA00058459 /* Make.common */,
 			);
@@ -257,6 +263,24 @@
 				9DF0AA270A09C57800058459 /* dumpprot.mkefi */,
 			);
 			path = dumpprot;
+			sourceTree = "<group>";
+		};
+		9DF0AAAD0A0AA04600058459 /* gptsync */ = {
+			isa = PBXGroup;
+			children = (
+				9DF0AAB50A0AA07300058459 /* gptsync.c */,
+				9DF0AAB60A0AA07300058459 /* gptsync.h */,
+				9DF0AACF0A0AA60700058459 /* os_efi.c */,
+			);
+			path = gptsync;
+			sourceTree = "<group>";
+		};
+		9DF0AAD80A0AA9F900058459 /* gptsync */ = {
+			isa = PBXGroup;
+			children = (
+				9DF0AAE90A0AAA3500058459 /* gptsync.mak */,
+			);
+			path = gptsync;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
