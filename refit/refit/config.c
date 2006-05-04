@@ -47,7 +47,7 @@
 
 // global configuration with default values
 
-REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, 0, FALSE };
+REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, 0, FALSE, NULL };
 
 //
 // read a file into a buffer
@@ -259,6 +259,21 @@ static VOID HandleInt(IN CHAR16 **TokenList, IN UINTN TokenCount, OUT UINTN *Val
 }
 
 //
+// handle a parameter with a single string argument
+//
+
+static VOID HandleString(IN CHAR16 **TokenList, IN UINTN TokenCount, OUT CHAR16 **Value)
+{
+    if (TokenCount < 2) {
+        return;
+    }
+    if (TokenCount > 2) {
+        return;
+    }
+    *Value = StrDuplicate(TokenList[1]);
+}
+
+//
 // handle an enumeration parameter
 //
 
@@ -342,6 +357,9 @@ VOID ReadConfig(VOID)
                     Print(L" unknown hideui flag: '%s'\n", FlagName);
                 }
             }
+            
+        } else if (StriCmp(TokenList[0], L"banner") == 0) {
+            HandleString(TokenList, TokenCount, &(GlobalConfig.BannerFileName));
             
         } else if (StriCmp(TokenList[0], L"textonly") == 0) {
             GlobalConfig.TextOnly = TRUE;

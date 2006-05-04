@@ -324,10 +324,19 @@ VOID SwitchToGraphicsAndClear(VOID)
 
 VOID BltClearScreen(IN BOOLEAN ShowBanner)
 {
+    static EG_IMAGE *Banner = NULL;
+    
     egClearScreen(&BackgroundPixel);
     if (ShowBanner && !(GlobalConfig.HideUIFlags & HIDEUI_FLAG_BANNER)) {
-        EG_IMAGE *banner = BuiltinImage(BUILTIN_IMAGE_BANNER);
-        BltImage(banner, (UGAWidth - banner->Width) >> 1, (UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1);
+        if (Banner == NULL) {
+            if (GlobalConfig.BannerFileName == NULL)
+                Banner = BuiltinImage(BUILTIN_IMAGE_BANNER);
+            else
+                Banner = egLoadImage(SelfDir, GlobalConfig.BannerFileName, FALSE);
+        }
+        if (Banner != NULL)
+            BltImage(Banner, (UGAWidth - Banner->Width) >> 1,
+                     ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + LAYOUT_BANNER_HEIGHT - Banner->Height);
     }
     GraphicsScreenDirty = FALSE;
 }

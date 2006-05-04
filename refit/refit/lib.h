@@ -134,7 +134,8 @@ INTN FindMem(IN VOID *Buffer, IN UINTN BufferLength, IN VOID *SearchString, IN U
 
 #define LAYOUT_TEXT_WIDTH (512)
 #define LAYOUT_TOTAL_HEIGHT (368)
-#define LAYOUT_BANNER_YOFFSET (32+32)
+#define LAYOUT_BANNER_HEIGHT (32)
+#define LAYOUT_BANNER_YOFFSET (LAYOUT_BANNER_HEIGHT + 32)
 
 #define FONT_CELL_WIDTH (7)
 #define FONT_CELL_HEIGHT (12)
@@ -268,11 +269,12 @@ typedef struct {
 #define HIDEUI_ALL              (0x001f)
 
 typedef struct {
-    BOOLEAN TextOnly;
-    UINTN   Timeout;
-    UINTN   HideBadges;
-    UINTN   HideUIFlags;
-    BOOLEAN LegacyFirst;
+    BOOLEAN     TextOnly;
+    UINTN       Timeout;
+    UINTN       HideBadges;
+    UINTN       HideUIFlags;
+    BOOLEAN     LegacyFirst;
+    CHAR16      *BannerFileName;
 } REFIT_CONFIG;
 
 extern REFIT_CONFIG GlobalConfig;

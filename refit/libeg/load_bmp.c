@@ -36,15 +36,166 @@
 
 #include "libegint.h"
 
+// BMP structures
+
+#pragma pack(1)
+
+typedef struct {
+    UINT8   Blue;
+    UINT8   Green;
+    UINT8   Red;
+    UINT8   Reserved;
+} BMP_COLOR_MAP;
+
+typedef struct {
+    CHAR8         CharB;
+    CHAR8         CharM;
+    UINT32        Size;
+    UINT16        Reserved[2];
+    UINT32        ImageOffset;
+    UINT32        HeaderSize;
+    UINT32        PixelWidth;
+    UINT32        PixelHeight;
+    UINT16        Planes;       // Must be 1
+    UINT16        BitPerPixel;  // 1, 4, 8, or 24
+    UINT32        CompressionType;
+    UINT32        ImageSize;    // Compressed image size in bytes
+    UINT32        XPixelsPerMeter;
+    UINT32        YPixelsPerMeter;
+    UINT32        NumberOfColors;
+    UINT32        ImportantColors;
+} BMP_IMAGE_HEADER;
+
+#pragma pack()
+
 //
 // Load BMP image
 //
 
 EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha)
 {
-    // TODO
+    EG_IMAGE            *NewImage;
+    BMP_IMAGE_HEADER    *BmpHeader;
+    BMP_COLOR_MAP       *BmpColorMap;
+    UINTN               x, y;
+    UINT8               *ImagePtr;
+    UINT8               *ImagePtrBase;
+    UINTN               ImageLineOffset;
+    UINT8               ImageValue;
+    EG_PIXEL            *PixelPtr;
+    UINTN               Index, BitIndex;
     
-    return NULL;
+    // read and check header
+    if (FileDataLength < sizeof(BMP_IMAGE_HEADER))
+        return NULL;
+    BmpHeader = (BMP_IMAGE_HEADER *) FileData;
+    if (BmpHeader->CharB != 'B' || BmpHeader->CharM != 'M')
+        return NULL;
+    if (BmpHeader->CompressionType != 0)
+        return NULL;
+    if (BmpHeader->BitPerPixel != 1 && BmpHeader->BitPerPixel != 4 &&
+        BmpHeader->BitPerPixel != 8 && BmpHeader->BitPerPixel != 24)
+        return NULL;
+    
+    // calculate parameters
+    ImageLineOffset = BmpHeader->PixelWidth;
+    if (BmpHeader->BitPerPixel == 24)
+        ImageLineOffset *= 3;
+    else if (BmpHeader->BitPerPixel == 1)
+        ImageLineOffset = (ImageLineOffset + 7) >> 3;
+    else if (BmpHeader->BitPerPixel == 4)
+        ImageLineOffset = (ImageLineOffset + 1) >> 1;
+    if ((ImageLineOffset % 4) != 0)
+        ImageLineOffset = ImageLineOffset + (4 - (ImageLineOffset % 4));
+    // check bounds
+    if (BmpHeader->ImageOffset + ImageLineOffset * BmpHeader->PixelHeight > FileDataLength)
+        return NULL;
+    
+    // allocate image structure and buffer
+    NewImage = egCreateImage(BmpHeader->PixelWidth, BmpHeader->PixelHeight, FALSE);
+    if (NewImage == NULL)
+        return NULL;
+    
+    // convert image
+    BmpColorMap = (BMP_COLOR_MAP *)(FileData + sizeof(BMP_IMAGE_HEADER));
+    ImagePtrBase = FileData + BmpHeader->ImageOffset;
+    for (y = 0; y < BmpHeader->PixelHeight; y++) {
+        ImagePtr = ImagePtrBase;
+        ImagePtrBase += ImageLineOffset;
+        PixelPtr = NewImage->PixelData + (BmpHeader->PixelHeight - 1 - y) * BmpHeader->PixelWidth;
+        
+        switch (BmpHeader->BitPerPixel) {
+            
+            case 1:
+                for (x = 0; x < BmpHeader->PixelWidth; x++) {
+                    BitIndex = x & 0x07;
+                    if (BitIndex == 0)
+                        ImageValue = *ImagePtr++;
+                    
+                    Index = (ImageValue >> (7 - BitIndex)) & 0x01;
+                    PixelPtr->b = BmpColorMap[Index].Blue;
+                    PixelPtr->g = BmpColorMap[Index].Green;
+                    PixelPtr->r = BmpColorMap[Index].Red;
+                    PixelPtr->a = 0;
+                    PixelPtr++;
+                }
+                break;
+            
+            case 4:
+                for (x = 0; x <= BmpHeader->PixelWidth - 2; x += 2) {
+                    ImageValue = *ImagePtr++;
+                    
+                    Index = ImageValue >> 4;
+                    PixelPtr->b = BmpColorMap[Index].Blue;
+                    PixelPtr->g = BmpColorMap[Index].Green;
+                    PixelPtr->r = BmpColorMap[Index].Red;
+                    PixelPtr->a = 0;
+                    PixelPtr++;
+                    
+                    Index = ImageValue & 0x0f;
+                    PixelPtr->b = BmpColorMap[Index].Blue;
+                    PixelPtr->g = BmpColorMap[Index].Green;
+                    PixelPtr->r = BmpColorMap[Index].Red;
+                    PixelPtr->a = 0;
+                    PixelPtr++;
+                }
+                if (x < BmpHeader->PixelWidth) {
+                    ImageValue = *ImagePtr++;
+                    
+                    Index = ImageValue >> 4;
+                    PixelPtr->b = BmpColorMap[Index].Blue;
+                    PixelPtr->g = BmpColorMap[Index].Green;
+                    PixelPtr->r = BmpColorMap[Index].Red;
+                    PixelPtr->a = 0;
+                    PixelPtr++;
+                }
+                break;
+            
+            case 8:
+                for (x = 0; x < BmpHeader->PixelWidth; x++) {
+                    Index = *ImagePtr++;
+                    PixelPtr->b = BmpColorMap[Index].Blue;
+                    PixelPtr->g = BmpColorMap[Index].Green;
+                    PixelPtr->r = BmpColorMap[Index].Red;
+                    PixelPtr->a = 0;
+                    PixelPtr++;
+                }
+                break;
+            
+            case 24:
+                for (x = 0; x < BmpHeader->PixelWidth; x++) {
+                    PixelPtr->b = *ImagePtr++;
+                    PixelPtr->g = *ImagePtr++;
+                    PixelPtr->r = *ImagePtr++;
+                    PixelPtr->a = 0;
+                    PixelPtr++;
+                }
+                break;
+            
+        }
+    }
+    
+    return NewImage;
 }
 
 /* EOF */
