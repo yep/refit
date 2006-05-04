@@ -34,41 +34,52 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * types
- */
+//
+// config
+//
+
+#ifdef EFI32
+#define CONFIG_EFI
+#endif
+
+//
+// types
+//
 
 #ifdef CONFIG_EFI
 #include <efi.h>
+#include <efilib.h>
 #endif
 
 #ifndef CONFIG_EFI
 
 typedef unsigned int        UINTN;
 typedef unsigned char       UINT8;
+typedef unsigned short      UINT16;
+typedef unsigned long       UINT32;
 typedef unsigned long long  UINT64;
 typedef void                VOID;
 
+typedef int                 BOOLEAN;
+#ifndef FALSE
+#define FALSE (0)
+#endif
+#ifndef TRUE
+#define TRUE  (1)
 #endif
 
-typedef struct {
-    UINTN  index;
-    UINT64 start_lba;
-    UINT64 end_lba;
-    UINTN  mbr_type;
-    UINT8  *gpt_type;
-} PARTITION_INFO;
+#endif
 
-/*
- * functions provided by the OS-specific module
- */
+//
+// functions provided by the OS-specific module
+//
 
 UINTN read_sector(UINT64 lba, UINT8 *buffer);
 UINTN write_sector(UINT64 lba, UINT8 *buffer);
 
-/*
- * common platform-independent function
- */
+//
+// common platform-independent function
+//
 
 UINTN gptsync(VOID);
 
