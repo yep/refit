@@ -76,6 +76,7 @@
 
 /* Begin PBXFileReference section */
 		08FB7796FE84155DC02AAC07 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		9D3AC8C60A0C915B0091F4FE /* Makefile.unix */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = Makefile.unix; sourceTree = "<group>"; };
 		9D47400709F54B7500C70CF4 /* config.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = config.c; sourceTree = "<group>"; };
 		9D574B1A09E907BE00EFE8D2 /* icns.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = icns.c; sourceTree = "<group>"; };
 		9D574B1B09E907BE00EFE8D2 /* image.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = image.c; sourceTree = "<group>"; };
@@ -281,6 +282,7 @@
 			isa = PBXGroup;
 			children = (
 				9DF0AAE90A0AAA3500058459 /* gptsync.mak */,
+				9D3AC8C60A0C915B0091F4FE /* Makefile.unix */,
 			);
 			path = gptsync;
 			sourceTree = "<group>";

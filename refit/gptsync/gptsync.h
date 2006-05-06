@@ -47,9 +47,18 @@
 //
 
 #ifdef CONFIG_EFI
+
 #include <efi.h>
 #include <efilib.h>
+
+#define copy_guid(destguid, srcguid) (CopyMem(destguid, srcguid, 16))
+#define guids_are_equal(guid1, guid2) (CompareMem(guid1, guid2, 16) == 0)
+
+typedef CHAR16 CHARN;
+#define STR(x) L##x
+
 #endif
+
 
 #ifndef CONFIG_EFI
 
@@ -79,7 +88,14 @@ typedef int                 BOOLEAN;
 #define TRUE  (1)
 #endif
 
+typedef unsigned short      CHAR16;
+typedef char                CHARN;
+#define STR(x) x
+
 void Print(wchar_t *format, ...);
+
+#define copy_guid(destguid, srcguid) (memcpy(destguid, srcguid, 16))
+#define guids_are_equal(guid1, guid2) (memcmp(guid1, guid2, 16) == 0)
 
 #endif
 
