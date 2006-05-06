@@ -119,7 +119,7 @@ static UINTN read_mbr(VOID)
         mbr_parts[mbr_part_count].mbr_type  = table[i].type;
         mbr_parts[mbr_part_count].gpt_type  = NULL;
         
-        Print(L" %d %10d %10d  %02x\n",
+        Print(L" %d %10lld %10lld  %02x\n",
               mbr_parts[mbr_part_count].index + 1,
               mbr_parts[mbr_part_count].start_lba,
               mbr_parts[mbr_part_count].end_lba,

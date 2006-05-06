@@ -121,6 +121,7 @@
 		9DF0AAB60A0AA07300058459 /* gptsync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gptsync.h; sourceTree = "<group>"; };
 		9DF0AACF0A0AA60700058459 /* os_efi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_efi.c; sourceTree = "<group>"; };
 		9DF0AAE90A0AAA3500058459 /* gptsync.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = gptsync.mak; sourceTree = "<group>"; };
+		9DF0AB0E0A0C88F300058459 /* os_unix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_unix.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -271,6 +272,7 @@
 				9DF0AAB50A0AA07300058459 /* gptsync.c */,
 				9DF0AAB60A0AA07300058459 /* gptsync.h */,
 				9DF0AACF0A0AA60700058459 /* os_efi.c */,
+				9DF0AB0E0A0C88F300058459 /* os_unix.c */,
 			);
 			path = gptsync;
 			sourceTree = "<group>";

@@ -53,6 +53,17 @@
 
 #ifndef CONFIG_EFI
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <fcntl.h>
+
 typedef unsigned int        UINTN;
 typedef unsigned char       UINT8;
 typedef unsigned short      UINT16;
@@ -67,6 +78,8 @@ typedef int                 BOOLEAN;
 #ifndef TRUE
 #define TRUE  (1)
 #endif
+
+void Print(wchar_t *format, ...);
 
 #endif
 
