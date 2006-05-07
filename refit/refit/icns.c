@@ -56,6 +56,8 @@ BUILTIN_ICON BuiltinIconTable[BUILTIN_ICON_COUNT] = {
     { NULL, L"icons\\func_about.icns", 48 },
     { NULL, L"icons\\func_reset.icns", 48 },
     { NULL, L"icons\\tool_shell.icns", 48 },
+    { NULL, L"icons\\tool_part.icns", 48 },
+    { NULL, L"icons\\tool_rescue.icns", 48 },
     { NULL, L"icons\\vol_internal.icns", 32 },
     { NULL, L"icons\\vol_external.icns", 32 },
     { NULL, L"icons\\vol_optical.icns", 32 },

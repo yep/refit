@@ -423,9 +423,12 @@ static VOID ScanLoader(VOID)
         // scan subdirectories of the EFI directory (as per the standard)
         DirIterOpen(Volume->RootDir, L"EFI", &EfiDirIter);
         while (DirIterNext(&EfiDirIter, 1, NULL, &EfiDirEntry)) {
-            if (StriCmp(EfiDirEntry->FileName, L"TOOLS") == 0 || EfiDirEntry->FileName[0] == '.')
+            if (StriCmp(EfiDirEntry->FileName, L"TOOLS") == 0 ||
+                EfiDirEntry->FileName[0] == '.')
                 continue;   // skip this, doesn't contain boot loaders
-            if (StriCmp(EfiDirEntry->FileName, L"REFIT") == 0 || StriCmp(EfiDirEntry->FileName, L"REFITL") == 0)
+            if (StriCmp(EfiDirEntry->FileName, L"REFIT") == 0 ||
+                StriCmp(EfiDirEntry->FileName, L"REFITL") == 0 ||
+                StriCmp(EfiDirEntry->FileName, L"RESCUE") == 0)
                 continue;   // skip ourselves
             Print(L"  - Directory EFI\\%s found\n", EfiDirEntry->FileName);
             
@@ -653,11 +656,15 @@ static VOID ScanTool(VOID)
 {
     //EFI_STATUS              Status;
     CHAR16                  FileName[256];
+    LOADER_ENTRY            *Entry;
+    
+    if (GlobalConfig.HideUIFlags & HIDEUI_FLAG_TOOLS)
+        return;
     
     Print(L"Scanning for tools...\n");
     
     // look for the EFI shell
-    if (!(GlobalConfig.HideUIFlags & (HIDEUI_FLAG_SHELL | HIDEUI_FLAG_TOOLS))) {
+    if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_SHELL)) {
         SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
         if (FileExists(SelfRootDir, FileName)) {
             AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
@@ -667,6 +674,25 @@ static VOID ScanTool(VOID)
                 AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
             }
         }
+    }
+    
+    // look for the GPT/MBR sync tool
+    StrCpy(FileName, L"\\efi\\tools\\gptsync.efi");
+    if (FileExists(SelfRootDir, FileName)) {
+        AddToolEntry(FileName, L"Partitioning Tool", BuiltinIcon(BUILTIN_ICON_TOOL_PART), FALSE);
+    }
+    
+    // look for rescue Linux
+    StrCpy(FileName, L"\\efi\\rescue\\elilo.efi");
+    if (SelfVolume != NULL && FileExists(SelfRootDir, FileName)) {
+        Entry = AddToolEntry(FileName, L"Rescue Linux", BuiltinIcon(BUILTIN_ICON_TOOL_RESCUE), FALSE);
+        
+        if (UGAWidth == 1440 && UGAHeight == 900)
+            Entry->LoadOptions = L"-d 0 i17";
+        else if (UGAWidth == 1680 && UGAHeight == 1050)
+            Entry->LoadOptions = L"-d 0 i20";
+        else
+            Entry->LoadOptions = L"-d 0 mini";
     }
 }
 

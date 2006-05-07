@@ -190,10 +190,12 @@ EG_IMAGE * BuiltinIcon(IN UINTN Id);
 #define BUILTIN_ICON_FUNC_ABOUT     (6)
 #define BUILTIN_ICON_FUNC_RESET     (7)
 #define BUILTIN_ICON_TOOL_SHELL     (8)
-#define BUILTIN_ICON_VOL_INTERNAL   (9)
-#define BUILTIN_ICON_VOL_EXTERNAL   (10)
-#define BUILTIN_ICON_VOL_OPTICAL    (11)
-#define BUILTIN_ICON_COUNT          (12)
+#define BUILTIN_ICON_TOOL_PART      (9)
+#define BUILTIN_ICON_TOOL_RESCUE    (10)
+#define BUILTIN_ICON_VOL_INTERNAL   (11)
+#define BUILTIN_ICON_VOL_EXTERNAL   (12)
+#define BUILTIN_ICON_VOL_OPTICAL    (13)
+#define BUILTIN_ICON_COUNT          (14)
 
 //
 // image module
