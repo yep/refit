@@ -174,6 +174,8 @@ static UINTN read_mbr(VOID)
     BOOLEAN             used;
     MBR_PARTITION_INFO  *table;
     
+    Print(L"Current MBR partition table:\n");
+    
     // read MBR data
     status = read_sector(0, sector);
     if (status != 0)
@@ -181,13 +183,13 @@ static UINTN read_mbr(VOID)
     
     // check for validity
     if (*((UINT16 *)(sector + 510)) != 0xaa55) {
-        Print(L"No MBR signature detected\n");
+        Print(L" No MBR partition table present!\n");
         return 0;
     }
     table = (MBR_PARTITION_INFO *)(sector + 446);
     for (i = 0; i < 4; i++) {
         if (table[i].flags != 0x00 && table[i].flags != 0x80) {
-            Print(L"Invalid MBR partition table\n");
+            Print(L" MBR partition table is invalid!\n");
             return 0;
         }
     }
@@ -201,12 +203,11 @@ static UINTN read_mbr(VOID)
         }
     }
     if (!used) {
-        Print(L"MBR table has no partitions defined\n");
+        Print(L" No partitions defined\n");
         return 0;
     }
     
     // dump current state & fill internal structures
-    Print(L"MBR table contains these partitions:\n");
     Print(L" #    Start LBA      End LBA  Type\n");
     for (i = 0; i < 4; i++) {
         if (table[i].start_lba == 0 || table[i].size == 0)
@@ -253,6 +254,8 @@ static UINTN read_gpt(VOID)
     UINT64      entry_lba;
     UINTN       entry_count, entry_size, i;
     
+    Print(L"Current GPT partition table:\n");
+    
     // read GPT header
     status = read_sector(1, sector);
     if (status != 0)
@@ -261,14 +264,14 @@ static UINTN read_gpt(VOID)
     // check signature
     header = (GPT_HEADER *)sector;
     if (header->signature != 0x5452415020494645ULL) {
-        Print(L"No GPT signature detected\n");
+        Print(L" No GPT partition table present!\n");
         return 0;
     }
     if (header->spec_revision != 0x00010000UL) {
-        Print(L"Warning: unknown GPT spec revision 0x%08x\n", header->spec_revision);
+        Print(L" Warning: Unknown GPT spec revision 0x%08x\n", header->spec_revision);
     }
     if ((512 % header->entry_size) > 0 || header->entry_size > 512) {
-        Print(L"Invalid GPT entry size (misaligned or more than 512 bytes)\n");
+        Print(L" Error: Invalid GPT entry size (misaligned or more than 512 bytes)\n");
         return 0;
     }
     
@@ -277,9 +280,7 @@ static UINTN read_gpt(VOID)
     entry_size  = header->entry_size;
     entry_count = header->entry_count;
     
-    Print(L"GPT table contains these partitions:\n");
     Print(L" #    Start LBA      End LBA  Type\n");
-    
     for (i = 0; i < entry_count; i++) {
         if (((i * entry_size) % 512) == 0) {
             status = read_sector(entry_lba, sector);

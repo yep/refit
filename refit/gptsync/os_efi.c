@@ -69,6 +69,45 @@ UINTN write_sector(UINT64 lba, UINT8 *buffer)
 }
 
 //
+// Keyboard input
+//
+
+static BOOLEAN ReadAllKeyStrokes(VOID)
+{
+    BOOLEAN       GotKeyStrokes;
+    EFI_STATUS    Status;
+    EFI_INPUT_KEY Key;
+    
+    GotKeyStrokes = FALSE;
+    for (;;) {
+        Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key);
+        if (Status == EFI_SUCCESS) {
+            GotKeyStrokes = TRUE;
+            continue;
+        }
+        break;
+    }
+    return GotKeyStrokes;
+}
+
+static VOID PauseForKey(VOID)
+{
+    UINTN Index;
+    
+    Print(L"\n* Hit any key to continue *");
+    
+    if (ReadAllKeyStrokes()) {  // remove buffered key strokes
+        BS->Stall(5000000);     // 5 seconds delay
+        ReadAllKeyStrokes();    // empty the buffer again
+    }
+    
+    BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &Index);
+    ReadAllKeyStrokes();        // empty the buffer to protect the menu
+    
+    Print(L"\n");
+}
+
+//
 // main entry point
 //
 
@@ -141,6 +180,10 @@ efi_main    (IN EFI_HANDLE           ImageHandle,
     
     
     SyncStatus = gptsync();
+    
+    
+    PauseForKey();
+    
     
     if (SyncStatus)
         return EFI_NOT_FOUND;
