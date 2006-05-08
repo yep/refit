@@ -105,6 +105,8 @@ VOID egClearScreen(IN EG_PIXEL *Color);
 VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY);
 // FUTURE: egDrawImageArea
 
+VOID egScreenShot(VOID);
+
 
 #endif /* __LIBEG_LIBEG_H__ */
 

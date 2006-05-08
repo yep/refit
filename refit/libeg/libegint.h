@@ -63,6 +63,8 @@ VOID egCopyPlane(IN UINT8 *SrcPlanePtr, IN UINT8 *DestPlanePtr, IN UINTN PixelCo
 EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha);
 EG_IMAGE * egLoadICNSIcon(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha);
 
+VOID egSaveBMPImage(IN EG_IMAGE *Image, IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName);
+
 
 #endif /* __LIBEG_LIBEGINT_H__ */
 

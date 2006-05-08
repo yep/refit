@@ -143,4 +143,49 @@ VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY)
     }
 }
 
+//
+// Make a screenshot
+//
+
+static EFI_GUID ESPGuid = { 0xc12a7328, 0xf81f, 0x11d2, { 0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b } };
+
+VOID egScreenShot(VOID)
+{
+    EFI_STATUS      Status;
+    EG_IMAGE        *Image;
+    UINTN           HandleCount = 0;
+    EFI_HANDLE      *Handles;
+    UINTN           Index;
+    
+    if (UgaDraw == NULL)
+        return;
+    
+    // allocate a buffer for the whole screen
+    Image = egCreateImage(egScreenWidth, egScreenHeight, FALSE);
+    if (Image == NULL) {
+        Print(L"Error egCreateImage returned NULL\n");
+        goto bailout_wait;
+    }
+    
+    // get full screen image
+    UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaVideoToBltBuffer,
+                 0, 0, 0, 0, Image->Width, Image->Height, 0);
+    
+    // save to a BMP file on the ESP
+    Status = LibLocateHandle(ByProtocol, &ESPGuid, NULL, &HandleCount, &Handles);
+    if (!EFI_ERROR(Status) && HandleCount > 0) {
+        egSaveBMPImage(Image, LibOpenRoot(Handles[0]), L"screenshot.bmp");
+        FreePool(Handles);
+    } else {
+        Print(L"Error LibLocateHandle: %R\n", Status);
+    }
+    
+    egFreeImage(Image);
+    
+    // DEBUG: switch to text mode
+bailout_wait:
+    egSetGraphicsModeEnabled(FALSE);
+    BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &Index);
+}
+
 /* EOF */
