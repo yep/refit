@@ -302,6 +302,9 @@ static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC Sty
             case SCAN_F2:
                 MenuExit = MENU_EXIT_DETAILS;
                 break;
+            case SCAN_F10:
+                egScreenShot();
+                break;
         }
         switch (key.UnicodeChar) {
             case CHAR_LINEFEED:
