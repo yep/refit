@@ -99,6 +99,7 @@ typedef struct {
     UINTN   mbr_type;
     UINT8   gpt_type[16];
     GPT_PARTTYPE *gpt_parttype;
+    BOOLEAN active;
 } PARTITION_INFO;
 
 // variables
@@ -222,7 +223,7 @@ static UINTN read_mbr(VOID)
     }
     
     // dump current state & fill internal structures
-    Print(L" #    Start LBA      End LBA  Type\n");
+    Print(L" # A    Start LBA      End LBA  Type\n");
     for (i = 0; i < 4; i++) {
         if (table[i].start_lba == 0 || table[i].size == 0)
             continue;
@@ -231,9 +232,11 @@ static UINTN read_mbr(VOID)
         mbr_parts[mbr_part_count].start_lba = (UINT64)table[i].start_lba;
         mbr_parts[mbr_part_count].end_lba   = (UINT64)table[i].start_lba + (UINT64)table[i].size - 1;
         mbr_parts[mbr_part_count].mbr_type  = table[i].type;
+        mbr_parts[mbr_part_count].active    = (table[i].flags == 0x80) ? TRUE : FALSE;
         
-        Print(L" %d %12lld %12lld  %02x  %s\n",
+        Print(L" %d %s %12lld %12lld  %02x  %s\n",
               mbr_parts[mbr_part_count].index + 1,
+              mbr_parts[mbr_part_count].active ? STR("*") : STR(" "),
               mbr_parts[mbr_part_count].start_lba,
               mbr_parts[mbr_part_count].end_lba,
               mbr_parts[mbr_part_count].mbr_type,
@@ -309,10 +312,7 @@ static UINTN write_mbr(VOID)
             table[i].start_lba    = 0;
             table[i].size         = 0;
         } else {
-            if (new_mbr_parts[k].mbr_type == 0x07 ||
-                new_mbr_parts[k].mbr_type == 0x0b ||
-                new_mbr_parts[k].mbr_type == 0x0c ||
-                new_mbr_parts[k].mbr_type == 0x83) {
+            if (new_mbr_parts[k].active) {
                 table[i].flags        = active;
                 active = 0x00;
             } else
@@ -413,7 +413,7 @@ static UINTN read_gpt(VOID)
     entry_size  = header->entry_size;
     entry_count = header->entry_count;
     
-    Print(L" #    Start LBA      End LBA  Type\n");
+    Print(L" #      Start LBA      End LBA  Type\n");
     for (i = 0; i < entry_count; i++) {
         if (((i * entry_size) % 512) == 0) {
             status = read_sector(entry_lba, sector);
@@ -432,8 +432,9 @@ static UINTN read_gpt(VOID)
         gpt_parts[gpt_part_count].mbr_type  = 0;
         copy_guid(gpt_parts[gpt_part_count].gpt_type, entry->type_guid);
         gpt_parts[gpt_part_count].gpt_parttype = gpt_parttype(gpt_parts[gpt_part_count].gpt_type);
+        gpt_parts[gpt_part_count].active    = FALSE;
         
-        Print(L" %d %12lld %12lld  %s\n",
+        Print(L" %d   %12lld %12lld  %s\n",
               gpt_parts[gpt_part_count].index + 1,
               gpt_parts[gpt_part_count].start_lba,
               gpt_parts[gpt_part_count].end_lba,
@@ -501,8 +502,9 @@ static UINTN check_gpt(VOID)
 static UINTN analyze(VOID)
 {
     UINTN   action_code = ACTION_CODE_NONE;
-    UINTN   i, k;
+    UINTN   i, k, iter;
     UINT64  min_start_lba;
+    BOOLEAN have_active;
     
     new_mbr_part_count = 0;
     
@@ -555,6 +557,7 @@ static UINTN analyze(VOID)
         new_mbr_parts[0].mbr_type  = 0xee;
         new_mbr_part_count = 1;
         
+        // first entry: EFI Protective
         if (gpt_parts[0].gpt_parttype->mbr_type == 0xef) {
             new_mbr_parts[0].end_lba = gpt_parts[0].end_lba;
             i = 1;
@@ -567,22 +570,26 @@ static UINTN analyze(VOID)
             new_mbr_parts[0].end_lba = min_start_lba - 1;
             i = 0;
         }
+        // add other GPT partitions until the table is full
         for (; i < gpt_part_count && new_mbr_part_count < 4; i++) {
             new_mbr_parts[new_mbr_part_count].index     = new_mbr_part_count;
             new_mbr_parts[new_mbr_part_count].start_lba = gpt_parts[i].start_lba;
             new_mbr_parts[new_mbr_part_count].end_lba   = gpt_parts[i].end_lba;
             new_mbr_parts[new_mbr_part_count].mbr_type  = gpt_parts[i].gpt_parttype->mbr_type;
+            new_mbr_parts[new_mbr_part_count].active    = FALSE;
             
-            if (new_mbr_parts[new_mbr_part_count].mbr_type == 0) {
-                // look for a matching partition in the old MBR table
-                for (k = 0; k < mbr_part_count; k++) {
-                    if (mbr_parts[k].start_lba == gpt_parts[i].start_lba)
+            // find matching partition in the old MBR table
+            for (k = 0; k < mbr_part_count; k++) {
+                if (mbr_parts[k].start_lba == gpt_parts[i].start_lba) {
+                    if (new_mbr_parts[new_mbr_part_count].mbr_type == 0)
                         new_mbr_parts[new_mbr_part_count].mbr_type = mbr_parts[k].mbr_type;
+                    new_mbr_parts[new_mbr_part_count].active = mbr_parts[k].active;
+                    break;
                 }
             }
             
             if (new_mbr_parts[new_mbr_part_count].mbr_type == 0) {
-                // TODO: look at the file system on the partition
+                // TODO: detect the actual file system on the partition
                 
                 // fallback: use FAT32
                 //if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA) {
@@ -592,12 +599,36 @@ static UINTN analyze(VOID)
             new_mbr_part_count++;
         }
         
+        // if no partition is active, pick one
+        for (iter = 0; iter < 3; iter++) {
+            // check
+            have_active = FALSE;
+            for (i = 0; i < new_mbr_part_count; i++)
+                if (new_mbr_parts[i].active)
+                    have_active = TRUE;
+            if (have_active)
+                break;
+            
+            // set active on the first matching partition
+            for (i = 0; i < new_mbr_part_count; i++) {
+                if ((iter >= 0 && (new_mbr_parts[i].mbr_type == 0x07 ||
+                                   new_mbr_parts[i].mbr_type == 0x0b ||
+                                   new_mbr_parts[i].mbr_type == 0x0c)) ||
+                    (iter >= 1 && (new_mbr_parts[i].mbr_type == 0x83)) ||
+                    (iter >= 2 && i > 0)) {
+                    new_mbr_parts[i].active = TRUE;
+                    break;
+                }
+            }
+        }
+        
         // dump table
         Print(L"\nProposed new MBR partition table:\n");
-        Print(L" #    Start LBA      End LBA  Type\n");
+        Print(L" # A    Start LBA      End LBA  Type\n");
         for (i = 0; i < new_mbr_part_count; i++) {
-            Print(L" %d %12lld %12lld  %02x  %s\n",
+            Print(L" %d %s %12lld %12lld  %02x  %s\n",
                   new_mbr_parts[i].index + 1,
+                  new_mbr_parts[i].active ? STR("*") : STR(" "),
                   new_mbr_parts[i].start_lba,
                   new_mbr_parts[i].end_lba,
                   new_mbr_parts[i].mbr_type,
