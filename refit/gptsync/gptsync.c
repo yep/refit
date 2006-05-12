@@ -36,6 +36,8 @@
 
 #include "gptsync.h"
 
+#include "syslinux_mbr.h"
+
 // types
 
 typedef struct {
@@ -196,13 +198,13 @@ static UINTN read_mbr(VOID)
     // check for validity
     if (*((UINT16 *)(sector + 510)) != 0xaa55) {
         Print(L" No MBR partition table present!\n");
-        return 0;
+        return 1;
     }
     table = (MBR_PARTITION_INFO *)(sector + 446);
     for (i = 0; i < 4; i++) {
         if (table[i].flags != 0x00 && table[i].flags != 0x80) {
             Print(L" MBR partition table is invalid!\n");
-            return 0;
+            return 1;
         }
     }
     
@@ -264,6 +266,101 @@ static UINTN check_mbr(VOID)
             return 1;
         }
     }
+    
+    return 0;
+}
+
+static UINTN write_mbr(VOID)
+{
+    UINTN               status;
+    UINTN               i, k;
+    UINT8               active;
+    UINT64              lba;
+    MBR_PARTITION_INFO  *table;
+    BOOLEAN             have_bootcode;
+    
+    Print(L"\nWriting new MBR...\n");
+    
+    // read MBR data
+    status = read_sector(0, sector);
+    if (status != 0)
+        return status;
+    
+    // write partition table
+    *((UINT16 *)(sector + 510)) = 0xaa55;
+    
+    table = (MBR_PARTITION_INFO *)(sector + 446);
+    active = 0x80;
+    for (i = 0; i < 4; i++) {
+        for (k = 0; k < new_mbr_part_count; k++) {
+            if (new_mbr_parts[k].index == i)
+                break;
+        }
+        if (k >= new_mbr_part_count) {
+            // unused entry
+            table[i].flags        = 0;
+            table[i].start_chs[0] = 0;
+            table[i].start_chs[1] = 0;
+            table[i].start_chs[2] = 0;
+            table[i].type         = 0;
+            table[i].end_chs[0]   = 0;
+            table[i].end_chs[1]   = 0;
+            table[i].end_chs[2]   = 0;
+            table[i].start_lba    = 0;
+            table[i].size         = 0;
+        } else {
+            if (new_mbr_parts[k].mbr_type == 0x07 ||
+                new_mbr_parts[k].mbr_type == 0x0b ||
+                new_mbr_parts[k].mbr_type == 0x0c ||
+                new_mbr_parts[k].mbr_type == 0x83) {
+                table[i].flags        = active;
+                active = 0x00;
+            } else
+                table[i].flags        = 0x00;
+            table[i].start_chs[0] = 0xfe;
+            table[i].start_chs[1] = 0xff;
+            table[i].start_chs[2] = 0xff;
+            table[i].type         = new_mbr_parts[k].mbr_type;
+            table[i].end_chs[0]   = 0xfe;
+            table[i].end_chs[1]   = 0xff;
+            table[i].end_chs[2]   = 0xff;
+            
+            lba = new_mbr_parts[k].start_lba;
+            if (lba > 0xffffffffULL) {
+                Print(L"Warning: Partition %d starts beyond 2 TiB limit\n", i+1);
+                lba = 0xffffffffULL;
+            }
+            table[i].start_lba    = lba;
+            
+            lba = new_mbr_parts[k].end_lba + 1 - new_mbr_parts[k].start_lba;
+            if (lba > 0xffffffffULL) {
+                Print(L"Warning: Partition %d extends beyond 2 TiB limit\n", i+1);
+                lba = 0xffffffffULL;
+            }
+            table[i].size         = lba;
+        }
+    }
+    
+    // add boot code if necessary
+    have_bootcode = FALSE;
+    for (i = 0; i < MBR_BOOTCODE_SIZE; i++) {
+        if (sector[i] != 0) {
+            have_bootcode = TRUE;
+            break;
+        }
+    }
+    if (!have_bootcode) {
+        // no boot code found in the MBR, add the syslinux MBR code
+        SetMem(sector, MBR_BOOTCODE_SIZE, 0);
+        CopyMem(sector, syslinux_mbr, SYSLINUX_MBR_SIZE);
+    }
+    
+    // write MBR data
+    status = write_sector(0, sector);
+    if (status != 0)
+        return status;
+    
+    Print(L"MBR updated successfully!\n");
     
     return 0;
 }
@@ -519,6 +616,7 @@ UINTN gptsync(VOID)
 {
     UINTN   status = 0;
     UINTN   status_gpt, status_mbr;
+    BOOLEAN proceed = FALSE;
     
     // get full information from disk
     status_gpt = read_gpt();
@@ -541,10 +639,14 @@ UINTN gptsync(VOID)
         return status;
     
     // offer user the choice what to do
-    
+    status = input_boolean(STR("May I update the MBR as printed above? [y/N] "), &proceed);
+    if (status != 0 || proceed != TRUE)
+        return status;
     
     // adjust the MBR and write it back
-    
+    status = write_mbr();
+    if (status != 0)
+        return status;
     
     return status;
 }

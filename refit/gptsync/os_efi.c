@@ -74,9 +74,9 @@ UINTN write_sector(UINT64 lba, UINT8 *buffer)
 
 static BOOLEAN ReadAllKeyStrokes(VOID)
 {
-    BOOLEAN       GotKeyStrokes;
-    EFI_STATUS    Status;
-    EFI_INPUT_KEY Key;
+    EFI_STATUS          Status;
+    BOOLEAN             GotKeyStrokes;
+    EFI_INPUT_KEY       Key;
     
     GotKeyStrokes = FALSE;
     for (;;) {
@@ -92,7 +92,7 @@ static BOOLEAN ReadAllKeyStrokes(VOID)
 
 static VOID PauseForKey(VOID)
 {
-    UINTN Index;
+    UINTN               Index;
     
     Print(L"\n* Hit any key to continue *");
     
@@ -105,6 +105,36 @@ static VOID PauseForKey(VOID)
     ReadAllKeyStrokes();        // empty the buffer to protect the menu
     
     Print(L"\n");
+}
+
+UINTN input_boolean(CHARN *prompt, BOOLEAN *bool_out)
+{
+    EFI_STATUS          Status;
+    UINTN               Index;
+    EFI_INPUT_KEY       Key;
+    
+    Print(prompt);
+    
+    if (ReadAllKeyStrokes()) {  // remove buffered key strokes
+        BS->Stall(500000);      // 0.5 seconds delay
+        ReadAllKeyStrokes();    // empty the buffer again
+    }
+    
+    BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &Index);
+    Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key);
+    if (EFI_ERROR(Status))
+        return 1;
+    
+    if (key.UnicodeChar == 'y' || key.UnicodeChar == 'Y') {
+        Print(L"Yes\n");
+        *bool_out = TRUE;
+    } else {
+        Print(L"No\n");
+        *bool_out = TRUE;
+    }
+    
+    ReadAllKeyStrokes();
+    return 0;
 }
 
 //
@@ -181,8 +211,8 @@ efi_main    (IN EFI_HANDLE           ImageHandle,
     
     SyncStatus = gptsync();
     
-    
-    PauseForKey();
+    if (SyncStatus == 0)
+        PauseForKey();
     
     
     if (SyncStatus)

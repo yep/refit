@@ -9,7 +9,7 @@ OBJS   = gptsync.o os_unix.o
 
 TARGET = gptsync
 
-CPPFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+CPPFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I../include
 CFLAGS   = -Wall
 LDFLAGS  =
 LIBS     =

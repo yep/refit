@@ -94,6 +94,12 @@ typedef char                CHARN;
 
 void Print(wchar_t *format, ...);
 
+// FUTURE: use STR(),  #define Print printf
+
+#define CopyMem     memcpy
+#define SetMem      memset
+#define CompareMem  memcmp
+
 #define copy_guid(destguid, srcguid) (memcpy(destguid, srcguid, 16))
 #define guids_are_equal(guid1, guid2) (memcmp(guid1, guid2, 16) == 0)
 
@@ -105,6 +111,7 @@ void Print(wchar_t *format, ...);
 
 UINTN read_sector(UINT64 lba, UINT8 *buffer);
 UINTN write_sector(UINT64 lba, UINT8 *buffer);
+UINTN input_boolean(CHARN *prompt, BOOLEAN *bool_out);
 
 //
 // common platform-independent function

@@ -125,6 +125,32 @@ UINTN write_sector(UINT64 lba, UINT8 *buffer)
 }
 
 //
+// keyboard input
+//
+
+UINTN input_boolean(CHARN *prompt, BOOLEAN *bool_out)
+{
+    int c;
+    
+    printf("%s", prompt);
+    fflush(NULL);
+    
+    c = getchar();
+    if (c == EOF)
+        return 1;
+    
+    if (c == 'y' || c == 'Y') {
+        printf("Yes\n");
+        *bool_out = TRUE;
+    } else {
+        printf("No\n");
+        *bool_out = TRUE;
+    }
+    
+    return 0;
+}
+
+//
 // EFI-style print function
 //
 
@@ -216,6 +242,7 @@ int main(int argc, char *argv[])
     
     // run sync algorithm
     status = gptsync();
+    printf("\n");
     
     // close file
     if (close(fd) != 0) {
