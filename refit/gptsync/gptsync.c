@@ -670,7 +670,7 @@ UINTN gptsync(VOID)
         return status;
     
     // offer user the choice what to do
-    status = input_boolean(STR("May I update the MBR as printed above? [y/N] "), &proceed);
+    status = input_boolean(STR("\nMay I update the MBR as printed above? [y/N] "), &proceed);
     if (status != 0 || proceed != TRUE)
         return status;
     

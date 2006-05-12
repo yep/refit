@@ -130,7 +130,7 @@ UINTN input_boolean(CHARN *prompt, BOOLEAN *bool_out)
         *bool_out = TRUE;
     } else {
         Print(L"No\n");
-        *bool_out = TRUE;
+        *bool_out = FALSE;
     }
     
     ReadAllKeyStrokes();

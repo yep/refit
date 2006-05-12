@@ -112,7 +112,7 @@ UINTN write_sector(UINT64 lba, UINT8 *buffer)
         return 1;
     }
     
-    result_write = read(fd, buffer, 512);
+    result_write = write(fd, buffer, 512);
     if (result_write < 0) {
         errore("Data write failed at position %llu", offset);
         return 1;
@@ -144,7 +144,7 @@ UINTN input_boolean(CHARN *prompt, BOOLEAN *bool_out)
         *bool_out = TRUE;
     } else {
         printf("No\n");
-        *bool_out = TRUE;
+        *bool_out = FALSE;
     }
     
     return 0;
@@ -192,6 +192,10 @@ int main(int argc, char *argv[])
     }
     filename = argv[1];
     
+    // set input to unbuffered
+    fflush(NULL);
+    setvbuf(stdin, NULL, _IONBF, 0);
+    
     // stat check
     if (stat(filename, &sb) < 0) {
         errore("Can't stat %.300s", filename);
@@ -225,8 +229,11 @@ int main(int argc, char *argv[])
     
     // open file
     fd = open(filename, O_RDWR);
-    if (fd < 0 && errno == EBUSY)
+    if (fd < 0 && errno == EBUSY) {
         fd = open(filename, O_RDONLY);
+        if (fd >= 0)
+            printf("Warning: %.300s opened read-only\n", filename);
+    }
     if (fd < 0) {
         errore("Can't open %.300s", filename);
         return 1;
