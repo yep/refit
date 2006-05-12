@@ -47,6 +47,9 @@
 #include "egemb_back_selected_big.h"
 #include "egemb_back_selected_small.h"
 
+#include "egemb_linux_bootlogo.h"
+#include "egemb_windows_bootlogo.h"
+
 //
 // table of images
 //
@@ -62,6 +65,8 @@ BUILTIN_IMAGE BuiltinImageTable[BUILTIN_IMAGE_COUNT] = {
     { &egemb_back_selected_big, NULL },
     { &egemb_back_normal_small, NULL },
     { &egemb_back_selected_small, NULL },
+    { &egemb_linux_bootlogo, NULL },
+    { &egemb_windows_bootlogo, NULL },
 };
 
 //

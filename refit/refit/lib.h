@@ -208,7 +208,9 @@ EG_IMAGE * BuiltinImage(IN UINTN Id);
 #define BUILTIN_IMAGE_BACK_SELECTED_BIG     (2)
 #define BUILTIN_IMAGE_BACK_NORMAL_SMALL     (3)
 #define BUILTIN_IMAGE_BACK_SELECTED_SMALL   (4)
-#define BUILTIN_IMAGE_COUNT                 (5)
+#define BUILTIN_IMAGE_LINUX_BOOTLOGO        (5)
+#define BUILTIN_IMAGE_WINDOWS_BOOTLOGO      (6)
+#define BUILTIN_IMAGE_COUNT                 (7)
 
 //
 // menu module

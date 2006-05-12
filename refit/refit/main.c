@@ -53,6 +53,7 @@ typedef struct {
     REFIT_MENU_ENTRY me;
     REFIT_VOLUME     *Volume;
     CHAR16           *LoadOptions;
+    UINTN            BootLogoID;
 } LEGACY_ENTRY;
 
 // variables
@@ -508,7 +509,17 @@ static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN Partit
 
 static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
+    EG_IMAGE    *BootLogoImage;
+    
     BeginExternalScreen(TRUE, L"Booting Legacy OS");
+    
+    if (Entry->BootLogoID) {
+        BootLogoImage = BuiltinImage(Entry->BootLogoID);
+        if (BootLogoImage != NULL)
+            BltImage(BootLogoImage,
+                     (UGAWidth  - BootLogoImage->Width ) >> 1,
+                     (UGAHeight - BootLogoImage->Height) >> 1);
+    }
     
     if (Entry->Volume->IsMbrPartition)
         ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
@@ -541,11 +552,13 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
     Entry->me.Title        = PoolPrint(L"Boot %s from %s", LoaderTitle, VolDesc);
     Entry->me.Tag          = TAG_LEGACY;
     Entry->me.Row          = 0;
-    if (Volume->BootCodeDetected == BOOTCODE_WINDOWS)
+    if (Volume->BootCodeDetected == BOOTCODE_WINDOWS) {
         Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_WIN);
-    else if (Volume->BootCodeDetected == BOOTCODE_LINUX)
+        Entry->BootLogoID  = BUILTIN_IMAGE_WINDOWS_BOOTLOGO;
+    } else if (Volume->BootCodeDetected == BOOTCODE_LINUX) {
         Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LINUX);
-    else
+        Entry->BootLogoID  = BUILTIN_IMAGE_LINUX_BOOTLOGO;
+    } else
         Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LEGACY);
     if (GlobalConfig.HideBadges == 0 ||
         (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
