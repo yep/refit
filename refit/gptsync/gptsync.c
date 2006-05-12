@@ -330,14 +330,14 @@ static UINTN write_mbr(VOID)
                 Print(L"Warning: Partition %d starts beyond 2 TiB limit\n", i+1);
                 lba = 0xffffffffULL;
             }
-            table[i].start_lba    = lba;
+            table[i].start_lba    = (UINT32)lba;
             
             lba = new_mbr_parts[k].end_lba + 1 - new_mbr_parts[k].start_lba;
             if (lba > 0xffffffffULL) {
                 Print(L"Warning: Partition %d extends beyond 2 TiB limit\n", i+1);
                 lba = 0xffffffffULL;
             }
-            table[i].size         = lba;
+            table[i].size         = (UINT32)lba;
         }
     }
     

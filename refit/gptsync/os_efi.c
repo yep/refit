@@ -125,7 +125,7 @@ UINTN input_boolean(CHARN *prompt, BOOLEAN *bool_out)
     if (EFI_ERROR(Status))
         return 1;
     
-    if (key.UnicodeChar == 'y' || key.UnicodeChar == 'Y') {
+    if (Key.UnicodeChar == 'y' || Key.UnicodeChar == 'Y') {
         Print(L"Yes\n");
         *bool_out = TRUE;
     } else {
