@@ -7,6 +7,7 @@
 if [ ! -d $BINPKGNAME ]; then
   rm -rf $BINPKGNAME
   svn export -q $REPOBASE/dist $BINPKGNAME
+  rm -rf $BINPKGNAME/efi/rescue
 fi
 
 ### create r/w image

@@ -13,6 +13,7 @@ gzip -9 $SRCPKGNAME.tar
 
 rm -rf $BINPKGNAME $BINPKGNAME.tar $BINPKGNAME.tar.gz
 svn export -q $REPOBASE/dist $BINPKGNAME
+rm -rf $BINPKGNAME/efi/rescue
 tar -cf $BINPKGNAME.tar $BINPKGNAME
 gzip -9 $BINPKGNAME.tar
 
