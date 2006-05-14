@@ -141,7 +141,7 @@ VOID egClearScreen(IN EG_PIXEL *Color)
     }
 }
 
-VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY)
+VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN ScreenPosX, IN UINTN ScreenPosY)
 {
     if (UgaDraw != NULL) {
         
@@ -151,7 +151,30 @@ VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY)
         }
         
         UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
-                     0, 0, PosX, PosY, Image->Width, Image->Height, 0);
+                     0, 0, ScreenPosX, ScreenPosY, Image->Width, Image->Height, 0);
+        
+    }
+}
+
+VOID egDrawImageArea(IN EG_IMAGE *Image,
+                     IN UINTN AreaPosX, IN UINTN AreaPosY,
+                     IN UINTN AreaWidth, IN UINTN AreaHeight,
+                     IN UINTN ScreenPosX, IN UINTN ScreenPosY)
+{
+    egRestrictImageArea(Image, AreaPosX, AreaPosY, &AreaWidth, &AreaHeight);
+    if (AreaWidth == 0)
+        return;
+    
+    if (UgaDraw != NULL) {
+        
+        if (Image->HasAlpha) {
+            Image->HasAlpha = FALSE;
+            egSetPlane(PLPTR(Image, a), 0, Image->Width * Image->Height);
+        }
+        
+        UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
+                     AreaPosX, AreaPosY, ScreenPosX, ScreenPosY, AreaWidth, AreaHeight, Image->Width * 4);
+        
     }
 }
 

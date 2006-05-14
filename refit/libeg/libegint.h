@@ -49,6 +49,9 @@ typedef EG_IMAGE * (*EG_DECODE_FUNC)(IN UINT8 *FileData, IN UINTN FileDataLength
 
 /* functions */
 
+VOID egRestrictImageArea(IN EG_IMAGE *Image,
+                         IN UINTN AreaPosX, IN UINTN AreaPosY,
+                         IN OUT UINTN *AreaWidth, IN OUT UINTN *AreaHeight);
 VOID egRawCopy(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
                IN UINTN Width, IN UINTN Height,
                IN UINTN CompLineOffset, IN UINTN TopLineOffset);

@@ -357,30 +357,21 @@ EG_IMAGE * egPrepareEmbeddedImage(IN EG_EMBEDDED_IMAGE *EmbeddedImage, IN BOOLEA
 // Compositing
 //
 
-static VOID egCalculateOverlap(IN UINTN SrcWidth, IN UINTN SrcHeight,
-                               IN UINTN DestWidth, IN UINTN DestHeight,
-                               IN UINTN PosXInDest, IN UINTN PosYInDest,
-                               OUT UINTN *CompWidthOut, OUT UINTN *CompHeightOut)
+VOID egRestrictImageArea(IN EG_IMAGE *Image,
+                         IN UINTN AreaPosX, IN UINTN AreaPosY,
+                         IN OUT UINTN *AreaWidth, IN OUT UINTN *AreaHeight)
 {
-    UINTN CompWidth, CompHeight;
-    
-    if (PosXInDest >= DestWidth || PosYInDest >= DestHeight) {
+    if (AreaPosX >= Image->Width || AreaPosY >= Image->Height) {
         // out of bounds, operation has no effect
-        CompWidth = 0;
-        CompHeight = 0;
+        *AreaWidth  = 0;
+        *AreaHeight = 0;
     } else {
         // calculate affected area
-        CompWidth  = DestWidth  - PosXInDest;
-        CompHeight = DestHeight - PosYInDest;
-        if (CompWidth  > SrcWidth)
-            CompWidth  = SrcWidth;
-        if (CompHeight > SrcHeight)
-            CompHeight = SrcHeight;
+        if (*AreaWidth > Image->Width - AreaPosX)
+            *AreaWidth = Image->Width - AreaPosX;
+        if (*AreaHeight > Image->Height - AreaPosY)
+            *AreaHeight = Image->Height - AreaPosY;
     }
-    *CompWidthOut  = CompWidth;
-    *CompHeightOut = CompHeight;
-    
-    // FUTURE: use signed ints, do clipping in all directions
 }
 
 VOID egFillImage(IN OUT EG_IMAGE *CompImage, IN EG_PIXEL *Color)
@@ -399,29 +390,26 @@ VOID egFillImage(IN OUT EG_IMAGE *CompImage, IN EG_PIXEL *Color)
 }
 
 VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
-                     IN UINTN PosX, IN UINTN PosY, IN UINTN Width, IN UINTN Height,
+                     IN UINTN AreaPosX, IN UINTN AreaPosY,
+                     IN UINTN AreaWidth, IN UINTN AreaHeight,
                      IN EG_PIXEL *Color)
 {
     UINTN       x, y;
-    UINTN       CompWidth, CompHeight;
     EG_PIXEL    FillColor;
     EG_PIXEL    *PixelPtr;
     EG_PIXEL    *PixelBasePtr;
     
-    egCalculateOverlap(Width, Height,
-                       CompImage->Width, CompImage->Height,
-                       PosX, PosY,
-                       &CompWidth, &CompHeight);
+    egRestrictImageArea(CompImage, AreaPosX, AreaPosY, &AreaWidth, &AreaHeight);
     
-    if (CompWidth > 0) {
+    if (AreaWidth > 0) {
         FillColor = *Color;
         if (!CompImage->HasAlpha)
             FillColor.a = 0;
         
-        PixelBasePtr = CompImage->PixelData + PosY * CompImage->Width + PosX;
-        for (y = 0; y < CompHeight; y++) {
+        PixelBasePtr = CompImage->PixelData + AreaPosY * CompImage->Width + AreaPosX;
+        for (y = 0; y < AreaHeight; y++) {
             PixelPtr = PixelBasePtr;
-            for (x = 0; x < CompWidth; x++, PixelPtr++)
+            for (x = 0; x < AreaWidth; x++, PixelPtr++)
                 *PixelPtr = FillColor;
             PixelBasePtr += CompImage->Width;
         }
@@ -485,10 +473,9 @@ VOID egComposeImage(IN OUT EG_IMAGE *CompImage, IN EG_IMAGE *TopImage, IN UINTN 
 {
     UINTN       CompWidth, CompHeight;
     
-    egCalculateOverlap(TopImage->Width,  TopImage->Height,
-                       CompImage->Width, CompImage->Height,
-                       PosX, PosY,
-                       &CompWidth, &CompHeight);
+    CompWidth  = TopImage->Width;
+    CompHeight = TopImage->Height;
+    egRestrictImageArea(CompImage, PosX, PosY, &CompWidth, &CompHeight);
     
     // compose
     if (CompWidth > 0) {

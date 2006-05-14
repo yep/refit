@@ -101,7 +101,8 @@ EFI_STATUS egSaveFile(IN EFI_FILE_HANDLE BaseDir OPTIONAL, IN CHAR16 *FileName,
 
 VOID egFillImage(IN OUT EG_IMAGE *CompImage, IN EG_PIXEL *Color);
 VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
-                     IN UINTN PosX, IN UINTN PosY, IN UINTN Width, IN UINTN Height,
+                     IN UINTN AreaPosX, IN UINTN AreaPosY,
+                     IN UINTN AreaWidth, IN UINTN AreaHeight,
                      IN EG_PIXEL *Color);
 VOID egComposeImage(IN OUT EG_IMAGE *CompImage, IN EG_IMAGE *TopImage, IN UINTN PosX, IN UINTN PosY);
 
@@ -109,8 +110,11 @@ VOID egMeasureText(IN CHAR16 *Text, OUT UINTN *Width, OUT UINTN *Height);
 VOID egRenderText(IN CHAR16 *Text, IN OUT EG_IMAGE *CompImage, IN UINTN PosX, IN UINTN PosY);
 
 VOID egClearScreen(IN EG_PIXEL *Color);
-VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY);
-// FUTURE: egDrawImageArea
+VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN ScreenPosX, IN UINTN ScreenPosY);
+VOID egDrawImageArea(IN EG_IMAGE *Image,
+                     IN UINTN AreaPosX, IN UINTN AreaPosY,
+                     IN UINTN AreaWidth, IN UINTN AreaHeight,
+                     IN UINTN ScreenPosX, IN UINTN ScreenPosY);
 
 VOID egScreenShot(VOID);
 
