@@ -40,6 +40,7 @@
 
 /* types */
 
+/* This should be compatible with EFI_UGA_PIXEL */
 typedef struct {
     UINT8 b, g, r, a;
 } EG_PIXEL;
@@ -90,7 +91,13 @@ VOID egFreeImage(IN EG_IMAGE *Image);
 
 EG_IMAGE * egLoadImage(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN BOOLEAN WantAlpha);
 EG_IMAGE * egLoadIcon(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN IconSize);
+EG_IMAGE * egDecodeImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN CHAR16 *Format, IN BOOLEAN WantAlpha);
 EG_IMAGE * egPrepareEmbeddedImage(IN EG_EMBEDDED_IMAGE *EmbeddedImage, IN BOOLEAN WantAlpha);
+
+EFI_STATUS egLoadFile(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName,
+                      OUT UINT8 **FileData, OUT UINTN *FileDataLength);
+EFI_STATUS egSaveFile(IN EFI_FILE_HANDLE BaseDir OPTIONAL, IN CHAR16 *FileName,
+                      IN UINT8 *FileData, IN UINTN FileDataLength);
 
 VOID egFillImage(IN OUT EG_IMAGE *CompImage, IN EG_PIXEL *Color);
 VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,

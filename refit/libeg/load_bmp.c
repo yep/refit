@@ -72,7 +72,7 @@ typedef struct {
 // Load BMP image
 //
 
-EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha)
+EG_IMAGE * egDecodeBMP(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha)
 {
     EG_IMAGE            *NewImage;
     BMP_IMAGE_HEADER    *BmpHeader;
@@ -81,7 +81,7 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
     UINT8               *ImagePtr;
     UINT8               *ImagePtrBase;
     UINTN               ImageLineOffset;
-    UINT8               ImageValue;
+    UINT8               ImageValue, AlphaValue;
     EG_PIXEL            *PixelPtr;
     UINTN               Index, BitIndex;
     
@@ -112,9 +112,10 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
         return NULL;
     
     // allocate image structure and buffer
-    NewImage = egCreateImage(BmpHeader->PixelWidth, BmpHeader->PixelHeight, FALSE);
+    NewImage = egCreateImage(BmpHeader->PixelWidth, BmpHeader->PixelHeight, WantAlpha);
     if (NewImage == NULL)
         return NULL;
+    AlphaValue = WantAlpha ? 255 : 0;
     
     // convert image
     BmpColorMap = (BMP_COLOR_MAP *)(FileData + sizeof(BMP_IMAGE_HEADER));
@@ -136,7 +137,7 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
                     PixelPtr->b = BmpColorMap[Index].Blue;
                     PixelPtr->g = BmpColorMap[Index].Green;
                     PixelPtr->r = BmpColorMap[Index].Red;
-                    PixelPtr->a = 0;
+                    PixelPtr->a = AlphaValue;
                     PixelPtr++;
                 }
                 break;
@@ -149,14 +150,14 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
                     PixelPtr->b = BmpColorMap[Index].Blue;
                     PixelPtr->g = BmpColorMap[Index].Green;
                     PixelPtr->r = BmpColorMap[Index].Red;
-                    PixelPtr->a = 0;
+                    PixelPtr->a = AlphaValue;
                     PixelPtr++;
                     
                     Index = ImageValue & 0x0f;
                     PixelPtr->b = BmpColorMap[Index].Blue;
                     PixelPtr->g = BmpColorMap[Index].Green;
                     PixelPtr->r = BmpColorMap[Index].Red;
-                    PixelPtr->a = 0;
+                    PixelPtr->a = AlphaValue;
                     PixelPtr++;
                 }
                 if (x < BmpHeader->PixelWidth) {
@@ -166,7 +167,7 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
                     PixelPtr->b = BmpColorMap[Index].Blue;
                     PixelPtr->g = BmpColorMap[Index].Green;
                     PixelPtr->r = BmpColorMap[Index].Red;
-                    PixelPtr->a = 0;
+                    PixelPtr->a = AlphaValue;
                     PixelPtr++;
                 }
                 break;
@@ -177,7 +178,7 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
                     PixelPtr->b = BmpColorMap[Index].Blue;
                     PixelPtr->g = BmpColorMap[Index].Green;
                     PixelPtr->r = BmpColorMap[Index].Red;
-                    PixelPtr->a = 0;
+                    PixelPtr->a = AlphaValue;
                     PixelPtr++;
                 }
                 break;
@@ -187,7 +188,7 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
                     PixelPtr->b = *ImagePtr++;
                     PixelPtr->g = *ImagePtr++;
                     PixelPtr->r = *ImagePtr++;
-                    PixelPtr->a = 0;
+                    PixelPtr->a = AlphaValue;
                     PixelPtr++;
                 }
                 break;
@@ -202,53 +203,53 @@ EG_IMAGE * egLoadBMPImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN 
 // Save BMP image
 //
 
-VOID egSaveBMPImage(IN EG_IMAGE *Image, IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName)
+VOID egEncodeBMP(IN EG_IMAGE *Image, OUT UINT8 **FileDataReturn, OUT UINTN *FileDataLengthReturn)
 {
     BMP_IMAGE_HEADER    *BmpHeader;
     UINT8               *FileData;
     UINTN               FileDataLength;
     UINT8               *ImagePtr;
+    UINT8               *ImagePtrBase;
+    UINTN               ImageLineOffset;
     EG_PIXEL            *PixelPtr;
     UINTN               x, y;
-    EFI_STATUS          Status;
-    EFI_FILE_HANDLE     ImageFile;
     
-    if (BaseDir == NULL) {
-        Print(L"Error BaseDir is NULL\n");
-        return;
-    }
-    if ((Image->Width % 4) != 0) {
-        Print(L"Error Width % 4\n");
-        return;
-    }
+    ImageLineOffset = Image->Width * 3;
+    if ((ImageLineOffset % 4) != 0)
+        ImageLineOffset = ImageLineOffset + (4 - (ImageLineOffset % 4));
     
-    FileDataLength = sizeof(BMP_IMAGE_HEADER) + Image->Height * Image->Width * 3;
+    // allocate buffer for file data
+    FileDataLength = sizeof(BMP_IMAGE_HEADER) + Image->Height * ImageLineOffset;
     FileData = AllocateZeroPool(FileDataLength);
     if (FileData == NULL) {
         Print(L"Error allocate %d bytes\n", FileDataLength);
+        *FileDataReturn = NULL;
+        *FileDataLengthReturn = 0;
         return;
     }
     
-    BmpHeader = (BMP_IMAGE_HEADER *)FileData;
-    ImagePtr = FileData + sizeof(BMP_IMAGE_HEADER);
-    
     // fill header
+    BmpHeader = (BMP_IMAGE_HEADER *)FileData;
     BmpHeader->CharB = 'B';
     BmpHeader->CharM = 'M';
     BmpHeader->Size = FileDataLength;
     BmpHeader->ImageOffset = sizeof(BMP_IMAGE_HEADER);
-    BmpHeader->HeaderSize = 0x28;
+    BmpHeader->HeaderSize = 40;
     BmpHeader->PixelWidth = Image->Width;
     BmpHeader->PixelHeight = Image->Height;
     BmpHeader->Planes = 1;
     BmpHeader->BitPerPixel = 24;
-    BmpHeader->CompressionType = 1;
+    BmpHeader->CompressionType = 0;
     BmpHeader->XPixelsPerMeter = 0xb13;
     BmpHeader->YPixelsPerMeter = 0xb13;
     
     // fill pixel buffer
+    ImagePtrBase = FileData + BmpHeader->ImageOffset;
     for (y = 0; y < Image->Height; y++) {
+        ImagePtr = ImagePtrBase;
+        ImagePtrBase += ImageLineOffset;
         PixelPtr = Image->PixelData + (Image->Height - 1 - y) * Image->Width;
+        
         for (x = 0; x < Image->Width; x++) {
             *ImagePtr++ = PixelPtr->b;
             *ImagePtr++ = PixelPtr->g;
@@ -257,20 +258,8 @@ VOID egSaveBMPImage(IN EG_IMAGE *Image, IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *F
         }
     }
     
-    // write to file
-    Status = BaseDir->Open(BaseDir, &ImageFile, FileName,
-                           EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
-    if (EFI_ERROR(Status)) {
-        Print(L"Error File Open: %x\n", Status);
-        FreePool(FileData);
-        return;
-    }
-    Status = ImageFile->Write(ImageFile, &FileDataLength, FileData);
-    if (EFI_ERROR(Status)) {
-        Print(L"Error File Write: %x\n", Status);
-    }
-    FreePool(FileData);
-    ImageFile->Close(ImageFile);
+    *FileDataReturn = FileData;
+    *FileDataLengthReturn = FileDataLength;
 }
 
 /* EOF */

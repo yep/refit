@@ -95,6 +95,96 @@ VOID egFreeImage(IN EG_IMAGE *Image)
 }
 
 //
+// Basic file operations
+//
+
+EFI_STATUS egLoadFile(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName,
+                      OUT UINT8 **FileData, OUT UINTN *FileDataLength)
+{
+    EFI_STATUS          Status;
+    EFI_FILE_HANDLE     FileHandle;
+    EFI_FILE_INFO       *FileInfo;
+    UINT64              ReadSize;
+    UINTN               BufferSize;
+    UINT8               *Buffer;
+    
+    Status = BaseDir->Open(BaseDir, &FileHandle, FileName, EFI_FILE_MODE_READ, 0);
+    if (EFI_ERROR(Status))
+        return Status;
+    
+    FileInfo = LibFileInfo(FileHandle);
+    if (FileInfo == NULL) {
+        FileHandle->Close(FileHandle);
+        return EFI_NOT_FOUND;
+    }
+    ReadSize = FileInfo->FileSize;
+    if (ReadSize > MAX_FILE_SIZE)
+        ReadSize = MAX_FILE_SIZE;
+    FreePool(FileInfo);
+    
+    BufferSize = (UINTN)ReadSize;   // was limited to 1 GB above, so this is safe
+    Buffer = (UINT8 *) AllocatePool(BufferSize);
+    if (Buffer == NULL) {
+        FileHandle->Close(FileHandle);
+        return EFI_OUT_OF_RESOURCES;
+    }
+    
+    Status = FileHandle->Read(FileHandle, &BufferSize, Buffer);
+    FileHandle->Close(FileHandle);
+    if (EFI_ERROR(Status)) {
+        FreePool(Buffer);
+        return Status;
+    }
+    
+    *FileData = Buffer;
+    *FileDataLength = BufferSize;
+    return EFI_SUCCESS;
+}
+
+static EFI_GUID ESPGuid = { 0xc12a7328, 0xf81f, 0x11d2, { 0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b } };
+
+static EFI_STATUS egFindESP(OUT EFI_FILE_HANDLE *RootDir)
+{
+    EFI_STATUS          Status;
+    UINTN               HandleCount = 0;
+    EFI_HANDLE          *Handles;
+    
+    Status = LibLocateHandle(ByProtocol, &ESPGuid, NULL, &HandleCount, &Handles);
+    if (!EFI_ERROR(Status) && HandleCount > 0) {
+        *RootDir = LibOpenRoot(Handles[0]);
+        if (*RootDir == NULL)
+            Status = EFI_NOT_FOUND;
+        FreePool(Handles);
+    }
+    return Status;
+}
+
+EFI_STATUS egSaveFile(IN EFI_FILE_HANDLE BaseDir OPTIONAL, IN CHAR16 *FileName,
+                      IN UINT8 *FileData, IN UINTN FileDataLength)
+{
+    EFI_STATUS          Status;
+    EFI_FILE_HANDLE     FileHandle;
+    UINTN               BufferSize;
+    
+    if (BaseDir == NULL) {
+        Status = egFindESP(&BaseDir);
+        if (EFI_ERROR(Status))
+            return Status;
+    }
+    
+    Status = BaseDir->Open(BaseDir, &FileHandle, FileName,
+                           EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
+    if (EFI_ERROR(Status))
+        return Status;
+    
+    BufferSize = FileDataLength;
+    Status = FileHandle->Write(FileHandle, &BufferSize, FileData);
+    FileHandle->Close(FileHandle);
+    
+    return Status;
+}
+
+//
 // Loading images from files and embedded data
 //
 
@@ -111,54 +201,31 @@ static CHAR16 * egFindExtension(IN CHAR16 *FileName)
     return FileName + StrLen(FileName);
 }
 
-static EFI_STATUS egLoadFile(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName,
-                             OUT UINT8 **FileData, OUT UINTN *FileDataLength)
+static EG_IMAGE * egDecodeAny(IN UINT8 *FileData, IN UINTN FileDataLength,
+                              IN CHAR16 *Format, IN UINTN IconSize, IN BOOLEAN WantAlpha)
 {
-    EFI_STATUS      Status;
-    EFI_FILE_HANDLE IconFile;
-    EFI_FILE_INFO   *IconFileInfo;
-    UINT64          ReadSize;
-    UINTN           BufferSize;
-    UINT8           *Buffer;
+    EG_DECODE_FUNC  DecodeFunc;
+    EG_IMAGE        *NewImage;
     
-    Status = BaseDir->Open(BaseDir, &IconFile, FileName, EFI_FILE_MODE_READ, 0);
-    if (EFI_ERROR(Status))
-        return Status;
+    // dispatch by extension
+    DecodeFunc = NULL;
+    if (StriCmp(Format, L"BMP") == 0)
+        DecodeFunc = egDecodeBMP;
+    else if (StriCmp(Format, L"ICNS") == 0)
+        DecodeFunc = egDecodeICNS;
     
-    IconFileInfo = LibFileInfo(IconFile);
-    if (IconFileInfo == NULL) {
-        IconFile->Close(IconFile);
-        return EFI_NOT_FOUND;
-    }
-    ReadSize = IconFileInfo->FileSize;
-    if (ReadSize > MAX_FILE_SIZE)
-        ReadSize = MAX_FILE_SIZE;
-    FreePool(IconFileInfo);
+    if (DecodeFunc == NULL)
+        return NULL;
     
-    BufferSize = (UINTN)ReadSize;   // was limited to 1 GB above, so this is safe
-    Buffer = (UINT8 *) AllocatePool(BufferSize);
-    if (Buffer == NULL) {
-        IconFile->Close(IconFile);
-        return EFI_OUT_OF_RESOURCES;
-    }
+    // decode it
+    NewImage = DecodeFunc(FileData, FileDataLength, IconSize, WantAlpha);
     
-    Status = IconFile->Read(IconFile, &BufferSize, Buffer);
-    IconFile->Close(IconFile);
-    if (EFI_ERROR(Status)) {
-        FreePool(Buffer);
-        return Status;
-    }
-    
-    *FileData = Buffer;
-    *FileDataLength = BufferSize;
-    return EFI_SUCCESS;
+    return NewImage;
 }
 
 EG_IMAGE * egLoadImage(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN BOOLEAN WantAlpha)
 {
     EFI_STATUS      Status;
-    CHAR16          *Extension;
-    EG_LOADER_FUNC  Loader;
     UINT8           *FileData;
     UINTN           FileDataLength;
     EG_IMAGE        *NewImage;
@@ -166,48 +233,26 @@ EG_IMAGE * egLoadImage(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN BOOLE
     if (BaseDir == NULL || FileName == NULL)
         return NULL;
     
-    // dispatch by extension
-    Extension = egFindExtension(FileName);
-    Loader = NULL;
-    if (StriCmp(Extension, L"BMP") == 0)
-        Loader = egLoadBMPImage;
-    else if (StriCmp(Extension, L"ICNS") == 0)
-        Loader = egLoadICNSIcon;
-    
-    if (Loader == NULL)
-        return NULL;
-    
     // load file
     Status = egLoadFile(BaseDir, FileName, &FileData, &FileDataLength);
     if (EFI_ERROR(Status))
         return NULL;
     
     // decode it
-    NewImage = Loader(FileData, FileDataLength, 128, WantAlpha);
-    
+    NewImage = egDecodeAny(FileData, FileDataLength, egFindExtension(FileName), 128, WantAlpha);
     FreePool(FileData);
+    
     return NewImage;
 }
 
 EG_IMAGE * egLoadIcon(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN IconSize)
 {
-    EFI_STATUS  Status;
-    CHAR16      *Extension;
-    EG_LOADER_FUNC Loader;
-    UINT8       *FileData;
-    UINTN       FileDataLength;
-    EG_IMAGE    *NewImage;
+    EFI_STATUS      Status;
+    UINT8           *FileData;
+    UINTN           FileDataLength;
+    EG_IMAGE        *NewImage;
     
     if (BaseDir == NULL || FileName == NULL)
-        return NULL;
-    
-    // dispatch by extension
-    Extension = egFindExtension(FileName);
-    Loader = NULL;
-    if (StriCmp(Extension, L"ICNS") == 0)
-        Loader = egLoadICNSIcon;
-    
-    if (Loader == NULL)
         return NULL;
     
     // load file
@@ -216,10 +261,15 @@ EG_IMAGE * egLoadIcon(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN 
         return NULL;
     
     // decode it
-    NewImage = Loader(FileData, FileDataLength, IconSize, TRUE);
-    
+    NewImage = egDecodeAny(FileData, FileDataLength, egFindExtension(FileName), IconSize, TRUE);
     FreePool(FileData);
+    
     return NewImage;
+}
+
+EG_IMAGE * egDecodeImage(IN UINT8 *FileData, IN UINTN FileDataLength, IN CHAR16 *Format, IN BOOLEAN WantAlpha)
+{
+    return egDecodeAny(FileData, FileDataLength, Format, 128, WantAlpha);
 }
 
 EG_IMAGE * egPrepareEmbeddedImage(IN EG_EMBEDDED_IMAGE *EmbeddedImage, IN BOOLEAN WantAlpha)

@@ -92,7 +92,7 @@ VOID egDecompressIcnsRLE(IN OUT UINT8 **CompData, IN OUT UINTN *CompLen, IN UINT
 // Load Apple .icns icons
 //
 
-EG_IMAGE * egLoadICNSIcon(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha)
+EG_IMAGE * egDecodeICNS(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN IconSize, IN BOOLEAN WantAlpha)
 {
     EG_IMAGE            *NewImage;
     UINT8               *Ptr, *BufferEnd, *DataPtr, *MaskPtr;
