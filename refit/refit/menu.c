@@ -36,6 +36,8 @@
 
 #include "lib.h"
 
+#include "egemb_back_selected_small.h"
+
 // scrolling definitions
 
 typedef struct {
@@ -74,7 +76,77 @@ static CHAR16 ArrowDown[2] = { ARROW_DOWN, 0 };
 #define TILE_XSPACING (8)
 #define TILE_YSPACING (16)
 
-static EG_IMAGE *TextBuffer = NULL; // = { LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT };
+static EG_IMAGE *SelectionImages[4] = { NULL, NULL, NULL, NULL };
+static EG_PIXEL SelectionBackgroundPixel = { 0xff, 0xff, 0xff, 0 };
+static EG_IMAGE *TextBuffer = NULL;
+
+//
+// Graphics helper functions
+//
+
+static VOID InitSelection(VOID)
+{
+    UINTN       x, y, src_x, src_y;
+    EG_PIXEL    *DestPtr, *SrcPtr;
+    
+    if (!AllowGraphicsMode)
+        return;
+    if (SelectionImages[0] != NULL)
+        return;
+    
+    // load small selection image
+    if (GlobalConfig.SelectionSmallFileName != NULL)
+        SelectionImages[2] = egLoadImage(SelfDir, GlobalConfig.SelectionSmallFileName, FALSE);
+    if (SelectionImages[2] == NULL)
+        SelectionImages[2] = egPrepareEmbeddedImage(&egemb_back_selected_small, FALSE);
+    SelectionImages[2] = egEnsureImageSize(SelectionImages[2],
+                                           ROW1_TILESIZE, ROW1_TILESIZE, &MenuBackgroundPixel);
+    if (SelectionImages[2] == NULL)
+        return;
+    
+    // load big selection image
+    if (GlobalConfig.SelectionBigFileName != NULL) {
+        SelectionImages[0] = egLoadImage(SelfDir, GlobalConfig.SelectionBigFileName, FALSE);
+        SelectionImages[0] = egEnsureImageSize(SelectionImages[0],
+                                               ROW0_TILESIZE, ROW0_TILESIZE, &MenuBackgroundPixel);
+    }
+    if (SelectionImages[0] == NULL) {
+        // calculate big selection image from small one
+        
+        SelectionImages[0] = egCreateImage(ROW0_TILESIZE, ROW0_TILESIZE, FALSE);
+        if (SelectionImages[0] == NULL) {
+            egFreeImage(SelectionImages[2]);
+            SelectionImages[2] = NULL;
+            return;
+        }
+        
+        DestPtr = SelectionImages[0]->PixelData;
+        SrcPtr  = SelectionImages[2]->PixelData;
+        for (y = 0; y < ROW0_TILESIZE; y++) {
+            if (y < (ROW1_TILESIZE >> 1))
+                src_y = y;
+            else if (y < (ROW0_TILESIZE - (ROW1_TILESIZE >> 1)))
+                src_y = (ROW1_TILESIZE >> 1);
+            else
+                src_y = y - (ROW0_TILESIZE - ROW1_TILESIZE);
+            
+            for (x = 0; x < ROW0_TILESIZE; x++) {
+                if (x < (ROW1_TILESIZE >> 1))
+                    src_x = x;
+                else if (x < (ROW0_TILESIZE - (ROW1_TILESIZE >> 1)))
+                    src_x = (ROW1_TILESIZE >> 1);
+                else
+                    src_x = x - (ROW0_TILESIZE - ROW1_TILESIZE);
+                
+                *DestPtr++ = SrcPtr[src_y * ROW1_TILESIZE + src_x];
+            }
+        }
+    }
+    
+    // non-selected background images
+    SelectionImages[1] = egCreateFilledImage(ROW0_TILESIZE, ROW0_TILESIZE, FALSE, &MenuBackgroundPixel);
+    SelectionImages[3] = egCreateFilledImage(ROW1_TILESIZE, ROW1_TILESIZE, FALSE, &MenuBackgroundPixel);
+}
 
 //
 // Scrolling functions
@@ -445,15 +517,12 @@ static VOID TextMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
 // graphical generic style
 //
 
-static EG_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
-static EG_PIXEL SelectionBackgroundPixel = { 0xff, 0xff, 0xff, 0 };
-
 static VOID DrawMenuText(IN CHAR16 *Text, IN UINTN SelectedWidth, IN UINTN XPos, IN UINTN YPos)
 {
     if (TextBuffer == NULL)
         TextBuffer = egCreateImage(LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT, FALSE);
     
-    egFillImage(TextBuffer, &BackgroundPixel);
+    egFillImage(TextBuffer, &MenuBackgroundPixel);
     if (SelectedWidth > 0) {
         // draw selection bar background
         egFillImageArea(TextBuffer, 0, 0, SelectedWidth, TextBuffer->Height,
@@ -504,7 +573,9 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
             egMeasureText(Screen->Title, &ItemWidth, NULL);
             DrawMenuText(Screen->Title, 0, ((UGAWidth - ItemWidth) >> 1) - TEXT_XMARGIN, EntriesPosY - TEXT_LINE_HEIGHT * 2);
             if (Screen->TitleImage)
-                BltImageAlpha(Screen->TitleImage, EntriesPosX - (Screen->TitleImage->Width + TITLEICON_SPACING), EntriesPosY);
+                BltImageAlpha(Screen->TitleImage,
+                              EntriesPosX - (Screen->TitleImage->Width + TITLEICON_SPACING), EntriesPosY,
+                              &MenuBackgroundPixel);
             if (Screen->InfoLineCount > 0) {
                 for (i = 0; i < (INTN)Screen->InfoLineCount; i++) {
                     DrawMenuText(Screen->InfoLines[i], 0, EntriesPosX, EntriesPosY);
@@ -581,20 +652,8 @@ static VOID GraphicsMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *Sta
 
 static VOID DrawMainMenuEntry(REFIT_MENU_ENTRY *Entry, BOOLEAN selected, UINTN XPos, UINTN YPos)
 {
-    EG_IMAGE *BackgroundImage;
-    
-    if (Entry->Row == 0) {
-        if (selected)
-            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_SELECTED_BIG);
-        else
-            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_NORMAL_BIG);
-    } else {
-        if (selected)
-            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_SELECTED_SMALL);
-        else
-            BackgroundImage = BuiltinImage(BUILTIN_IMAGE_BACK_NORMAL_SMALL);
-    }
-    BltImageCompositeBadge(BackgroundImage, Entry->Image, Entry->BadgeImage, XPos, YPos);
+    BltImageCompositeBadge(SelectionImages[((Entry->Row == 0) ? 0 : 2) + (selected ? 0 : 1)],
+                           Entry->Image, Entry->BadgeImage, XPos, YPos);
 }
 
 static VOID DrawMainMenuText(IN CHAR16 *Text, IN UINTN XPos, IN UINTN YPos)
@@ -604,7 +663,7 @@ static VOID DrawMainMenuText(IN CHAR16 *Text, IN UINTN XPos, IN UINTN YPos)
     if (TextBuffer == NULL)
         TextBuffer = egCreateImage(LAYOUT_TEXT_WIDTH, TEXT_LINE_HEIGHT, FALSE);
     
-    egFillImage(TextBuffer, &BackgroundPixel);
+    egFillImage(TextBuffer, &MenuBackgroundPixel);
     
     // render the text
     egMeasureText(Text, &TextWidth, NULL);
@@ -657,6 +716,7 @@ static VOID MainMenuStyle(IN REFIT_MENU_SCREEN *Screen, IN SCROLL_STATE *State, 
             }
             
             // initial painting
+            InitSelection();
             SwitchToGraphicsAndClear();
             break;
             

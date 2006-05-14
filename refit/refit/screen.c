@@ -36,6 +36,8 @@
 
 #include "lib.h"
 
+#include "egemb_refit_banner.h"
+
 // Console defines and variables
 
 UINTN ConWidth;
@@ -53,9 +55,10 @@ UINTN UGAWidth;
 UINTN UGAHeight;
 BOOLEAN AllowGraphicsMode;
 
-static BOOLEAN GraphicsScreenDirty;
+EG_PIXEL StdBackgroundPixel  = { 0xbf, 0xbf, 0xbf, 0 };
+EG_PIXEL MenuBackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
 
-static EG_PIXEL BackgroundPixel = { 0xbf, 0xbf, 0xbf, 0 };
+static BOOLEAN GraphicsScreenDirty;
 
 // general defines and variables
 
@@ -77,7 +80,7 @@ VOID InitScreen(VOID)
         AllowGraphicsMode = TRUE;
     } else {
         AllowGraphicsMode = FALSE;
-        egSetGraphicsModeEnabled(FALSE);
+        egSetGraphicsModeEnabled(FALSE);   // just to be sure we are in text mode
     }
     GraphicsScreenDirty = TRUE;
     
@@ -91,7 +94,7 @@ VOID InitScreen(VOID)
         ConHeight = 25;
     }
     
-    // make a buffer for the whole line
+    // make a buffer for a whole text line
     BlankLine = AllocatePool((ConWidth + 1) * sizeof(CHAR16));
     for (i = 0; i < ConWidth; i++)
         BlankLine[i] = ' ';
@@ -326,18 +329,28 @@ VOID BltClearScreen(IN BOOLEAN ShowBanner)
 {
     static EG_IMAGE *Banner = NULL;
     
-    egClearScreen(&BackgroundPixel);
     if (ShowBanner && !(GlobalConfig.HideUIFlags & HIDEUI_FLAG_BANNER)) {
+        // load banner on first call
         if (Banner == NULL) {
             if (GlobalConfig.BannerFileName == NULL)
-                Banner = BuiltinImage(BUILTIN_IMAGE_BANNER);
+                Banner = egPrepareEmbeddedImage(&egemb_refit_banner, FALSE);
             else
                 Banner = egLoadImage(SelfDir, GlobalConfig.BannerFileName, FALSE);
+            if (Banner != NULL)
+                MenuBackgroundPixel = Banner->PixelData[0];
         }
+        
+        // clear and draw banner
+        egClearScreen(&MenuBackgroundPixel);
         if (Banner != NULL)
             BltImage(Banner, (UGAWidth - Banner->Width) >> 1,
                      ((UGAHeight - LAYOUT_TOTAL_HEIGHT) >> 1) + LAYOUT_BANNER_HEIGHT - Banner->Height);
+        
+    } else {
+        // clear to standard background color
+        egClearScreen(&StdBackgroundPixel);
     }
+    
     GraphicsScreenDirty = FALSE;
 }
 
@@ -347,12 +360,12 @@ VOID BltImage(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
     GraphicsScreenDirty = TRUE;
 }
 
-VOID BltImageAlpha(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos)
+VOID BltImageAlpha(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos, IN EG_PIXEL *BackgroundPixel)
 {
     EG_IMAGE *CompImage;
     
-    // compose on standard background
-    CompImage = egCreateFilledImage(Image->Width, Image->Height, FALSE, &BackgroundPixel);
+    // compose on background
+    CompImage = egCreateFilledImage(Image->Width, Image->Height, FALSE, BackgroundPixel);
     egComposeImage(CompImage, Image, 0, 0);
     
     // blit to screen and clean up

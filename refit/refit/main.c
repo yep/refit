@@ -514,11 +514,12 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     BeginExternalScreen(TRUE, L"Booting Legacy OS");
     
     if (Entry->BootLogoID) {
-        BootLogoImage = BuiltinImage(Entry->BootLogoID);
+        BootLogoImage = BuiltinIcon(Entry->BootLogoID);
         if (BootLogoImage != NULL)
-            BltImage(BootLogoImage,
-                     (UGAWidth  - BootLogoImage->Width ) >> 1,
-                     (UGAHeight - BootLogoImage->Height) >> 1);
+            BltImageAlpha(BootLogoImage,
+                          (UGAWidth  - BootLogoImage->Width ) >> 1,
+                          (UGAHeight - BootLogoImage->Height) >> 1,
+                          &StdBackgroundPixel);
     }
     
     if (Entry->Volume->IsMbrPartition)
@@ -554,12 +555,14 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
     Entry->me.Row          = 0;
     if (Volume->BootCodeDetected == BOOTCODE_WINDOWS) {
         Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_WIN);
-        Entry->BootLogoID  = BUILTIN_IMAGE_WINDOWS_BOOTLOGO;
+        Entry->BootLogoID  = BUILTIN_ICON_BOOT_WIN;
     } else if (Volume->BootCodeDetected == BOOTCODE_LINUX) {
         Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LINUX);
-        Entry->BootLogoID  = BUILTIN_IMAGE_LINUX_BOOTLOGO;
-    } else
+        Entry->BootLogoID  = BUILTIN_ICON_BOOT_LINUX;
+    } else {
         Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LEGACY);
+        Entry->BootLogoID  = BUILTIN_ICON_OS_LEGACY;
+    }
     if (GlobalConfig.HideBadges == 0 ||
         (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
         Entry->me.BadgeImage   = Volume->VolBadgeImage;

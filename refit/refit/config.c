@@ -47,7 +47,7 @@
 
 // global configuration with default values
 
-REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, 0, FALSE, NULL };
+REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, 0, FALSE, NULL, NULL, NULL };
 
 //
 // read a file into a buffer
@@ -360,6 +360,12 @@ VOID ReadConfig(VOID)
             
         } else if (StriCmp(TokenList[0], L"banner") == 0) {
             HandleString(TokenList, TokenCount, &(GlobalConfig.BannerFileName));
+            
+        } else if (StriCmp(TokenList[0], L"selection_small") == 0) {
+            HandleString(TokenList, TokenCount, &(GlobalConfig.SelectionSmallFileName));
+            
+        } else if (StriCmp(TokenList[0], L"selection_big") == 0) {
+            HandleString(TokenList, TokenCount, &(GlobalConfig.SelectionBigFileName));
             
         } else if (StriCmp(TokenList[0], L"textonly") == 0) {
             GlobalConfig.TextOnly = TRUE;

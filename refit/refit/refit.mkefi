@@ -10,6 +10,6 @@ includedir . ../include ../libeg
 libdir ../libeg
 lib eg
 
-source main.c config.c menu.c screen.c icns.c image.c lib.c
+source main.c config.c menu.c screen.c icns.c lib.c
 
 # EOF

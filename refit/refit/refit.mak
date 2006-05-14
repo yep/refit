@@ -59,7 +59,6 @@ OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\menu.obj \
     $(BUILD_DIR)\screen.obj \
     $(BUILD_DIR)\icns.obj \
-    $(BUILD_DIR)\image.obj \
     $(BUILD_DIR)\lib.obj \
 
 #
@@ -71,7 +70,6 @@ $(BUILD_DIR)\config.obj     : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\menu.obj       : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\screen.obj     : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\icns.obj       : $(*B).c $(INC_DEPS) lib.h
-$(BUILD_DIR)\image.obj      : $(*B).c $(INC_DEPS) lib.h
 $(BUILD_DIR)\lib.obj        : $(*B).c $(INC_DEPS) lib.h
 
 #

@@ -148,6 +148,9 @@ extern UINTN UGAWidth;
 extern UINTN UGAHeight;
 extern BOOLEAN AllowGraphicsMode;
 
+extern EG_PIXEL StdBackgroundPixel;
+extern EG_PIXEL MenuBackgroundPixel;
+
 VOID InitScreen(VOID);
 VOID SetupScreen(VOID);
 VOID BeginTextScreen(IN CHAR16 *Title);
@@ -167,7 +170,7 @@ BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
 VOID SwitchToGraphicsAndClear(VOID);
 VOID BltClearScreen(IN BOOLEAN ShowBanner);
 VOID BltImage(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
-VOID BltImageAlpha(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos);
+VOID BltImageAlpha(IN EG_IMAGE *Image, IN UINTN XPos, IN UINTN YPos, IN EG_PIXEL *BackgroundPixel);
 VOID BltImageComposite(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN UINTN XPos, IN UINTN YPos);
 VOID BltImageCompositeBadge(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN EG_IMAGE *BadgeImage, IN UINTN XPos, IN UINTN YPos);
 
@@ -195,22 +198,9 @@ EG_IMAGE * BuiltinIcon(IN UINTN Id);
 #define BUILTIN_ICON_VOL_INTERNAL   (11)
 #define BUILTIN_ICON_VOL_EXTERNAL   (12)
 #define BUILTIN_ICON_VOL_OPTICAL    (13)
-#define BUILTIN_ICON_COUNT          (14)
-
-//
-// image module
-//
-
-EG_IMAGE * BuiltinImage(IN UINTN Id);
-
-#define BUILTIN_IMAGE_BANNER                (0)
-#define BUILTIN_IMAGE_BACK_NORMAL_BIG       (1)
-#define BUILTIN_IMAGE_BACK_SELECTED_BIG     (2)
-#define BUILTIN_IMAGE_BACK_NORMAL_SMALL     (3)
-#define BUILTIN_IMAGE_BACK_SELECTED_SMALL   (4)
-#define BUILTIN_IMAGE_LINUX_BOOTLOGO        (5)
-#define BUILTIN_IMAGE_WINDOWS_BOOTLOGO      (6)
-#define BUILTIN_IMAGE_COUNT                 (7)
+#define BUILTIN_ICON_BOOT_LINUX     (14)
+#define BUILTIN_ICON_BOOT_WIN       (15)
+#define BUILTIN_ICON_COUNT          (16)
 
 //
 // menu module
@@ -279,6 +269,8 @@ typedef struct {
     UINTN       HideUIFlags;
     BOOLEAN     LegacyFirst;
     CHAR16      *BannerFileName;
+    CHAR16      *SelectionSmallFileName;
+    CHAR16      *SelectionBigFileName;
 } REFIT_CONFIG;
 
 extern REFIT_CONFIG GlobalConfig;

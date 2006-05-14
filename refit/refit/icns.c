@@ -61,6 +61,8 @@ BUILTIN_ICON BuiltinIconTable[BUILTIN_ICON_COUNT] = {
     { NULL, L"icons\\vol_internal.icns", 32 },
     { NULL, L"icons\\vol_external.icns", 32 },
     { NULL, L"icons\\vol_optical.icns", 32 },
+    { NULL, L"icons\\boot_linux.icns", 128 },
+    { NULL, L"icons\\boot_win.icns", 128 },
 };
 
 EG_IMAGE * BuiltinIcon(IN UINTN Id)

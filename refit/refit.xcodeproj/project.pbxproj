@@ -12,7 +12,6 @@
 		9D0F1F350A17434E0048BB15 /* egemb_windows_bootlogo.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D0F1F330A17434E0048BB15 /* egemb_windows_bootlogo.h */; };
 		9D47400809F54B7500C70CF4 /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D47400709F54B7500C70CF4 /* config.c */; };
 		9D574B2309E907BF00EFE8D2 /* icns.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1A09E907BE00EFE8D2 /* icns.c */; };
-		9D574B2409E907BF00EFE8D2 /* image.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1B09E907BE00EFE8D2 /* image.c */; };
 		9D574B2509E907BF00EFE8D2 /* lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1C09E907BE00EFE8D2 /* lib.c */; };
 		9D574B2609E907BF00EFE8D2 /* lib.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D574B1D09E907BE00EFE8D2 /* lib.h */; };
 		9D574B2809E907BF00EFE8D2 /* menu.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1F09E907BE00EFE8D2 /* menu.c */; };
@@ -85,7 +84,6 @@
 		9D3AC8C60A0C915B0091F4FE /* Makefile.unix */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = Makefile.unix; sourceTree = "<group>"; };
 		9D47400709F54B7500C70CF4 /* config.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = config.c; sourceTree = "<group>"; };
 		9D574B1A09E907BE00EFE8D2 /* icns.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = icns.c; sourceTree = "<group>"; };
-		9D574B1B09E907BE00EFE8D2 /* image.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = image.c; sourceTree = "<group>"; };
 		9D574B1C09E907BE00EFE8D2 /* lib.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = lib.c; sourceTree = "<group>"; };
 		9D574B1D09E907BE00EFE8D2 /* lib.h */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.h; path = lib.h; sourceTree = "<group>"; };
 		9D574B1F09E907BE00EFE8D2 /* menu.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = menu.c; sourceTree = "<group>"; };
@@ -181,7 +179,6 @@
 				9D574B1F09E907BE00EFE8D2 /* menu.c */,
 				9D574B2009E907BE00EFE8D2 /* screen.c */,
 				9D574B1A09E907BE00EFE8D2 /* icns.c */,
-				9D574B1B09E907BE00EFE8D2 /* image.c */,
 				9D574B1C09E907BE00EFE8D2 /* lib.c */,
 			);
 			path = refit;
@@ -346,7 +343,6 @@
 			files = (
 				8DD76FAC0486AB0100D96B5E /* main.c in Sources */,
 				9D574B2309E907BF00EFE8D2 /* icns.c in Sources */,
-				9D574B2409E907BF00EFE8D2 /* image.c in Sources */,
 				9D574B2509E907BF00EFE8D2 /* lib.c in Sources */,
 				9D574B2809E907BF00EFE8D2 /* menu.c in Sources */,
 				9D574B2909E907BF00EFE8D2 /* screen.c in Sources */,
