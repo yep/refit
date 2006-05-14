@@ -1,315 +1,68 @@
 {\rtf1\mac\ansicpg10000\cocoartf824\cocoasubrtf330
 \readonlydoc1{\fonttbl\f0\fnil\fcharset77 LucidaGrande;\f1\fnil\fcharset77 LucidaGrande-Bold;}
 {\colortbl;\red255\green255\blue255;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww12240\viewh11260\viewkind0
+\paperw11900\paperh16840\margl1440\margr1440\vieww11420\viewh13040\viewkind0
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\fs28 \cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\qc\pardirnatural
 
-\f1\b\fs36 \cf0 rEFIt 0.6 ReadMe
+\f1\b\fs36 \cf0 rEFIt 0.7 ReadMe
 \f0\b0\fs28 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 \cf0 \
-rEFIt is a boot menu and maintenance toolkit for Intel-based Macs. You can use it to boot multiple operating systems easily, including triple-boot setups with Boot Camp. It also provides an easy way to enter and explore the EFI environment.\
+rEFIt is a boot menu and maintenance toolkit for Intel-based Macs. You can use it to boot multiple operating systems easily, including triple-boot setups with Boot Camp. It also provides an easy way to enter and explore the EFI pre-boot environment.\
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b\fs32 \cf0 Installing rEFIt\
+\f1\b \cf0 What\'d5s New in this Version\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f0\b0\fs28 \cf0 \
+\f0\b0 \cf0 \
+Version 0.7:\
+\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
+\cf0 \'a5	Includes a tool to synchronize the GPT and MBR partition tables.\
+\'a5	Configuration options to trim down and customize the main menu screen.\
+\'a5	Automatically installs generic BIOS boot code in the MBR if necessary.\
+\'a5	There is now a \'d4textonly\'d5 configuration option instead of a separate binary.\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+\cf0 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b \cf0 Burning a CD\
+\f1\b \cf0 Installation and Usage\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f0\b0 \cf0 If you just want to try out rEFIt without affecting your computer, you can burn rEFIt to a CD-R (or CD-RW) and boot from that. The distributed .dmg and .cdr disk images are ready to burn.\
+\f0\b0 \cf0 \
+Documentation for rEFIt is currently only available online at\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+{\field{\*\fldinst{HYPERLINK "http://refit.sourceforge.net/doc/"}}{\fldrslt \cf0 http://refit.sourceforge.net/doc/}}.\
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b \cf0 Installing on a disk volume\
+\f1\b \cf0 Removing rEFIt\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f0\b0 \cf0 When you\'d5re ready to use rEFIt for dual-booting (or even triple-booting), you can install it on a hard disk or USB flash drive. It is recommended to install it on a separate volume, but you can also choose to install rEFIt on your Mac OS X volume.\
-\
-rEFIt should be installed on a HFS+ partition. While it is possible to install rEFIt on a FAT volume like the hidden EFI System Partition and persuade the firmware to boot it, that procedure is quite complex. In any case, the kind of partition table doesn\'d5t matter.\
-\
-Copy the \'d2efi\'d3 folder from the distribution to the root level of the destination volume. Do not put it inside another folder, or some functions won\'d5t work.\
-\
-Open a Terminal window and change to the \'d2refit\'d3 folder inside the \'d2efi\'d3 folder, e.g. \'d2cd /efi/refit\'d3. Run \'d2./enable.sh\'d3 to make the partition bootable. You must do this under Mac OS X on an Intel-based Macintosh, and you will need your administrator password.\
-\
-If you are installing rEFIt to a separate volume, you can use the \'d2rEFIt.icns\'d3 icon as a volume icon.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Upgrading from an Earlier Release\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 If you have an earlier version of rEFIt installed, just replace it with the files from this distribution and run \'d2enable.sh\'d3 again. Make sure that you don\'d5t forget the \'d2icons\'d3 folder, or the boot menu will look quite dull.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Updating Mac OS X\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 When you have rEFIt installed on your Mac OS X partition and you update Mac OS X, rEFIt will be disabled. In this case, just run \'d2enable.sh\'d3 again.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Uninstalling rEFIt\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 To get rid of rEFIt, open the \'d2Startup Disk\'d3 preference pane and select \'d2Mac OS X\'d3 as the operating system to boot. This will re-bless your Mac OS X volume and instruct the firmware to boot from it. After this, you can remove the \'d2efi\'d3 folder.\
+\f0\b0 \cf0 \
+To get rid of rEFIt, open the \'d2Startup Disk\'d3 preference pane and select \'d2Mac OS X\'d3 as the operating system to boot. This will re-bless your Mac OS X volume and instruct the firmware to boot from it. After this, you can remove the \'d2efi\'d3 folder.\
 \
 In case your Mac OS X installation on the hard disk no longer boots, you can boot from the Mac OS X Install Disc (hold down the \'d4C\'d5 key while booting) and run \'d2Startup Disk\'d3 from the \'d2Utilities\'d3 menu.\
 \
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b\fs32 \cf0 Using rEFIt\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0\fs28 \cf0 \
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Getting into the rEFIt menu\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 If you have installed rEFIt on your Mac OS X volume, it will be loaded automatically when the Mac starts up.\
-\
-With rEFIt installed on a separate volume (internal or external) or on a CD, hold down the \'d2Option\'d3 key while the Mac starts up. That activates the built-in boot menu, where you\'d5ll see an icon labeled \'d2rEFIt\'d3. Choose it with the arrow keys and hit Return, and the rEFIt menu will be loaded.\
-\
-You can configure your Mac to automatically start the rEFIt menu even when it is installed on a separate volume. Just use \'d2enable-always.sh\'d3 instead of \'d2enable.sh\'d3.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Using the rEFIt menu\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 The main menu displays two rows of icons. You can navigate the menu with the arrow keys. Press Return or Space to select an entry.\
-\
-The upper row shows all operating system loaders detected on the available storage media. The Mac OS X installation on the internal disk will usually be the first entry. Each entry is badged with a small icon representing the volume it is on. Each boot entry also has a submenu with additional boot options. It can be accessed by pressing \'d4+\'d5 or F2.\
-\
-The second row of icons contains additional functions, like starting the EFI shell or restarting the computer.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Boot Camp support
-\f0\b0 \
-When you have used Boot Camp to install Windows XP or other legacy-booting operating systems on your Mac, rEFIt will detect that and display them as choices in the menu. Multiple OSes on separate partitions are detected and supported; rEFIt will change the active partition flag accordingly in the MBR before engaging BIOS booting.\
-\
-Note that starting with version 0.6, rEFIt can boot legacy OSes directly, without the additional reboot used in 0.5. It also recognizes common Linux and Windows boot sectors and displays the appropriate icon.\
-\
-For a triple boot setup (Mac OS X, Windows XP, Linux), the recommendations are to install Windows first, and install LILO into the boot sector of the Linux partition, not in the MBR.\
-\
-For a dual boot setup with just Mac OS X and Linux, you can install LILO in the MBR.\
-\
-
-\f1\b The EFI Shell\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 The shell allows you to explore the EFI environment by entering text commands. You can also browse disk volumes and start EFI applications. Enter \'d2help\'d3 to see a list of built-in commands. To get back to the rEFIt menu, leave the shell with the \'d2exit\'d3 command.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b\fs32 \cf0 Customizing rEFIt\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0\fs28 \cf0 \
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Using the configuration file\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 Starting with version 0.6, rEFIt has a configuration file. It must be in the same folder as \'d2refit.efi\'d3 and must be named \'d2refit.conf\'d3. An example file with comments for each option is provided with the binary distribution.\
-\
-The configuration file currently allows you to change the timeout, force text-only mode, hide volume badge icons, and re-order legacy boot entries.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Customizing icons\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 All icons displayed in the main menu are loaded from .icns files in the \'d2efi/refit/icons\'d3 directory. Changing those affects the default icons. That is, when you replace \'d2os_mac.icns\'d3, it will be used for Mac OS X on the internal disk as well as the Mac OS X install DVD. In any case, make sure that the icon you use has an icon image for the required resolution \'d1 128x128 for os_*, 48x48 for func_* and tool_*, 32x32 for vol_*.\
-\
-To customize the icon only for a specific boot entry (e.g. Mac OS X on the internal disk), put the .icns file into the same directory as the EFI loader and give it the same name, e.g. \'d2efi/linux/elilo.icns\'d3 if you use \'d2elilo.efi\'d3.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Adding Linux with elilo
-\f0\b0 \
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li360\ql\qnatural\pardirnatural
-\cf0 NOTE: It is currently recommended to boot Linux through BIOS compatibility mode (a.k.a. Boot Camp) using LILO or GRUB. Otherwise, the fully accelerated ATI and Intel graphics drivers will not work.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-To boot Linux through rEFIt, add a folder inside the \'d2efi\'d3 folder. Copy the following files there:\
-\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	elilo (called either \'d2elilo.efi\'d3 or \'d2e.efi\'d3)\
-\'a5	\'d2vmlinuz\'d3\
-\'a5	\'d2initrd.gz\'d3 (if present)\
-\'a5	\'d2elilo.conf\'d3 (if present)\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-Make sure that elilo.conf uses relative paths for the \'d2image=\'d3 and \'d2initrd=\'d3 options (no leading slash). The folder will show up in the rEFIt menu automatically. You can make as many folders with different configurations as you like.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Removing the shell\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 You may want to remove the EFI shell from the menu, for example in a student lab setting. Simply remove the \'d2efi/tools\'d3 folder. (Also remove the \'d2efi/refit/apps\'d3 folder if you still have it from an earlier version of rEFIt.) When the \'d2Shell.efi\'d3 file is not found, the corresponding menu choice disappears automatically.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Using the text-only version\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 Starting with version 0.3, the rEFIt distribution contains an alternative version of the boot menu that operates in text mode only, like previous versions of rEFIt did. It is in the \'d2efi/refitl\'d3 folder and has its own \'d2enable.sh\'d3 script. Simply use the \'d2enable.sh\'d3 script for the version you prefer.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b\fs32 \cf0 Miscellaneous Information\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0\fs28 \cf0 \
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 What\'d5s in the distribution\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f0\b0 \cf0 The rEFIt distribution contains a current version of the EFI shell from the TianoCore project and some additional tools. Here\'d5s a list of the tools available in the \'d2efi/tools\'d3 folder:\
-\
-dhclient.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 An EFI driver that implements the client side of the DHCP protocol. Can be used to auto-configure TCP/IP networking.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 DrawBox.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 An example program from the EFI Application Toolkit that demonstrates box drawing and other graphic characters in the EFI console environment.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 ed.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A port of the Unix standard line editor.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 edit.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A graphical text editor from the EFI Application Toolkit.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 ftp.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A port of the BSD ftp client.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 hexdump.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A port of the BSD hexdump tool.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 hostname.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A port of the BSD hostname tool, used to get and set the machine\'d5s hostname for TCP/IP networking.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 ifconfig.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A port of the BSD ifconfig tool, used to configure network interfaces for TCP/IP networking.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 loadarg.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 An EFI tool to load a driver with additional arguments.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 ping.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A port of the BSD ping tool, used to test TCP/IP connectivity.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 pppd.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 An EFI driver that contains a port of the pppd daemon. Adds PPP capabilities to the TCP/IP stack.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 route.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A port of the BSD route tool, used to configure routing for TCP/IP networking.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 tcpipv4.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 An EFI driver that contains a port of the TCP/IP networking stack from BSD.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 TextMode.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A small program that switches the EFI console from graphics to text mode.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 which.efi\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\ql\qnatural\pardirnatural
-\cf0 A shell tool that displays the full path for a command.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Version History\
+\f1\b \cf0 No Warranty\
 \pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
 \f0\b0 \cf0 \
-Version 0.6:\
-\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	Directly boots into legacy operating systems installed via Boot Camp.\
-\'a5	Supports multiple legacy operating systems by detecting their partitions and changing the active partition flag in the MBR.\
-\'a5	Allows customization through a configuration file.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-Version 0.5:\
-\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	Supports legacy operating systems installed via Boot Camp.\
-\'a5	Improved boot options for elilo and XOM.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-Version 0.4:\
-\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	The boot menu now has a timeout of 20 seconds. When no key is pressed during that time, rEFIt will start the first entry, which will usually be Mac OS X on the internal hard disk.\
-\'a5	Each boot entry has a submenu with additional boot options.\
-\'a5	The volume icon is shown as a badge icon on each menu choice, so you can visually identify multiple Mac OS X installations.\
-\'a5	All icons have been moved into external .icns files. This makes them customizable and saves storage space.\
-\'a5	The icon shown for each boot option can be customized by providing a .icns along with the boot loader.\
-\'a5	The remaining internal images are compressed, further reducing the size of \'d2refit.efi\'d3.\
-\'a5	Apple Hardware Test on the Mac OS X install DVD is detected and displayed as a separate entry.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-Version 0.3:\
-\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	Graphical boot menu.\
-\'a5	Added detection of the \'d2XpOnMac\'d3 bootloader (xom.efi).\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-Version 0.2:\
-\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	Scan more folders for potential boot loaders.\
-\'a5	Updated the EFI Shell with a version that includes all built-in commands.\
-\'a5	Improved error handling.\
-\'a5	Lots of under-the-hood improvements.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-Version 0.1:\
-First public release.\
-\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 Future Possibilities
-\f0\b0 \
-Here are some ideas how rEFIt might evolve in the future:\
-\pard\tx380\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li380\fi-260\ql\qnatural\pardirnatural
-\cf0 \'a5	Port GNU parted to the EFI environment. GNU parted is a disk partitioning tool capable of resizing most common file system types without losing data.\
-\'a5	Add menu entries to configure the network.\
-\'a5	Make EFI drivers for various file systems like ext2 (the code in grub should be a good starting point) to make them accessible in EFI space.\
-\'a5	Add various diagnostics to the boot menu.\
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-\cf0 \
-\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
-
-\f1\b \cf0 No Warranty
-\f0\b0 \
 rEFIt is distributed in the hope that it will be useful. EFI is a powerful environment, but it also makes it easy to destroy your data or disable your computer altogether. 
 \f1\b rEFIt comes with absolutely no warranty of any kind. Use at your own risk. You have been warned.
 \f0\b0 \
 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
 
-\f1\b Credits
-\f0\b0 \
+\f1\b \cf0 Credits\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\ql\qnatural\pardirnatural
+
+\f0\b0 \cf0 \
 The rEFIt boot menu was written by Christoph Pfisterer <chrisp@users.sourceforge.net>. Other components in this distribution are taken from the {\field{\*\fldinst{HYPERLINK "http://www.tianocore.org/"}}{\fldrslt TianoCore}} project and Intel\'d5s {\field{\*\fldinst{HYPERLINK "http://www.intel.com/technology/efi/toolkit_overview.htm"}}{\fldrslt EFI Application Toolkit}}, both distributed under a BSD-style license. See the \'d2rEFIt License\'d3 document for details.\
 \
 The rEFIt project website is at {\field{\*\fldinst{HYPERLINK "http://refit.sourceforge.net/"}}{\fldrslt http://refit.sourceforge.net/}}.\
