@@ -49,6 +49,9 @@ typedef EG_IMAGE * (*EG_DECODE_FUNC)(IN UINT8 *FileData, IN UINTN FileDataLength
 
 /* functions */
 
+VOID egRawCopy(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
+               IN UINTN Width, IN UINTN Height,
+               IN UINTN CompLineOffset, IN UINTN TopLineOffset);
 VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
                   IN UINTN Width, IN UINTN Height,
                   IN UINTN CompLineOffset, IN UINTN TopLineOffset);

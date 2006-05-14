@@ -126,9 +126,18 @@ VOID egSetGraphicsModeEnabled(IN BOOLEAN Enable)
 
 VOID egClearScreen(IN EG_PIXEL *Color)
 {
+    EFI_UGA_PIXEL FillColor;
+    
     if (UgaDraw != NULL) {
-        UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Color, EfiUgaVideoFill,
+        
+        FillColor.Red   = Color->r;
+        FillColor.Green = Color->g;
+        FillColor.Blue  = Color->b;
+        FillColor.Reserved = 0;
+        
+        UgaDraw->Blt(UgaDraw, &FillColor, EfiUgaVideoFill,
                      0, 0, 0, 0, egScreenWidth, egScreenHeight, 0);
+        
     }
 }
 
@@ -136,7 +145,10 @@ VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN PosX, IN UINTN PosY)
 {
     if (UgaDraw != NULL) {
         
-        // TODO: check HasAlpha flag
+        if (Image->HasAlpha) {
+            Image->HasAlpha = FALSE;
+            egSetPlane(PLPTR(Image, a), 0, Image->Width * Image->Height);
+        }
         
         UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
                      0, 0, PosX, PosY, Image->Width, Image->Height, 0);

@@ -386,11 +386,16 @@ static VOID egCalculateOverlap(IN UINTN SrcWidth, IN UINTN SrcHeight,
 VOID egFillImage(IN OUT EG_IMAGE *CompImage, IN EG_PIXEL *Color)
 {
     UINTN       i;
+    EG_PIXEL    FillColor;
     EG_PIXEL    *PixelPtr;
+    
+    FillColor = *Color;
+    if (!CompImage->HasAlpha)
+        FillColor.a = 0;
     
     PixelPtr = CompImage->PixelData;
     for (i = 0; i < CompImage->Width * CompImage->Height; i++, PixelPtr++)
-        *PixelPtr = *Color;
+        *PixelPtr = FillColor;
 }
 
 VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
@@ -399,6 +404,7 @@ VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
 {
     UINTN       x, y;
     UINTN       CompWidth, CompHeight;
+    EG_PIXEL    FillColor;
     EG_PIXEL    *PixelPtr;
     EG_PIXEL    *PixelBasePtr;
     
@@ -408,13 +414,36 @@ VOID egFillImageArea(IN OUT EG_IMAGE *CompImage,
                        &CompWidth, &CompHeight);
     
     if (CompWidth > 0) {
+        FillColor = *Color;
+        if (!CompImage->HasAlpha)
+            FillColor.a = 0;
+        
         PixelBasePtr = CompImage->PixelData + PosY * CompImage->Width + PosX;
         for (y = 0; y < CompHeight; y++) {
             PixelPtr = PixelBasePtr;
             for (x = 0; x < CompWidth; x++, PixelPtr++)
-                *PixelPtr = *Color;
+                *PixelPtr = FillColor;
             PixelBasePtr += CompImage->Width;
         }
+    }
+}
+
+VOID egRawCopy(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
+               IN UINTN Width, IN UINTN Height,
+               IN UINTN CompLineOffset, IN UINTN TopLineOffset)
+{
+    UINTN       x, y;
+    EG_PIXEL    *TopPtr, *CompPtr;
+    
+    for (y = 0; y < Height; y++) {
+        TopPtr = TopBasePtr;
+        CompPtr = CompBasePtr;
+        for (x = 0; x < Width; x++) {
+            *CompPtr = *TopPtr;
+            TopPtr++, CompPtr++;
+        }
+        TopBasePtr += TopLineOffset;
+        CompBasePtr += CompLineOffset;
     }
 }
 
@@ -426,6 +455,7 @@ VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
     EG_PIXEL    *TopPtr, *CompPtr;
     UINTN       Alpha;
     UINTN       RevAlpha;
+    UINTN       Temp;
     
     for (y = 0; y < Height; y++) {
         TopPtr = TopBasePtr;
@@ -433,9 +463,17 @@ VOID egRawCompose(IN OUT EG_PIXEL *CompBasePtr, IN EG_PIXEL *TopBasePtr,
         for (x = 0; x < Width; x++) {
             Alpha = TopPtr->a;
             RevAlpha = 255 - Alpha;
+            Temp = (UINTN)CompPtr->b * RevAlpha + (UINTN)TopPtr->b * Alpha + 0x80;
+            CompPtr->b = (Temp + (Temp >> 8)) >> 8;
+            Temp = (UINTN)CompPtr->g * RevAlpha + (UINTN)TopPtr->g * Alpha + 0x80;
+            CompPtr->g = (Temp + (Temp >> 8)) >> 8;
+            Temp = (UINTN)CompPtr->r * RevAlpha + (UINTN)TopPtr->r * Alpha + 0x80;
+            CompPtr->r = (Temp + (Temp >> 8)) >> 8;
+            /*
             CompPtr->b = ((UINTN)CompPtr->b * RevAlpha + (UINTN)TopPtr->b * Alpha) / 255;
             CompPtr->g = ((UINTN)CompPtr->g * RevAlpha + (UINTN)TopPtr->g * Alpha) / 255;
             CompPtr->r = ((UINTN)CompPtr->r * RevAlpha + (UINTN)TopPtr->r * Alpha) / 255;
+            */
             TopPtr++, CompPtr++;
         }
         TopBasePtr += TopLineOffset;
@@ -453,9 +491,19 @@ VOID egComposeImage(IN OUT EG_IMAGE *CompImage, IN EG_IMAGE *TopImage, IN UINTN 
                        &CompWidth, &CompHeight);
     
     // compose
-    if (CompWidth > 0)
-        egRawCompose(CompImage->PixelData + PosY * CompImage->Width + PosX, TopImage->PixelData,
-                     CompWidth, CompHeight, CompImage->Width, TopImage->Width);
+    if (CompWidth > 0) {
+        if (CompImage->HasAlpha) {
+            CompImage->HasAlpha = FALSE;
+            egSetPlane(PLPTR(CompImage, a), 0, CompImage->Width * CompImage->Height);
+        }
+        
+        if (TopImage->HasAlpha)
+            egRawCompose(CompImage->PixelData + PosY * CompImage->Width + PosX, TopImage->PixelData,
+                         CompWidth, CompHeight, CompImage->Width, TopImage->Width);
+        else
+            egRawCopy(CompImage->PixelData + PosY * CompImage->Width + PosX, TopImage->PixelData,
+                      CompWidth, CompHeight, CompImage->Width, TopImage->Width);
+    }
 }
 
 //
