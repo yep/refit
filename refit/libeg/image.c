@@ -493,6 +493,26 @@ VOID egComposeImage(IN OUT EG_IMAGE *CompImage, IN EG_IMAGE *TopImage, IN UINTN 
     }
 }
 
+EG_IMAGE * egEnsureImageSize(IN EG_IMAGE *Image, IN UINTN Width, IN UINTN Height, IN EG_PIXEL *Color)
+{
+    EG_IMAGE *NewImage;
+
+    if (Image == NULL)
+        return NULL;
+    if (Image->Width == Width && Image->Height == Height)
+        return Image;
+    
+    NewImage = egCreateFilledImage(Width, Height, Image->HasAlpha, Color);
+    if (NewImage == NULL) {
+        egFreeImage(Image);
+        return NULL;
+    }
+    egComposeImage(NewImage, Image, 0, 0);
+    egFreeImage(Image);
+    
+    return NewImage;
+}
+
 //
 // misc internal functions
 //
