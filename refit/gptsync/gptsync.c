@@ -495,13 +495,13 @@ static UINTN check_gpt(VOID)
 // compare GPT and MBR tables
 //
 
-#define ACTION_CODE_NONE        (0)
-#define ACTION_CODE_NOP         (1)
-#define ACTION_CODE_REWRITE     (2)
+#define ACTION_NONE        (0)
+#define ACTION_NOP         (1)
+#define ACTION_REWRITE     (2)
 
 static UINTN analyze(VOID)
 {
-    UINTN   action_code = ACTION_CODE_NONE;
+    UINTN   action = ACTION_NONE;
     UINTN   i, k, iter;
     UINT64  min_start_lba;
     BOOLEAN have_active;
@@ -511,22 +511,22 @@ static UINTN analyze(VOID)
     // check for common scenarios
     if (mbr_part_count == 0) {
         // current MBR is empty
-        action_code = ACTION_CODE_REWRITE;
+        action = ACTION_REWRITE;
     } else if (mbr_part_count == 1 && mbr_parts[0].mbr_type == 0xee) {
         // MBR has just the EFI Protective partition (i.e. untouched)
-        action_code = ACTION_CODE_REWRITE;
+        action = ACTION_REWRITE;
     }
-    if (action_code == ACTION_CODE_NONE && mbr_part_count > 0) {
+    if (action == ACTION_NONE && mbr_part_count > 0) {
         if (mbr_parts[0].mbr_type == 0xee &&
             gpt_parts[0].gpt_parttype->mbr_type == 0xef &&
             mbr_parts[0].start_lba == 1 &&
             mbr_parts[0].end_lba == gpt_parts[0].end_lba) {
             // The Apple Way, "EFI Protective" covering the tables and the ESP
-            action_code = ACTION_CODE_NOP;
+            action = ACTION_NOP;
             if ((mbr_part_count != gpt_part_count && gpt_part_count <= 4) ||
                 (mbr_part_count != 4              && gpt_part_count > 4)) {
                 // number of partitions has changed
-                action_code = ACTION_CODE_REWRITE;
+                action = ACTION_REWRITE;
             } else {
                 // check partition ranges and types
                 for (i = 1; i < mbr_part_count; i++) {
@@ -534,15 +534,28 @@ static UINTN analyze(VOID)
                         mbr_parts[i].end_lba   != gpt_parts[i].end_lba ||
                         (gpt_parts[i].gpt_parttype->mbr_type && mbr_parts[i].mbr_type != gpt_parts[i].gpt_parttype->mbr_type))
                         // position or type has changed
-                        action_code = ACTION_CODE_REWRITE;
+                        action = ACTION_REWRITE;
                 }
             }
         }
     }
+    if (action == ACTION_NONE && mbr_part_count > 0 && mbr_parts[0].mbr_type == 0xef) {
+        // The XOM Way, all partitions mirrored 1:1
+        action = ACTION_REWRITE;
+        // check partition ranges and types
+        for (i = 0; i < mbr_part_count; i++) {
+            if (mbr_parts[i].start_lba != gpt_parts[i].start_lba ||
+                mbr_parts[i].end_lba   != gpt_parts[i].end_lba ||
+                (gpt_parts[i].gpt_parttype->mbr_type && mbr_parts[i].mbr_type != gpt_parts[i].gpt_parttype->mbr_type))
+                // position or type has changed -> better don't touch
+                action = ACTION_NONE;
+        }
+    }
     
-    if (action_code == ACTION_CODE_NOP) {
+    if (action == ACTION_NOP) {
         Print(L"Status: Tables are synchronized, no need to sync.\n");
-    } else if (action_code == ACTION_CODE_REWRITE) {
+        return 0;
+    } else if (action == ACTION_REWRITE) {
         Print(L"Status: MBR table must be updated.\n");
     } else {
         Print(L"Status: Analysis inconclusive, will not touch this disk.\n");
@@ -550,90 +563,89 @@ static UINTN analyze(VOID)
     }
     
     // generate the new table
-    if (action_code != ACTION_CODE_NOP) {
-        
-        new_mbr_parts[0].index     = 0;
-        new_mbr_parts[0].start_lba = 1;
-        new_mbr_parts[0].mbr_type  = 0xee;
-        new_mbr_part_count = 1;
-        
-        // first entry: EFI Protective
-        if (gpt_parts[0].gpt_parttype->mbr_type == 0xef) {
-            new_mbr_parts[0].end_lba = gpt_parts[0].end_lba;
-            i = 1;
-        } else {
-            min_start_lba = gpt_parts[0].start_lba;
-            for (k = 0; k < gpt_part_count; k++) {
-                if (min_start_lba > gpt_parts[k].start_lba)
-                    min_start_lba = gpt_parts[k].start_lba;
-            }
-            new_mbr_parts[0].end_lba = min_start_lba - 1;
-            i = 0;
+    
+    // first entry: EFI Protective
+    new_mbr_parts[0].index     = 0;
+    new_mbr_parts[0].start_lba = 1;
+    new_mbr_parts[0].mbr_type  = 0xee;
+    new_mbr_part_count = 1;
+    
+    if (gpt_parts[0].gpt_parttype->mbr_type == 0xef) {
+        new_mbr_parts[0].end_lba = gpt_parts[0].end_lba;
+        i = 1;
+    } else {
+        min_start_lba = gpt_parts[0].start_lba;
+        for (k = 0; k < gpt_part_count; k++) {
+            if (min_start_lba > gpt_parts[k].start_lba)
+                min_start_lba = gpt_parts[k].start_lba;
         }
-        // add other GPT partitions until the table is full
-        for (; i < gpt_part_count && new_mbr_part_count < 4; i++) {
-            new_mbr_parts[new_mbr_part_count].index     = new_mbr_part_count;
-            new_mbr_parts[new_mbr_part_count].start_lba = gpt_parts[i].start_lba;
-            new_mbr_parts[new_mbr_part_count].end_lba   = gpt_parts[i].end_lba;
-            new_mbr_parts[new_mbr_part_count].mbr_type  = gpt_parts[i].gpt_parttype->mbr_type;
-            new_mbr_parts[new_mbr_part_count].active    = FALSE;
-            
-            // find matching partition in the old MBR table
-            for (k = 0; k < mbr_part_count; k++) {
-                if (mbr_parts[k].start_lba == gpt_parts[i].start_lba) {
-                    if (new_mbr_parts[new_mbr_part_count].mbr_type == 0)
-                        new_mbr_parts[new_mbr_part_count].mbr_type = mbr_parts[k].mbr_type;
-                    new_mbr_parts[new_mbr_part_count].active = mbr_parts[k].active;
-                    break;
-                }
-            }
-            
-            if (new_mbr_parts[new_mbr_part_count].mbr_type == 0) {
-                // TODO: detect the actual file system on the partition
-                
-                // fallback: use FAT32
-                //if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA) {
-                new_mbr_parts[new_mbr_part_count].mbr_type = 0x0b;
-            }
-            
-            new_mbr_part_count++;
-        }
+        new_mbr_parts[0].end_lba = min_start_lba - 1;
+        i = 0;
+    }
+    
+    // add other GPT partitions until the table is full
+    for (; i < gpt_part_count && new_mbr_part_count < 4; i++) {
+        new_mbr_parts[new_mbr_part_count].index     = new_mbr_part_count;
+        new_mbr_parts[new_mbr_part_count].start_lba = gpt_parts[i].start_lba;
+        new_mbr_parts[new_mbr_part_count].end_lba   = gpt_parts[i].end_lba;
+        new_mbr_parts[new_mbr_part_count].mbr_type  = gpt_parts[i].gpt_parttype->mbr_type;
+        new_mbr_parts[new_mbr_part_count].active    = FALSE;
         
-        // if no partition is active, pick one
-        for (iter = 0; iter < 3; iter++) {
-            // check
-            have_active = FALSE;
-            for (i = 0; i < new_mbr_part_count; i++)
-                if (new_mbr_parts[i].active)
-                    have_active = TRUE;
-            if (have_active)
+        // find matching partition in the old MBR table
+        for (k = 0; k < mbr_part_count; k++) {
+            if (mbr_parts[k].start_lba == gpt_parts[i].start_lba) {
+                if (new_mbr_parts[new_mbr_part_count].mbr_type == 0)
+                    new_mbr_parts[new_mbr_part_count].mbr_type = mbr_parts[k].mbr_type;
+                new_mbr_parts[new_mbr_part_count].active = mbr_parts[k].active;
                 break;
-            
-            // set active on the first matching partition
-            for (i = 0; i < new_mbr_part_count; i++) {
-                if ((iter >= 0 && (new_mbr_parts[i].mbr_type == 0x07 ||
-                                   new_mbr_parts[i].mbr_type == 0x0b ||
-                                   new_mbr_parts[i].mbr_type == 0x0c)) ||
-                    (iter >= 1 && (new_mbr_parts[i].mbr_type == 0x83)) ||
-                    (iter >= 2 && i > 0)) {
-                    new_mbr_parts[i].active = TRUE;
-                    break;
-                }
             }
         }
         
-        // dump table
-        Print(L"\nProposed new MBR partition table:\n");
-        Print(L" # A    Start LBA      End LBA  Type\n");
-        for (i = 0; i < new_mbr_part_count; i++) {
-            Print(L" %d %s %12lld %12lld  %02x  %s\n",
-                  new_mbr_parts[i].index + 1,
-                  new_mbr_parts[i].active ? STR("*") : STR(" "),
-                  new_mbr_parts[i].start_lba,
-                  new_mbr_parts[i].end_lba,
-                  new_mbr_parts[i].mbr_type,
-                  mbr_parttype_name(new_mbr_parts[i].mbr_type));
+        if (new_mbr_parts[new_mbr_part_count].mbr_type == 0) {
+            // TODO: detect the actual file system on the partition
+            
+            // fallback: use FAT32
+            //if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA) {
+            new_mbr_parts[new_mbr_part_count].mbr_type = 0x0b;
         }
+        
+        new_mbr_part_count++;
+    }
+    
+    // if no partition is active, pick one
+    for (iter = 0; iter < 3; iter++) {
+        // check
+        have_active = FALSE;
+        for (i = 0; i < new_mbr_part_count; i++)
+            if (new_mbr_parts[i].active)
+                have_active = TRUE;
+        if (have_active)
+            break;
+        
+        // set active on the first matching partition
+        for (i = 0; i < new_mbr_part_count; i++) {
+            if ((iter >= 0 && (new_mbr_parts[i].mbr_type == 0x07 ||
+                               new_mbr_parts[i].mbr_type == 0x0b ||
+                               new_mbr_parts[i].mbr_type == 0x0c)) ||
+                (iter >= 1 && (new_mbr_parts[i].mbr_type == 0x83)) ||
+                (iter >= 2 && i > 0)) {
+                new_mbr_parts[i].active = TRUE;
+                break;
+            }
+        }
+    }
+    
+    // dump table
+    Print(L"\nProposed new MBR partition table:\n");
+    Print(L" # A    Start LBA      End LBA  Type\n");
+    for (i = 0; i < new_mbr_part_count; i++) {
+        Print(L" %d %s %12lld %12lld  %02x  %s\n",
+              new_mbr_parts[i].index + 1,
+              new_mbr_parts[i].active ? STR("*") : STR(" "),
+              new_mbr_parts[i].start_lba,
+              new_mbr_parts[i].end_lba,
+              new_mbr_parts[i].mbr_type,
+              mbr_parttype_name(new_mbr_parts[i].mbr_type));
     }
     
     return 0;
