@@ -567,7 +567,8 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
         (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
         Entry->me.BadgeImage   = Volume->VolBadgeImage;
     Entry->Volume          = Volume;
-    Entry->LoadOptions     = (Volume->DiskKind == DISK_KIND_OPTICAL) ? L"CD" : L"HD";
+    Entry->LoadOptions     = (Volume->DiskKind == DISK_KIND_OPTICAL) ? L"CD" :
+        ((Volume->DiskKind == DISK_KIND_EXTERNAL) ? L"USB" : L"HD");
     
     // create the submenu
     SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
