@@ -1,0 +1,49 @@
+#!/bin/sh
+
+. /etc/rc.common
+
+
+# Set this variable if rEFIt is installed on a different volume. You must
+# make sure that the volume is mounted when the system shuts down.
+MOUNTPOINT=""
+
+
+MacOSXBlessed ()
+{
+    if bless --info | grep 'Blessed System File' | grep ' /System/Library/CoreServices/boot.efi' >/dev/null 2>&1 ; then
+	return 0
+    fi
+    return 1
+}
+
+
+StartService ()
+{
+    if ! MacOSXBlessed ; then
+	echo "rEFItBlesser blessing Mac OS X on Startup"
+	bless --folder /System/Library/CoreServices --file /System/Library/CoreServices/boot.efi --setBoot
+    fi
+    return 0
+}
+
+StopService ()
+{
+    if [ -f "$MOUNTPOINT/efi/refit/refit.efi" ]; then
+	if MacOSXBlessed ; then
+	    echo "rEFItBlesser blessing rEFIt on Shutdown"
+	    if [ -z "$MOUNTPOINT" ]; then
+		bless --folder /efi/refit --file /efi/refit/refit.efi --setBoot
+	    else
+		bless --mount "$MOUNTPOINT" --file "$MOUNTPOINT/efi/refit/refit.efi" --setBoot
+	    fi
+	fi
+    fi
+    return 0
+}
+
+RestartService ()
+{
+    return 0
+}
+
+RunService "$1"
