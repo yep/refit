@@ -350,7 +350,8 @@ static VOID ScanLoaderDir(IN REFIT_VOLUME *Volume, IN CHAR16 *Path)
     // look through contents of the directory
     DirIterOpen(Volume->RootDir, Path, &DirIter);
     while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
-        if (StriCmp(DirEntry->FileName, L"TextMode.efi") == 0 ||
+        if (DirEntry->FileName[0] == '.' ||
+            StriCmp(DirEntry->FileName, L"TextMode.efi") == 0 ||
             StriCmp(DirEntry->FileName, L"ebounce.efi") == 0 ||
             StriCmp(DirEntry->FileName, L"GraphicsConsole.efi") == 0)
             continue;   // skip this
