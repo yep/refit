@@ -190,7 +190,7 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
                                                  0, 2048, SectorBuffer);
             if (!EFI_ERROR(Status)) {
                 
-                if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55) {
+                if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55 && SectorBuffer[0] != 0) {
                     Bootable = TRUE;
                     Volume->BootCodeDetected = BOOTCODE_UNKNOWN;
                 }
