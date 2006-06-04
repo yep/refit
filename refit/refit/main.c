@@ -92,11 +92,11 @@ static VOID AboutRefit(VOID)
     RunMenu(&AboutMenu, NULL);
 }
 
-static VOID StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
-                          IN CHAR16 *LoadOptions, IN CHAR16 *LoadOptionsPrefix,
-                          IN CHAR16 *ImageTitle)
+static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
+                                IN CHAR16 *LoadOptions, IN CHAR16 *LoadOptionsPrefix,
+                                IN CHAR16 *ImageTitle)
 {
-    EFI_STATUS              Status;
+    EFI_STATUS              Status, ReturnStatus;
     EFI_HANDLE              ChildImageHandle;
     EFI_LOADED_IMAGE        *ChildLoadedImage;
     CHAR16                  ErrorInfo[256];
@@ -105,14 +105,14 @@ static VOID StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
     Print(L"Starting %s\n", ImageTitle);
     
     // load the image into memory
-    Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
+    ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
     SPrint(ErrorInfo, 255, L"while loading %s", ImageTitle);
     if (CheckError(Status, ErrorInfo))
         goto bailout;
     
     // set load options
     if (LoadOptions != NULL) {
-        Status = BS->HandleProtocol(ChildImageHandle, &LoadedImageProtocol, (VOID **) &ChildLoadedImage);
+        ReturnStatus = Status = BS->HandleProtocol(ChildImageHandle, &LoadedImageProtocol, (VOID **) &ChildLoadedImage);
         if (CheckError(Status, L"while getting a LoadedImageProtocol handle"))
             goto bailout_unload;
         
@@ -130,7 +130,7 @@ static VOID StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
     
     // turn control over to the image
     // TODO: (optionally) re-enable the EFI watchdog timer!
-    Status = BS->StartImage(ChildImageHandle, NULL, NULL);
+    ReturnStatus = Status = BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
     SPrint(ErrorInfo, 255, L"returned from %s", ImageTitle);
     CheckError(Status, ErrorInfo);
@@ -141,7 +141,7 @@ bailout_unload:
 bailout:
     if (FullLoadOptions != NULL)
         FreePool(FullLoadOptions);
-    FinishExternalScreen();
+    return ReturnStatus;
 }
 
 //
@@ -152,6 +152,7 @@ static VOID StartLoader(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode, L"Booting OS");
     StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
+    FinishExternalScreen();
 }
 
 static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
@@ -510,7 +511,8 @@ static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN Partit
 
 static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
-    EG_IMAGE    *BootLogoImage;
+    EFI_STATUS          Status;
+    EG_IMAGE            *BootLogoImage;
     
     BeginExternalScreen(TRUE, L"Booting Legacy OS");
     
@@ -526,8 +528,11 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     if (Entry->Volume->IsMbrPartition)
         ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
     
-    StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePathData,
-                  Entry->LoadOptions, NULL, L"legacy loader");
+    Status = StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePathData,
+                           Entry->LoadOptions, NULL, L"legacy loader");
+    if (Status == EFI_NOT_FOUND)
+        Print(L"\nPlease make sure that you have the latest firmware update installed.\n");
+    FinishExternalScreen();
 }
 
 static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
@@ -643,6 +648,7 @@ static VOID StartTool(IN LOADER_ENTRY *Entry)
     BeginExternalScreen(Entry->UseGraphicsMode, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
     StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath),
                   Basename(Entry->LoaderPath));
+    FinishExternalScreen();
 }
 
 static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, EG_IMAGE *Image, BOOLEAN UseGraphicsMode)
