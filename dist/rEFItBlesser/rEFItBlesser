@@ -32,7 +32,7 @@ StopService ()
 	if MacOSXBlessed ; then
 	    echo "rEFItBlesser blessing rEFIt on Shutdown"
 	    if [ -z "$MOUNTPOINT" ]; then
-		bless --folder /efi/refit --file /efi/refit/refit.efi --setBoot
+		bless --folder /efi/refit --file /efi/refit/refit.efi --labelfile /efi/refit/refit.vollabel --setBoot
 	    else
 		bless --mount "$MOUNTPOINT" --file "$MOUNTPOINT/efi/refit/refit.efi" --setBoot
 	    fi
