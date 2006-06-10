@@ -74,6 +74,8 @@ typedef struct {
 #define BOOTCODE_WINDOWS    (2)
 #define BOOTCODE_LINUX      (3)
 
+#define IS_EXTENDED_PART_TYPE(type) ((type) == 0x05 || (type) == 0x0f || (type) == 0x85)
+
 typedef struct {
     EFI_DEVICE_PATH     *DevicePath;
     EFI_HANDLE          DeviceHandle;
@@ -86,6 +88,7 @@ typedef struct {
     BOOLEAN             IsMbrPartition;
     UINTN               MbrPartitionIndex;
     EFI_BLOCK_IO        *BlockIO;
+    UINT64              BlockIOOffset;
     EFI_BLOCK_IO        *WholeDiskBlockIO;
     MBR_PARTITION_INFO  *MbrPartitionTable;
 } REFIT_VOLUME;

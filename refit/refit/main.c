@@ -468,7 +468,9 @@ static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN Partit
 {
     EFI_STATUS          Status;
     UINT8               SectorBuffer[512];
-    MBR_PARTITION_INFO  *MbrTable;
+    MBR_PARTITION_INFO  *MbrTable, *EMbrTable;
+    UINT32              ExtBase, ExtCurrent, NextExtCurrent;
+    UINTN               LogicalPartitionIndex = 4;
     UINTN               i;
     BOOLEAN             HaveBootCode;
     
@@ -495,16 +497,66 @@ static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN Partit
     
     // set the partition active
     MbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
+    ExtBase = 0;
     for (i = 0; i < 4; i++) {
         if (MbrTable[i].Flags != 0x00 && MbrTable[i].Flags != 0x80)
             return EFI_NOT_FOUND;   // safety measure #2
-        MbrTable[i].Flags = (i == PartitionIndex) ? 0x80 : 0x00;
+        if (i == PartitionIndex)
+            MbrTable[i].Flags = 0x80;
+        else if (PartitionIndex >= 4 && IS_EXTENDED_PART_TYPE(MbrTable[i].Type)) {
+            MbrTable[i].Flags = 0x80;
+            ExtBase = MbrTable[i].StartLBA;
+        } else
+            MbrTable[i].Flags = 0x00;
     }
     
     // write MBR
     Status = BlockIO->WriteBlocks(BlockIO, BlockIO->Media->MediaId, 0, 512, SectorBuffer);
     if (EFI_ERROR(Status))
         return Status;
+    
+    if (PartitionIndex >= 4) {
+        // we have to activate a logical partition, so walk the EMBR chain
+        
+        // NOTE: ExtBase was set above while looking at the MBR table
+        for (ExtCurrent = ExtBase; ExtCurrent; ExtCurrent = NextExtCurrent) {
+            // read current EMBR
+            Status = BlockIO->ReadBlocks(BlockIO, BlockIO->Media->MediaId, ExtCurrent, 512, SectorBuffer);
+            if (EFI_ERROR(Status))
+                return Status;
+            if (*((UINT16 *)(SectorBuffer + 510)) != 0xaa55)
+                return EFI_NOT_FOUND;  // safety measure #3
+            
+            // scan EMBR, set appropriate partition active
+            EMbrTable = (MBR_PARTITION_INFO *)(SectorBuffer + 446);
+            NextExtCurrent = 0;
+            for (i = 0; i < 4; i++) {
+                if (EMbrTable[i].Flags != 0x00 && EMbrTable[i].Flags != 0x80)
+                    return EFI_NOT_FOUND;   // safety measure #4
+                if (EMbrTable[i].StartLBA == 0 || EMbrTable[i].Size == 0)
+                    break;
+                if (IS_EXTENDED_PART_TYPE(EMbrTable[i].Type)) {
+                    // link to next EMBR
+                    NextExtCurrent = ExtBase + EMbrTable[i].StartLBA;
+                    EMbrTable[i].Flags = (PartitionIndex >= LogicalPartitionIndex) ? 0x80 : 0x00;
+                    break;
+                } else {
+                    // logical partition
+                    EMbrTable[i].Flags = (PartitionIndex == LogicalPartitionIndex) ? 0x80 : 0x00;
+                    LogicalPartitionIndex++;
+                }
+            }
+            
+            // write current EMBR
+            Status = BlockIO->WriteBlocks(BlockIO, BlockIO->Media->MediaId, ExtCurrent, 512, SectorBuffer);
+            if (EFI_ERROR(Status))
+                return Status;
+            
+            if (PartitionIndex < LogicalPartitionIndex)
+                break;  // stop the loop, no need to touch further EMBRs
+        }
+        
+    }
     
     return EFI_SUCCESS;
 }
@@ -621,8 +673,9 @@ static VOID ScanLegacy(VOID)
         } else if (Volume->BootCodeDetected) {
             ShowVolume = TRUE;
             if (Volume->BlockIO == Volume->WholeDiskBlockIO &&
+                Volume->BlockIOOffset == 0 &&
                 Volume->BootCodeDetected == BOOTCODE_UNKNOWN)
-                // this is a whole disk entry; hide if we have entries for partitions
+                // this is a whole disk (MBR) entry; hide if we have entries for partitions
                 HideIfOthersFound = TRUE;
         }
         if (HideIfOthersFound) {
