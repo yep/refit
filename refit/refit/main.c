@@ -53,7 +53,6 @@ typedef struct {
     REFIT_MENU_ENTRY me;
     REFIT_VOLUME     *Volume;
     CHAR16           *LoadOptions;
-    UINTN            BootLogoID;
 } LEGACY_ENTRY;
 
 // variables
@@ -82,7 +81,7 @@ static VOID AboutRefit(VOID)
 {
     if (AboutMenu.EntryCount == 0) {
         AboutMenu.TitleImage = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
-        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.7");
+        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.8");
         AddMenuInfoLine(&AboutMenu, L"");
         AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006 Christoph Pfisterer");
         AddMenuInfoLine(&AboutMenu, L"Portions Copyright (c) Intel Corporation and others");
@@ -157,7 +156,7 @@ static VOID StartLoader(IN LOADER_ENTRY *Entry)
 
 static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Volume)
 {
-    CHAR16          *FileName;
+    CHAR16          *FileName, *OSIconName;
     CHAR16          IconFileName[256];
     UINTN           LoaderKind;
     LOADER_ENTRY    *Entry, *SubEntry;
@@ -185,31 +184,29 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
         Entry->me.Image = LoadIcns(Volume->RootDir, IconFileName, 128);
     
     // detect specific loaders
+    OSIconName = NULL;
     LoaderKind = 0;
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_MAC);
+        OSIconName = L"mac";
         Entry->UseGraphicsMode = TRUE;
         LoaderKind = 1;
     } else if (StriCmp(FileName, L"diags.efi") == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_HWTEST);
+        OSIconName = L"hwtest";
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_LINUX);
+        OSIconName = L"elilo,linux";
         LoaderKind = 2;
-    } else if (StriCmp(FileName, L"Bootmgfw.efi") == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_WIN);
+    } else if (StriCmp(FileName, L"cdboot.efi") == 0 ||
+               StriCmp(FileName, L"bootmgr.efi") == 0 ||
+               StriCmp(FileName, L"Bootmgfw.efi") == 0) {
+        OSIconName = L"win";
     } else if (StriCmp(FileName, L"xom.efi") == 0) {
-        if (Entry->me.Image == NULL)
-            Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_WIN);
+        OSIconName = L"xom,win";
         Entry->UseGraphicsMode = TRUE;
         LoaderKind = 3;
     }
     if (Entry->me.Image == NULL)
-        Entry->me.Image = BuiltinIcon(BUILTIN_ICON_OS_UNKNOWN);
+        Entry->me.Image = LoadOSIcon(OSIconName, L"unknown", FALSE);
     
     // create the submenu
     SubScreen = AllocateZeroPool(sizeof(REFIT_MENU_SCREEN));
@@ -568,14 +565,12 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     
     BeginExternalScreen(TRUE, L"Booting Legacy OS");
     
-    if (Entry->BootLogoID) {
-        BootLogoImage = BuiltinIcon(Entry->BootLogoID);
-        if (BootLogoImage != NULL)
-            BltImageAlpha(BootLogoImage,
-                          (UGAWidth  - BootLogoImage->Width ) >> 1,
-                          (UGAHeight - BootLogoImage->Height) >> 1,
-                          &StdBackgroundPixel);
-    }
+    BootLogoImage = LoadOSIcon(Entry->Volume->OSIconName, L"legacy", TRUE);
+    if (BootLogoImage != NULL)
+        BltImageAlpha(BootLogoImage,
+                      (UGAWidth  - BootLogoImage->Width ) >> 1,
+                      (UGAHeight - BootLogoImage->Height) >> 1,
+                      &StdBackgroundPixel);
     
     if (Entry->Volume->IsMbrPartition)
         ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
@@ -594,10 +589,8 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
     CHAR16                  *VolDesc;
     
     if (LoaderTitle == NULL) {
-        if (Volume->BootCodeDetected == BOOTCODE_WINDOWS)
-            LoaderTitle = L"Windows";
-        else if (Volume->BootCodeDetected == BOOTCODE_LINUX)
-            LoaderTitle = L"Linux";
+        if (Volume->OSName != NULL)
+            LoaderTitle = Volume->OSName;
         else
             LoaderTitle = L"Legacy OS";
     }
@@ -611,16 +604,7 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
     Entry->me.Title        = PoolPrint(L"Boot %s from %s", LoaderTitle, VolDesc);
     Entry->me.Tag          = TAG_LEGACY;
     Entry->me.Row          = 0;
-    if (Volume->BootCodeDetected == BOOTCODE_WINDOWS) {
-        Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_WIN);
-        Entry->BootLogoID  = BUILTIN_ICON_BOOT_WIN;
-    } else if (Volume->BootCodeDetected == BOOTCODE_LINUX) {
-        Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LINUX);
-        Entry->BootLogoID  = BUILTIN_ICON_BOOT_LINUX;
-    } else {
-        Entry->me.Image    = BuiltinIcon(BUILTIN_ICON_OS_LEGACY);
-        Entry->BootLogoID  = BUILTIN_ICON_OS_LEGACY;
-    }
+    Entry->me.Image        = LoadOSIcon(Volume->OSIconName, L"legacy", FALSE);
     if (GlobalConfig.HideBadges == 0 ||
         (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
         Entry->me.BadgeImage   = Volume->VolBadgeImage;
@@ -661,7 +645,7 @@ static VOID ScanLegacy(VOID)
         Print(L" %d %s\n  %d %d %s %d %s\n",
               VolumeIndex, DevicePathToStr(Volume->DevicePath),
               Volume->DiskKind, Volume->MbrPartitionIndex,
-              Volume->IsAppleLegacy ? L"AL" : L"--", Volume->BootCodeDetected,
+              Volume->IsAppleLegacy ? L"AL" : L"--", Volume->HasBootCode,
                Volume->VolName ? Volume->VolName : L"(no name)");
 #endif
         
@@ -670,18 +654,18 @@ static VOID ScanLegacy(VOID)
         if (Volume->IsAppleLegacy) {
             ShowVolume = TRUE;
             HideIfOthersFound = TRUE;
-        } else if (Volume->BootCodeDetected) {
+        } else if (Volume->HasBootCode) {
             ShowVolume = TRUE;
             if (Volume->BlockIO == Volume->WholeDiskBlockIO &&
                 Volume->BlockIOOffset == 0 &&
-                Volume->BootCodeDetected == BOOTCODE_UNKNOWN)
+                Volume->OSName == NULL)
                 // this is a whole disk (MBR) entry; hide if we have entries for partitions
                 HideIfOthersFound = TRUE;
         }
         if (HideIfOthersFound) {
             // check for other bootable entries on the same disk
             for (VolumeIndex2 = 0; VolumeIndex2 < VolumesCount; VolumeIndex2++) {
-                if (VolumeIndex2 != VolumeIndex && Volumes[VolumeIndex2]->BootCodeDetected &&
+                if (VolumeIndex2 != VolumeIndex && Volumes[VolumeIndex2]->HasBootCode &&
                     Volumes[VolumeIndex2]->WholeDiskBlockIO == Volume->WholeDiskBlockIO)
                     ShowVolume = FALSE;
             }

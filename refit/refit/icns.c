@@ -47,12 +47,6 @@ typedef struct {
 } BUILTIN_ICON;
 
 BUILTIN_ICON BuiltinIconTable[BUILTIN_ICON_COUNT] = {
-    { NULL, L"icons\\os_mac.icns", 128 },
-    { NULL, L"icons\\os_linux.icns", 128 },
-    { NULL, L"icons\\os_win.icns", 128 },
-    { NULL, L"icons\\os_hwtest.icns", 128 },
-    { NULL, L"icons\\os_legacy.icns", 128 },
-    { NULL, L"icons\\os_unknown.icns", 128 },
     { NULL, L"icons\\func_about.icns", 48 },
     { NULL, L"icons\\func_reset.icns", 48 },
     { NULL, L"icons\\tool_shell.icns", 48 },
@@ -61,8 +55,6 @@ BUILTIN_ICON BuiltinIconTable[BUILTIN_ICON_COUNT] = {
     { NULL, L"icons\\vol_internal.icns", 32 },
     { NULL, L"icons\\vol_external.icns", 32 },
     { NULL, L"icons\\vol_optical.icns", 32 },
-    { NULL, L"icons\\boot_linux.icns", 128 },
-    { NULL, L"icons\\boot_win.icns", 128 },
 };
 
 EG_IMAGE * BuiltinIcon(IN UINTN Id)
@@ -74,6 +66,60 @@ EG_IMAGE * BuiltinIcon(IN UINTN Id)
         BuiltinIconTable[Id].Image = LoadIcnsFallback(SelfDir, BuiltinIconTable[Id].Path, BuiltinIconTable[Id].PixelSize);
     
     return BuiltinIconTable[Id].Image;
+}
+
+//
+// Load an icon for an operating system
+//
+
+EG_IMAGE * LoadOSIcon(IN CHAR16 *OSIconName OPTIONAL, IN CHAR16 *FallbackIconName, BOOLEAN BootLogo)
+{
+    EG_IMAGE        *Image;
+    CHAR16          CutoutName[16];
+    CHAR16          FileName[256];
+    UINTN           StartIndex, Index, NextIndex;
+    
+    if (GlobalConfig.TextOnly)      // skip loading if it's not used anyway
+        return NULL;
+    Image = NULL;
+    
+    // try the names from OSIconName
+    for (StartIndex = 0; OSIconName != NULL && OSIconName[StartIndex]; StartIndex = NextIndex) {
+        // find the next name in the list
+        NextIndex = 0;
+        for (Index = StartIndex; OSIconName[Index]; Index++) {
+            if (OSIconName[Index] == ',') {
+                NextIndex = Index + 1;
+                break;
+            }
+        }
+        if (Index > StartIndex + 15)   // prevent buffer overflow
+            continue;
+        CopyMem(CutoutName, OSIconName + StartIndex, (Index - StartIndex) * sizeof(CHAR16));
+        CutoutName[Index - StartIndex] = 0;
+        
+        // construct full path
+        SPrint(FileName, 255, L"icons\\%s_%s.icns",
+               BootLogo ? L"boot" : L"os", CutoutName);
+        
+        // try to load it
+        Image = egLoadIcon(SelfDir, FileName, 128);
+        if (Image != NULL)
+            return Image;
+    }
+    
+    // try the fallback name
+    SPrint(FileName, 255, L"icons\\%s_%s.icns",
+           BootLogo ? L"boot" : L"os", FallbackIconName);
+    Image = egLoadIcon(SelfDir, FileName, 128);
+    if (Image != NULL)
+        return Image;
+    
+    // try the fallback name with os_ instead of boot_
+    if (BootLogo)
+        return LoadOSIcon(NULL, FallbackIconName, FALSE);
+    
+    return DummyImage(128);
 }
 
 //

@@ -155,7 +155,9 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
     MBR_PARTITION_INFO      *MbrTable;
     BOOLEAN                 MbrTableFound;
     
-    Volume->BootCodeDetected = BOOTCODE_NONE;
+    Volume->HasBootCode = FALSE;
+    Volume->OSIconName = NULL;
+    Volume->OSName = NULL;
     *Bootable = FALSE;
     
     if (Volume->BlockIO == NULL)
@@ -170,29 +172,73 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
         
         if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55 && SectorBuffer[0] != 0) {
             *Bootable = TRUE;
-            Volume->BootCodeDetected = BOOTCODE_UNKNOWN;
+            Volume->HasBootCode = TRUE;
         }
         
         // detect specific boot codes
-        if (CompareMem(SectorBuffer + 2, "LILO", 4) == 0 || CompareMem(SectorBuffer + 6, "LILO", 4) == 0)
-            Volume->BootCodeDetected = BOOTCODE_LINUX;
-        else if (CompareMem(SectorBuffer + 3, "SYSLINUX", 8) == 0)
-            Volume->BootCodeDetected = BOOTCODE_LINUX;
-        else if (FindMem(SectorBuffer, 512, "Geom\0Hard Disk\0Read\0 Error\0", 27) >= 0)   // GRUB
-            Volume->BootCodeDetected = BOOTCODE_LINUX;
-        else if (FindMem(SectorBuffer, 2048, "ISOLINUX", 8) >= 0)
-            Volume->BootCodeDetected = BOOTCODE_LINUX;
-        else if (FindMem(SectorBuffer, 2048, "NTLDR", 5) >= 0)
-            Volume->BootCodeDetected = BOOTCODE_WINDOWS;
-        else if (FindMem(SectorBuffer, 2048, "BOOTMGR", 7) >= 0)
-            Volume->BootCodeDetected = BOOTCODE_WINDOWS;
+        if (CompareMem(SectorBuffer + 2, "LILO", 4) == 0 ||
+            CompareMem(SectorBuffer + 6, "LILO", 4) == 0 ||
+            CompareMem(SectorBuffer + 3, "SYSLINUX", 8) == 0 ||
+            FindMem(SectorBuffer, 2048, "ISOLINUX", 8) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"linux";
+            Volume->OSName = L"Linux";
+            
+        } else if (FindMem(SectorBuffer, 512, "Geom\0Hard Disk\0Read\0 Error\0", 27) >= 0) {   // GRUB
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"grub,linux";
+            Volume->OSName = L"Linux";
+            
+        } else if ((*((UINT32 *)(SectorBuffer + 502)) == 0 &&
+                    *((UINT32 *)(SectorBuffer + 506)) == 50000 &&
+                    *((UINT16 *)(SectorBuffer + 510)) == 0xaa55) ||
+                   FindMem(SectorBuffer, 2048, "Starting the BTX loader", 23) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"freebsd";
+            Volume->OSName = L"FreeBSD";
+            
+        } else if (FindMem(SectorBuffer, 2048, "NTLDR", 5) >= 0 ||
+                   FindMem(SectorBuffer, 2048, "BOOTMGR", 7) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"win";
+            Volume->OSName = L"Windows";
+            
+        } else if (FindMem(SectorBuffer, 512, "CPUBOOT SYS", 11) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"freedos";
+            Volume->OSName = L"FreeDOS";
+            
+        } else if (CompareMem(SectorBuffer + 3, "IBM 4.50", 8) == 0 ||   // TODO: creator sig, not boot code sig
+                   CompareMem(SectorBuffer + 3, "IBM 20.0", 8) == 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"ecomstation";
+            Volume->OSName = L"eComStation";
+            
+        } else if (FindMem(SectorBuffer, 512, "Be Boot Loader", 14) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"beos";
+            Volume->OSName = L"BeOS";
+            
+        } else if (FindMem(SectorBuffer, 512, "yT Boot Loader", 14) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"zeta,beos";
+            Volume->OSName = L"ZETA";
+            
+        } else if (FindMem(SectorBuffer, 512, "\x04" "beos\x06" "system\x05" "zbeos", 18) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"haiku,beos";
+            Volume->OSName = L"Haiku";
+            
+        }
         
 #if REFIT_DEBUG > 0
-        Print(L"  Result of bootcode detection: %d\n", Volume->BootCodeDetected);
+        Print(L"  Result of bootcode detection: %s %s (%s)\n",
+              Volume->HasBootCode ? L"bootable" : L"non-bootable",
+              Volume->OSName, Volume->OSIconName);
 #endif
         
-        if (FindMem(SectorBuffer, 512, "Non-system disk", 15) >= 0)
-            Volume->BootCodeDetected = BOOTCODE_NONE;   // dummy FAT boot sector
+        if (FindMem(SectorBuffer, 512, "Non-system disk", 15) >= 0)   // dummy FAT boot sector
+            Volume->HasBootCode = FALSE;
         
         // check for MBR partition table
         if (*((UINT16 *)(SectorBuffer + 510)) == 0xaa55) {
@@ -327,10 +373,10 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
     
     if (!Bootable) {
 #if REFIT_DEBUG > 0
-        if (Volume->BootCodeDetected != BOOTCODE_NONE)
+        if (Volume->HasBootCode)
             Print(L"  Volume considered non-bootable, but boot code is present\n");
 #endif
-        Volume->BootCodeDetected = BOOTCODE_NONE;
+        Volume->HasBootCode = FALSE;
     }
     
     // default volume icon based on disk kind
@@ -414,7 +460,7 @@ static VOID ScanExtendedPartition(REFIT_VOLUME *WholeDiskVolume, MBR_PARTITION_I
                 Bootable = FALSE;
                 ScanVolumeBootcode(Volume, &Bootable);
                 if (!Bootable)
-                    Volume->BootCodeDetected = BOOTCODE_NONE;
+                    Volume->HasBootCode = FALSE;
                 
                 ScanVolumeDefaultIcon(Volume);
                 

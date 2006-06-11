@@ -69,11 +69,6 @@ typedef struct {
 #define DISK_KIND_EXTERNAL  (1)
 #define DISK_KIND_OPTICAL   (2)
 
-#define BOOTCODE_NONE       (0)
-#define BOOTCODE_UNKNOWN    (1)
-#define BOOTCODE_WINDOWS    (2)
-#define BOOTCODE_LINUX      (3)
-
 #define IS_EXTENDED_PART_TYPE(type) ((type) == 0x05 || (type) == 0x0f || (type) == 0x85)
 
 typedef struct {
@@ -84,7 +79,9 @@ typedef struct {
     EG_IMAGE            *VolBadgeImage;
     UINTN               DiskKind;
     BOOLEAN             IsAppleLegacy;
-    UINTN               BootCodeDetected;
+    BOOLEAN             HasBootCode;
+    CHAR16              *OSIconName;
+    CHAR16              *OSName;
     BOOLEAN             IsMbrPartition;
     UINTN               MbrPartitionIndex;
     EFI_BLOCK_IO        *BlockIO;
@@ -181,29 +178,23 @@ VOID BltImageCompositeBadge(IN EG_IMAGE *BaseImage, IN EG_IMAGE *TopImage, IN EG
 // icns loader module
 //
 
+EG_IMAGE * LoadOSIcon(IN CHAR16 *OSIconName OPTIONAL, IN CHAR16 *FallbackIconName, BOOLEAN BootLogo);
+
 EG_IMAGE * LoadIcns(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
 EG_IMAGE * LoadIcnsFallback(IN EFI_FILE_HANDLE BaseDir, IN CHAR16 *FileName, IN UINTN PixelSize);
 EG_IMAGE * DummyImage(IN UINTN PixelSize);
 
 EG_IMAGE * BuiltinIcon(IN UINTN Id);
 
-#define BUILTIN_ICON_OS_MAC         (0)
-#define BUILTIN_ICON_OS_LINUX       (1)
-#define BUILTIN_ICON_OS_WIN         (2)
-#define BUILTIN_ICON_OS_HWTEST      (3)
-#define BUILTIN_ICON_OS_LEGACY      (4)
-#define BUILTIN_ICON_OS_UNKNOWN     (5)
-#define BUILTIN_ICON_FUNC_ABOUT     (6)
-#define BUILTIN_ICON_FUNC_RESET     (7)
-#define BUILTIN_ICON_TOOL_SHELL     (8)
-#define BUILTIN_ICON_TOOL_PART      (9)
-#define BUILTIN_ICON_TOOL_RESCUE    (10)
-#define BUILTIN_ICON_VOL_INTERNAL   (11)
-#define BUILTIN_ICON_VOL_EXTERNAL   (12)
-#define BUILTIN_ICON_VOL_OPTICAL    (13)
-#define BUILTIN_ICON_BOOT_LINUX     (14)
-#define BUILTIN_ICON_BOOT_WIN       (15)
-#define BUILTIN_ICON_COUNT          (16)
+#define BUILTIN_ICON_FUNC_ABOUT     (0)
+#define BUILTIN_ICON_FUNC_RESET     (1)
+#define BUILTIN_ICON_TOOL_SHELL     (2)
+#define BUILTIN_ICON_TOOL_PART      (3)
+#define BUILTIN_ICON_TOOL_RESCUE    (4)
+#define BUILTIN_ICON_VOL_INTERNAL   (5)
+#define BUILTIN_ICON_VOL_EXTERNAL   (6)
+#define BUILTIN_ICON_VOL_OPTICAL    (7)
+#define BUILTIN_ICON_COUNT          (8)
 
 //
 // menu module
