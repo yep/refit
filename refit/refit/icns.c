@@ -93,6 +93,8 @@ EG_IMAGE * LoadOSIcon(IN CHAR16 *OSIconName OPTIONAL, IN CHAR16 *FallbackIconNam
                 break;
             }
         }
+        if (OSIconName[Index] == 0)
+            NextIndex = Index;
         if (Index > StartIndex + 15)   // prevent buffer overflow
             continue;
         CopyMem(CutoutName, OSIconName + StartIndex, (Index - StartIndex) * sizeof(CHAR16));
