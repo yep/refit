@@ -197,10 +197,20 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
             Volume->OSIconName = L"freebsd";
             Volume->OSName = L"FreeBSD";
             
-        } else if (FindMem(SectorBuffer, 2048, "NTLDR", 5) >= 0 ||
-                   FindMem(SectorBuffer, 2048, "BOOTMGR", 7) >= 0) {
+        } else if (FindMem(SectorBuffer, 512, "!Loading", 8) >= 0 ||
+                   FindMem(SectorBuffer, 2048, "/cdboot\0/CDBOOT\0", 16) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"openbsd";
+            Volume->OSName = L"OpenBSD";
+            
+        } else if (FindMem(SectorBuffer, 2048, "NTLDR", 5) >= 0) {
             Volume->HasBootCode = TRUE;
             Volume->OSIconName = L"win";
+            Volume->OSName = L"Windows";
+            
+        } else if (FindMem(SectorBuffer, 2048, "BOOTMGR", 7) >= 0) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"winvista,win";
             Volume->OSName = L"Windows";
             
         } else if (FindMem(SectorBuffer, 512, "CPUBOOT SYS", 11) >= 0) {
