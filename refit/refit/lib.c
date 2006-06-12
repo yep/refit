@@ -213,13 +213,14 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
             Volume->OSIconName = L"winvista,win";
             Volume->OSName = L"Windows";
             
-        } else if (FindMem(SectorBuffer, 512, "CPUBOOT SYS", 11) >= 0) {
+        } else if (FindMem(SectorBuffer, 512, "CPUBOOT SYS", 11) >= 0 ||
+		   FindMem(SectorBuffer, 512, "KERNEL  SYS", 11) >= 0) {
             Volume->HasBootCode = TRUE;
             Volume->OSIconName = L"freedos";
             Volume->OSName = L"FreeDOS";
             
-        } else if (CompareMem(SectorBuffer + 3, "IBM 4.50", 8) == 0 ||   // TODO: creator sig, not boot code sig
-                   CompareMem(SectorBuffer + 3, "IBM 20.0", 8) == 0) {
+        } else if (FindMem(SectorBuffer, 512, "OS2LDR", 6) >= 0 ||
+		   FindMem(SectorBuffer, 512, "OS2BOOT", 7) >= 0) {
             Volume->HasBootCode = TRUE;
             Volume->OSIconName = L"ecomstation";
             Volume->OSName = L"eComStation";
