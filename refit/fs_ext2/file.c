@@ -15,19 +15,20 @@
 
 #include "fs_ext2.h"
 
+#define DEBUG_LEVEL 0
+
+
 EFI_GUID  gEfiFileInfoGuid = EFI_FILE_INFO_ID;
 EFI_GUID  gEfiFileSystemInfoGuid = EFI_FILE_SYSTEM_INFO_ID;
 EFI_GUID  gEfiFileSystemVolumeLabelInfoIdGuid = EFI_FILE_SYSTEM_VOLUME_LABEL_INFO_ID;
 
 
 //
-// open a file or directory given a inode number
+// wrap an open inode handle in a file object
 //
 
-EFI_STATUS Ext2FileOpenWithInode(IN EXT2_VOLUME_DATA *Volume,
-                                 IN UINT32 InodeNo,
-                                 IN struct ext2_dir_entry *DirEntry OPTIONAL,
-                                 OUT EFI_FILE **NewFileHandle)
+EFI_STATUS Ext2FileFromInodeHandle(IN EXT2_INODE_HANDLE *InodeHandle,
+                                   OUT EFI_FILE **NewFileHandle)
 {
     EFI_STATUS          Status;
     EXT2_FILE_DATA      *File;
@@ -35,18 +36,12 @@ EFI_STATUS Ext2FileOpenWithInode(IN EXT2_VOLUME_DATA *Volume,
     // allocate file structure
     File = AllocateZeroPool(sizeof(EXT2_FILE_DATA));
     File->Signature = EXT2_FILE_DATA_SIGNATURE;
-    File->Volume    = Volume;
-    File->DirEntry  = DirEntry;
     
-    // open the inode
-    Status = Ext2InodeOpen(Volume, InodeNo, &File->Inode);
-    if (EFI_ERROR(Status)) {
-        FreePool(File);
-        return Status;
-    }
+    // move the inode handle (the new object takes ownership)
+    CopyMem(&File->InodeHandle, InodeHandle, sizeof(EXT2_INODE_HANDLE));
     
     // check the type
-    if ((File->Inode.RawInode->i_mode & S_IFMT) == S_IFREG) {
+    if (S_ISREG(File->InodeHandle.Inode->RawInode->i_mode)) {
         // regular file
         File->FileHandle.Revision    = EFI_FILE_HANDLE_REVISION;
         File->FileHandle.Open        = Ext2FileOpen;
@@ -61,11 +56,11 @@ EFI_STATUS Ext2FileOpenWithInode(IN EXT2_VOLUME_DATA *Volume,
         File->FileHandle.Flush       = Ext2FileFlush;
         Status = EFI_SUCCESS;
         
-    } else if ((File->Inode.RawInode->i_mode & S_IFMT) == S_IFDIR) {
+    } else if (S_ISDIR(File->InodeHandle.Inode->RawInode->i_mode)) {
         // directory
         File->FileHandle.Revision    = EFI_FILE_HANDLE_REVISION;
         File->FileHandle.Open        = Ext2DirOpen;
-        File->FileHandle.Close       = Ext2DirClose;
+        File->FileHandle.Close       = Ext2FileClose;
         File->FileHandle.Delete      = Ext2FileDelete;
         File->FileHandle.Read        = Ext2DirRead;
         File->FileHandle.Write       = Ext2FileWrite;
@@ -76,7 +71,7 @@ EFI_STATUS Ext2FileOpenWithInode(IN EXT2_VOLUME_DATA *Volume,
         File->FileHandle.Flush       = Ext2FileFlush;
         Status = EFI_SUCCESS;
         
-    } else if ((File->Inode.RawInode->i_mode & S_IFMT) == S_IFLNK) {
+    } else if (S_ISLNK(File->InodeHandle.Inode->RawInode->i_mode)) {
         // symbolic link
         Status = EFI_UNSUPPORTED;
         // TODO: read the target, look it up, recurse
@@ -87,12 +82,13 @@ EFI_STATUS Ext2FileOpenWithInode(IN EXT2_VOLUME_DATA *Volume,
     }
     
     if (EFI_ERROR(Status)) {
-        Ext2InodeClose(&File->Inode);
+        Ext2InodeHandleClose(&File->InodeHandle);
         FreePool(File);
-    } else {
-        *NewFileHandle = &File->FileHandle;
+        return Status;
     }
-    return Status;
+    
+    *NewFileHandle = &File->FileHandle;
+    return EFI_SUCCESS;
 }
 
 
@@ -118,13 +114,13 @@ EFI_STATUS EFIAPI Ext2FileClose(IN EFI_FILE *This)
 {
     EXT2_FILE_DATA      *File;
     
+#if DEBUG_LEVEL
     Print(L"Ext2FileClose\n");
+#endif
     
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
     
-    if (File->DirEntry != NULL)
-        FreePool(File->DirEntry);
-    Ext2InodeClose(&File->Inode);
+    Ext2InodeHandleClose(&File->InodeHandle);
     FreePool(File);
     
     return EFI_SUCCESS;
@@ -158,11 +154,13 @@ EFI_STATUS EFIAPI Ext2FileRead(IN EFI_FILE *This,
     EFI_STATUS          Status;
     EXT2_FILE_DATA      *File;
     
+#if DEBUG_LEVEL
     Print(L"Ext2FileRead %d bytes\n", *BufferSize);
+#endif
     
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
     
-    Status = Ext2InodeRead(File->Volume, &File->Inode, BufferSize, Buffer);
+    Status = Ext2InodeHandleRead(&File->InodeHandle, BufferSize, Buffer);
     
     return Status;
 }
@@ -191,9 +189,9 @@ EFI_STATUS EFIAPI Ext2FileSetPosition(IN EFI_FILE *This,
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
     
     if (Position == 0xFFFFFFFFFFFFFFFFULL)
-        File->Inode.CurrentPosition = File->Inode.FileSize;
+        File->InodeHandle.CurrentPosition = File->InodeHandle.Inode->FileSize;
     else
-        File->Inode.CurrentPosition = Position;
+        File->InodeHandle.CurrentPosition = Position;
     
     return EFI_SUCCESS;
 }
@@ -209,7 +207,7 @@ EFI_STATUS EFIAPI Ext2FileGetPosition(IN EFI_FILE *This,
     
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
     
-    *Position = File->Inode.CurrentPosition;
+    *Position = File->InodeHandle.CurrentPosition;
     
     return EFI_SUCCESS;
 }
@@ -233,16 +231,14 @@ EFI_STATUS EFIAPI Ext2FileGetInfo(IN EFI_FILE *This,
     UINTN               i, RequiredSize;
     
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
-    Volume = File->Volume;
+    Volume = File->InodeHandle.Inode->Volume;
     
     if (CompareGuid(InformationType, &gEfiFileInfoGuid) == 0) {
+#if DEBUG_LEVEL
         Print(L"Ext2FileGetInfo: FILE_INFO\n");
+#endif
         
-        // get file name size, derive structure size
-        if (File->DirEntry == NULL)
-            RequiredSize = SIZE_OF_EFI_FILE_INFO + sizeof(CHAR16);
-        else
-            RequiredSize = SIZE_OF_EFI_FILE_INFO + (File->DirEntry->name_len + 1) * sizeof(CHAR16);
+        RequiredSize = SIZE_OF_EFI_FILE_INFO + StrSize(File->InodeHandle.Inode->Name);
         
         // check buffer size
         if (*BufferSize < RequiredSize) {
@@ -253,27 +249,25 @@ EFI_STATUS EFIAPI Ext2FileGetInfo(IN EFI_FILE *This,
         // fill structure
         FileInfo = (EFI_FILE_INFO *)Buffer;
         FileInfo->Size = RequiredSize;
-        Ext2InodeFillFileInfo(Volume, &File->Inode, FileInfo);
-        
-        // copy file name
-        DestNamePtr = FileInfo->FileName;
-        if (File->DirEntry == NULL) {
-            DestNamePtr[0] = 0;
-        } else {
-            for (i = 0; i < File->DirEntry->name_len; i++)
-                DestNamePtr[i] = File->DirEntry->name[i];
-            DestNamePtr[i] = 0;
-        }
+        Ext2InodeFillFileInfo(File->InodeHandle.Inode, FileInfo);
+        StrCpy(FileInfo->FileName, File->InodeHandle.Inode->Name);
         
         // prepare for return
         *BufferSize = RequiredSize;
         Status = EFI_SUCCESS;
         
-    } else if (CompareGuid(InformationType, &gEfiFileSystemInfoGuid) == 0) {
-        Print(L"Ext2FileGetInfo: FILE_SYSTEM_INFO\n");
+#if DEBUG_LEVEL
+        Print(L"...returning '%s'\n", FileInfo->FileName);
+#endif
         
+    } else if (CompareGuid(InformationType, &gEfiFileSystemInfoGuid) == 0) {
+#if DEBUG_LEVEL
+        Print(L"Ext2FileGetInfo: FILE_SYSTEM_INFO\n");
+#endif
+        
+        // TODO: store volume label in volume structure, readily converted
         // get volume label size, derive structure size
-        NamePtr = (CHAR8 *)(&Volume->SuperBlock) + 120;
+        NamePtr = (CHAR8 *)(Volume->SuperBlock) + 120;
         for (i = 0; i < 16; i++)
             if (NamePtr[i] == 0)
                 break;
@@ -289,8 +283,8 @@ EFI_STATUS EFIAPI Ext2FileGetInfo(IN EFI_FILE *This,
         FSInfo = (EFI_FILE_SYSTEM_INFO *)Buffer;
         FSInfo->Size        = RequiredSize;
         FSInfo->ReadOnly    = TRUE;
-        FSInfo->VolumeSize  = (UINT64)Volume->SuperBlock.s_blocks_count * Volume->BlockSize;
-        FSInfo->FreeSpace   = (UINT64)Volume->SuperBlock.s_free_blocks_count * Volume->BlockSize;
+        FSInfo->VolumeSize  = (UINT64)Volume->SuperBlock->s_blocks_count * Volume->BlockSize;
+        FSInfo->FreeSpace   = (UINT64)Volume->SuperBlock->s_free_blocks_count * Volume->BlockSize;
         FSInfo->BlockSize   = Volume->BlockSize;
         
         // copy volume label
@@ -307,10 +301,12 @@ EFI_STATUS EFIAPI Ext2FileGetInfo(IN EFI_FILE *This,
         Status = EFI_SUCCESS;
         
     } else if (CompareGuid(InformationType, &gEfiFileSystemVolumeLabelInfoIdGuid) == 0) {
+#if DEBUG_LEVEL
         Print(L"Ext2FileGetInfo: FILE_SYSTEM_VOLUME_LABEL\n");
+#endif
         
         // get volume label size, derive structure size
-        NamePtr = (CHAR8 *)(&Volume->SuperBlock) + 120;
+        NamePtr = (CHAR8 *)(Volume->SuperBlock) + 120;
         for (i = 0; i < 16; i++)
             if (NamePtr[i] == 0)
                 break;

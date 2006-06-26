@@ -15,6 +15,9 @@
 
 #include "fs_ext2.h"
 
+#define DEBUG_LEVEL 0
+
+
 // functions
 
 EFI_STATUS EFIAPI Ext2OpenVolume(IN EFI_FILE_IO_INTERFACE *This,
@@ -29,24 +32,49 @@ EFI_STATUS Ext2ReadSuper(IN EXT2_VOLUME_DATA *Volume)
     EFI_STATUS          Status;
     
     // read the superblock from disk
+    Volume->SuperBlock = AllocatePool(sizeof(struct ext2_super_block));
     Status = Volume->DiskIo->ReadDisk(Volume->DiskIo, Volume->MediaId,
                                       BLOCK_SIZE,
                                       sizeof(struct ext2_super_block),
-                                      &Volume->SuperBlock);
-    if (EFI_ERROR(Status))
+                                      Volume->SuperBlock);
+    if (EFI_ERROR(Status)) {
+        FreePool(Volume->SuperBlock);
         return Status;
+    }
     
     // check the superblock
-    if (Volume->SuperBlock.s_magic != EXT2_SUPER_MAGIC)
+    if (Volume->SuperBlock->s_magic != EXT2_SUPER_MAGIC ||
+        (Volume->SuperBlock->s_rev_level != EXT2_GOOD_OLD_REV &&
+         Volume->SuperBlock->s_rev_level != EXT2_DYNAMIC_REV)) {
+        FreePool(Volume->SuperBlock);
         return EFI_UNSUPPORTED;
+    }
     
-    Volume->BlockSize = 1024 << Volume->SuperBlock.s_log_block_size;
+    // TODO: check s_feature_incompat (if EXT2_DYNAMIC_REV)
+    
+    Volume->BlockSize = 1024 << Volume->SuperBlock->s_log_block_size;
     Volume->IndBlockCount = Volume->BlockSize / sizeof(__u32);
     Volume->DIndBlockCount = Volume->IndBlockCount * Volume->IndBlockCount;
-    Volume->BlockBuffer = AllocatePool(Volume->BlockSize);
-    Volume->BlockInBuffer = 0;
+    if (Volume->SuperBlock->s_rev_level == EXT2_GOOD_OLD_REV) {
+        Volume->InodeSize = EXT2_GOOD_OLD_INODE_SIZE;
+#if DEBUG_LEVEL
+        Print(L"Ext2ReadSuper: EXT2_GOOD_OLD_REV, %d byte inodes\n", Volume->InodeSize);
+#endif
+    } else {
+        Volume->InodeSize = Volume->SuperBlock->s_inode_size;
+#if DEBUG_LEVEL
+        Print(L"Ext2ReadSuper: EXT2_DYNAMIC_REV, %d byte inodes\n", Volume->InodeSize);
+#endif
+    }
+    Volume->RootInode = NULL;
+    Volume->DirInodeList = NULL;
     
+    Volume->BlockBuffer = AllocatePool(Volume->BlockSize);
+    Volume->BlockInBuffer = 0;   // NOTE: block 0 is never read through Ext2ReadBlock
+    
+#if DEBUG_LEVEL
     Print(L"Ext2ReadSuper: successful, BlockSize %d\n", Volume->BlockSize);
+#endif
     
     // setup the SimpleFileSystem protocol
     Volume->FileSystem.Revision = EFI_FILE_IO_INTERFACE_REVISION;
@@ -64,12 +92,29 @@ EFI_STATUS EFIAPI Ext2OpenVolume(IN EFI_FILE_IO_INTERFACE *This,
 {
     EFI_STATUS          Status;
     EXT2_VOLUME_DATA    *Volume;
+    EXT2_INODE_HANDLE   InodeHandle;
     
+#if DEBUG_LEVEL
     Print(L"Ext2OpenVolume\n");
+#endif
     
     Volume = EXT2_VOLUME_FROM_FILE_SYSTEM(This);
     
-    Status = Ext2FileOpenWithInode(Volume, EXT2_ROOT_INO, NULL, Root);
+    // open the root inode, keep it around until the FS is unmounted
+    if (Volume->RootInode == NULL) {
+        Status = Ext2InodeOpen(Volume, EXT2_ROOT_INO, NULL, NULL, &Volume->RootInode);
+        if (EFI_ERROR(Status))
+            return Status;
+    }
+    
+    // create a new inode handle
+    Status = Ext2InodeHandleReopen(Volume->RootInode, &InodeHandle);
+    if (EFI_ERROR(Status))
+        return Status;
+    
+    // wrap it in a file structure
+    Status = Ext2FileFromInodeHandle(&InodeHandle, Root);
+    // NOTE: file handle takes ownership of inode handle
     
     return Status;
 }
@@ -86,15 +131,17 @@ EFI_STATUS Ext2ReadBlock(IN EXT2_VOLUME_DATA *Volume, IN UINT32 BlockNo)
     if (BlockNo == Volume->BlockInBuffer)
         return EFI_SUCCESS;
     
-    //Print(L"Ext2ReadBlock: %d\n", BlockNo);
+#if DEBUG_LEVEL == 2
+    Print(L"Ext2ReadBlock: %d\n", BlockNo);
+#endif
     
     // read from disk
     Status = Volume->DiskIo->ReadDisk(Volume->DiskIo, Volume->MediaId,
-                                      BlockNo * Volume->BlockSize,
+                                      (UINT64)BlockNo * Volume->BlockSize,
                                       Volume->BlockSize,
                                       Volume->BlockBuffer);
     if (EFI_ERROR(Status)) {
-        Volume->BlockInBuffer = 0;
+        Volume->BlockInBuffer = 0;   // NOTE: block 0 is never read
         return Status;
     }
     

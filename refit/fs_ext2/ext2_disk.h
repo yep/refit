@@ -143,17 +143,17 @@ struct ext2_group_desc
  * Structure of an inode on the disk
  */
 struct ext2_inode {
-    __le16  i_mode;         /* File mode */
-    __le16  i_uid;          /* Low 16 bits of Owner Uid */
-    __le32  i_size;         /* Size in bytes */
-    __le32  i_atime;        /* Access time */
-    __le32  i_ctime;        /* Creation time */
-    __le32  i_mtime;        /* Modification time */
-    __le32  i_dtime;        /* Deletion Time */
-    __le16  i_gid;          /* Low 16 bits of Group Id */
-    __le16  i_links_count;  /* Links count */
-    __le32  i_blocks;       /* Blocks count */
-    __le32  i_flags;        /* File flags */
+    __le16  i_mode;         /* 0: File mode */
+    __le16  i_uid;          /* 2: Low 16 bits of Owner Uid */
+    __le32  i_size;         /* 4: Size in bytes */
+    __le32  i_atime;        /* 8: Access time */
+    __le32  i_ctime;        /* 12: Creation time */
+    __le32  i_mtime;        /* 16: Modification time */
+    __le32  i_dtime;        /* 20: Deletion Time */
+    __le16  i_gid;          /* 24: Low 16 bits of Group Id */
+    __le16  i_links_count;  /* 26: Links count */
+    __le32  i_blocks;       /* 28: Blocks count */
+    __le32  i_flags;        /* 32: File flags */
     union {
         struct {
             __le32  l_i_reserved1;
@@ -164,19 +164,19 @@ struct ext2_inode {
         struct {
             __le32  m_i_reserved1;
         } masix1;
-    } osd1;                         /* OS dependent 1 */
-    __le32  i_block[EXT2_N_BLOCKS];/* Pointers to blocks */
-    __le32  i_generation;   /* File version (for NFS) */
-    __le32  i_file_acl;     /* File ACL */
-    __le32  i_dir_acl;      /* Directory ACL */
-    __le32  i_faddr;        /* Fragment address */
+    } osd1;                         /* 36: OS dependent 1 */
+    __le32  i_block[EXT2_N_BLOCKS];/* 40: Pointers to blocks */
+    __le32  i_generation;   /* 100: File version (for NFS) */
+    __le32  i_file_acl;     /* 104: File ACL */
+    __le32  i_dir_acl;      /* 108: Directory ACL */
+    __le32  i_faddr;        /* 112: Fragment address */
     union {
         struct {
-            __u8    l_i_frag;       /* Fragment number */
-            __u8    l_i_fsize;      /* Fragment size */
+            __u8    l_i_frag;       /* 116: Fragment number */
+            __u8    l_i_fsize;      /* 117: Fragment size */
             __u16   i_pad1;
-            __le16  l_i_uid_high;   /* these 2 fields    */
-            __le16  l_i_gid_high;   /* were reserved2[0] */
+            __le16  l_i_uid_high;   /* 120: these 2 fields    */
+            __le16  l_i_gid_high;   /* 122: were reserved2[0] */
             __u32   l_i_reserved2;
         } linux2;
         struct {

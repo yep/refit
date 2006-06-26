@@ -15,53 +15,52 @@
 
 #include "fs_ext2.h"
 
+#define DEBUG_LEVEL 0
+
+
 // MAX_LINK_COUNT
 
-EFI_STATUS Ext2DirReadEntry(IN EXT2_VOLUME_DATA *Volume,
-                            IN EXT2_INODE *Inode,
-                            OUT struct ext2_dir_entry **DirEntry)
+EFI_STATUS Ext2DirReadEntry(IN EXT2_INODE_HANDLE *InodeHandle,
+                            OUT struct ext2_dir_entry *DirEntry)
 {
     EFI_STATUS          Status;
-    struct ext2_dir_entry LocalEntry;
-    UINTN               BufferSize, EntryLength;
+    UINTN               BufferSize;
     
     while (1) {
         // read dir_entry header (fixed length)
         BufferSize = 8;
-        Status = Ext2InodeRead(Volume, Inode, &BufferSize, &LocalEntry);
+        Status = Ext2InodeHandleRead(InodeHandle, &BufferSize, DirEntry);
         if (EFI_ERROR(Status))
             return Status;
         
-        if (BufferSize < 8 || LocalEntry.rec_len == 0) {
+        if (BufferSize < 8 || DirEntry->rec_len == 0) {
             // end of directory reached (or invalid entry)
-            *DirEntry = NULL;
+            DirEntry->inode = 0;
             return EFI_SUCCESS;
         }
-        if (LocalEntry.rec_len < 8)
+        if (DirEntry->rec_len < 8)
             return EFI_VOLUME_CORRUPTED;
-        if (LocalEntry.inode != 0) {
-            // this entry is used, process it
+        if (DirEntry->inode != 0) {
+            // this entry is used
+            if (DirEntry->rec_len < 8 + DirEntry->name_len)
+                return EFI_VOLUME_CORRUPTED;
             break;
         }
         
         // valid, but unused entry, skip it
-        Inode->CurrentPosition += LocalEntry.rec_len - 8;
+        InodeHandle->CurrentPosition += DirEntry->rec_len - 8;
     }
     
     // read file name (variable length)
-    BufferSize = LocalEntry.name_len;
-    Status = Ext2InodeRead(Volume, Inode, &BufferSize, LocalEntry.name);
+    BufferSize = DirEntry->name_len;
+    Status = Ext2InodeHandleRead(InodeHandle, &BufferSize, DirEntry->name);
     if (EFI_ERROR(Status))
         return Status;
-    if (BufferSize < LocalEntry.name_len)
+    if (BufferSize < DirEntry->name_len)
         return EFI_VOLUME_CORRUPTED;
     
-    // make a copy
-    EntryLength = 8 + LocalEntry.name_len;
-    *DirEntry = AllocatePool(EntryLength);
-    CopyMem(*DirEntry, &LocalEntry, EntryLength);
-    
-    Inode->CurrentPosition += LocalEntry.rec_len - EntryLength;  // make sure any padding is skipped, too
+    // skip any remaining padding
+    InodeHandle->CurrentPosition += DirEntry->rec_len - (8 + DirEntry->name_len);
     
     return EFI_SUCCESS;
 }
@@ -80,33 +79,44 @@ EFI_STATUS EFIAPI Ext2DirOpen(IN EFI_FILE *This,
     EFI_STATUS          Status;
     EXT2_FILE_DATA      *File;
     EXT2_VOLUME_DATA    *Volume;
-    UINT32              InodeNo;
-    EXT2_INODE          DirInode;
-    struct ext2_dir_entry *DirEntry;
+    EXT2_INODE          *BaseDirInode;
+    EXT2_INODE_HANDLE   CurrentInodeHandle;
+    EXT2_INODE_HANDLE   NextInodeHandle;
+    struct ext2_dir_entry DirEntry;
+    UINT32              NextInodeNo;
     CHAR16              *PathElement;
     CHAR16              *PathElementEnd;
     CHAR16              *NextPathElement;
     UINTN               PathElementLength, i;
     BOOLEAN             NamesEqual;
     
+#if DEBUG_LEVEL
     Print(L"Ext2DirOpen: '%s'\n", FileName);
+#endif
     
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
-    Volume = File->Volume;
+    Volume = File->InodeHandle.Inode->Volume;
     
     if (OpenMode != EFI_FILE_MODE_READ)
         return EFI_WRITE_PROTECTED;
     
+    // analyze start of path, pick starting point
     PathElement = FileName;
     if (*PathElement == '\\') {
-        InodeNo = EXT2_ROOT_INO;
+        BaseDirInode = Volume->RootInode;
         while (*PathElement == '\\')
             PathElement++;
     } else
-        InodeNo = File->Inode.InodeNo;
-    DirEntry = NULL;
+        BaseDirInode = File->InodeHandle.Inode;
     
-    while (*PathElement != 0) {
+    // open inode for directory reading
+    Status = Ext2InodeHandleReopen(BaseDirInode, &CurrentInodeHandle);
+    if (EFI_ERROR(Status))
+        return Status;
+    
+    // loop over the path
+    // loop invariant: CurrentInodeHandle is an open, rewinded handle to the current inode
+    for (; *PathElement != 0; PathElement = NextPathElement) {
         // parse next path element
         PathElementEnd = PathElement;
         while (*PathElementEnd != 0 && *PathElementEnd != '\\')
@@ -116,100 +126,89 @@ EFI_STATUS EFIAPI Ext2DirOpen(IN EFI_FILE *This,
         while (*NextPathElement == '\\')
             NextPathElement++;
         
-        // dispose last dir entry (from previous loop iteration)
-        if (DirEntry != NULL)
-            FreePool(DirEntry);
-        
-        // check root directory constraints
-        if (PathElementLength == 2 && PathElement[0] == '.' && PathElement[1] == '.') {
-            if (InodeNo == EXT2_ROOT_INO) {
-                // EFI spec: there is no parent for the root
-                // NOTE: the EFI shell relies on this!
-                return EFI_NOT_FOUND;
-            }
+        // check that this actually is a directory
+        if (!S_ISDIR(CurrentInodeHandle.Inode->RawInode->i_mode)) {
+#if DEBUG_LEVEL == 2
+            Print(L"Ext2DirOpen: NOT FOUND (not a directory)\n");
+#endif
+            Status = EFI_NOT_FOUND;
+            goto bailout;
         }
         
-        // open the directory
-        Status = Ext2InodeOpen(Volume, InodeNo, &DirInode);
-        if (EFI_ERROR(Status))
-            return Status;
-        if ((DirInode.RawInode->i_mode & S_IFMT) != S_IFDIR) {
-            Ext2InodeClose(&DirInode);
-            Print(L"Ext2DirOpen: NOT FOUND (not a directory)\n");
-            return EFI_NOT_FOUND;
+        // check for . and ..
+        NextInodeNo = 0;
+        if (PathElementLength == 1 && PathElement[0] == '.') {
+            NextInodeNo = CurrentInodeHandle.Inode->InodeNo;
+        } else if (PathElementLength == 2 && PathElement[0] == '.' && PathElement[1] == '.') {
+            if (CurrentInodeHandle.Inode->ParentDirInode == NULL) {
+                // EFI spec says: there is no parent for the root
+                // NOTE: the EFI shell relies on this!
+                
+                Status = EFI_NOT_FOUND;
+                goto bailout;
+            }
+            NextInodeNo = CurrentInodeHandle.Inode->ParentDirInode->InodeNo;
         }
         
         // scan the directory for the file
-        while (1) {
+        while (NextInodeNo == 0) {
             // read next entry
-            Status = Ext2DirReadEntry(Volume, &DirInode, &DirEntry);
-            if (EFI_ERROR(Status)) {
-                Ext2InodeClose(&DirInode);
-                return Status;
-            }
-            if (DirEntry == NULL) {
+            Status = Ext2DirReadEntry(&CurrentInodeHandle, &DirEntry);
+            if (EFI_ERROR(Status))
+                goto bailout;
+            if (DirEntry.inode == 0) {
                 // end of directory reached
-                Ext2InodeClose(&DirInode);
+#if DEBUG_LEVEL == 2
                 Print(L"Ext2DirOpen: NOT FOUND (no match)\n");
-                return EFI_NOT_FOUND;
+#endif
+                Status = EFI_NOT_FOUND;
+                goto bailout;
             }
             
             // compare name
-            if (DirEntry->name_len == PathElementLength) {
+            if (DirEntry.name_len == PathElementLength) {
                 NamesEqual = TRUE;
-                for (i = 0; i < DirEntry->name_len; i++) {
-                    if (DirEntry->name[i] != PathElement[i]) {
+                for (i = 0; i < DirEntry.name_len; i++) {
+                    if (DirEntry.name[i] != PathElement[i]) {
                         NamesEqual = FALSE;
                         break;
                     }
                 }
                 if (NamesEqual)
-                    break;
+                    NextInodeNo = DirEntry.inode;
             }
-            
-            FreePool(DirEntry);
         }
-        Ext2InodeClose(&DirInode);
         
-        // TODO: resolve symbolic link
+#if DEBUG_LEVEL == 2
+        Print(L"Ext2DirOpen: found inode %d\n", NextInodeNo);
+#endif
         
-        InodeNo = DirEntry->inode;
-        PathElement = NextPathElement;
+        // open the inode we found in the directory
+        Status = Ext2InodeHandleOpen(Volume, NextInodeNo, CurrentInodeHandle.Inode, &DirEntry, &NextInodeHandle);
+        if (EFI_ERROR(Status))
+            goto bailout;
         
-        Print(L"Ext2DirOpen: matched, inode %d\n", InodeNo);
+        // TODO: resolve symbolic links somehow
+        
+        // close the previous inode handle and replace it with the new one
+        Status = Ext2InodeHandleClose(&CurrentInodeHandle);
+        CopyMem(&CurrentInodeHandle, &NextInodeHandle, sizeof(EXT2_INODE_HANDLE));
     }
     
-    // open the inode we arrived at
-    Status = Ext2FileOpenWithInode(Volume, InodeNo, DirEntry, NewHandle);
-    if (EFI_ERROR(Status)) {
-        if (DirEntry != NULL)
-            FreePool(DirEntry);
+    // wrap the current inode into a file handle
+    Status = Ext2FileFromInodeHandle(&CurrentInodeHandle, NewHandle);
+    if (EFI_ERROR(Status))
         return Status;
-    }
-    // file object takes ownership of the dir entry
+    // NOTE: file handle takes ownership of inode handle
     
+#if DEBUG_LEVEL == 2
     Print(L"Ext2DirOpen: returning\n");
+#endif
     return Status;
-}
-
-//
-// EFI_FILE Close for directories
-//
-
-EFI_STATUS EFIAPI Ext2DirClose(IN EFI_FILE *This)
-{
-    EXT2_FILE_DATA      *File;
     
-    Print(L"Ext2DirClose\n");
-    
-    File = EXT2_FILE_FROM_FILE_HANDLE(This);
-    
-    if (File->DirEntry != NULL)
-        FreePool(File->DirEntry);
-    Ext2InodeClose(&File->Inode);
-    FreePool(File);
-    
-    return EFI_SUCCESS;
+bailout:
+    Ext2InodeHandleClose(&CurrentInodeHandle);
+    return Status;
 }
 
 //
@@ -222,66 +221,78 @@ EFI_STATUS EFIAPI Ext2DirRead(IN EFI_FILE *This,
 {
     EFI_STATUS          Status;
     EXT2_FILE_DATA      *File;
+    EXT2_VOLUME_DATA    *Volume;
     UINT64              SavedPosition;
-    struct ext2_dir_entry *DirEntry;
-    EXT2_INODE          EntryInode;
+    struct ext2_dir_entry DirEntry;
+    EXT2_INODE          *EntryInode;
     EFI_FILE_INFO       *FileInfo;
-    CHAR16              *DestNamePtr;
-    UINTN               i, RequiredSize;
+    UINTN               RequiredSize;
     
+#if DEBUG_LEVEL
     Print(L"Ext2DirRead...\n");
+#endif
     
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
+    Volume = File->InodeHandle.Inode->Volume;
     
     // read the next dir_entry
-    SavedPosition = File->Inode.CurrentPosition;
-    Status = Ext2DirReadEntry(File->Volume, &File->Inode, &DirEntry);
+    SavedPosition = File->InodeHandle.CurrentPosition;
+    while (1) {
+        Status = Ext2DirReadEntry(&File->InodeHandle, &DirEntry);
+        if (EFI_ERROR(Status)) {
+            File->InodeHandle.CurrentPosition = SavedPosition;
+            return Status;
+        }
+        if (DirEntry.inode == 0) {
+            // end of directory reached
+            *BufferSize = 0;
+#if DEBUG_LEVEL
+            Print(L"...no more entries\n");
+#endif
+            return EFI_SUCCESS;
+        }
+        
+        // filter out . and ..
+        if ((DirEntry.name_len == 1 && DirEntry.name[0] == '.') ||
+            (DirEntry.name_len == 2 && DirEntry.name[0] == '.' && DirEntry.name[1] == '.'))
+            continue;
+        break;
+    }
+    
+    // open inode for the directory entry
+    Status = Ext2InodeOpen(Volume, DirEntry.inode, File->InodeHandle.Inode, &DirEntry, &EntryInode);
     if (EFI_ERROR(Status))
         return Status;
-    if (DirEntry == NULL) {
-        // end of directory reached
-        *BufferSize = 0;
-        Print(L"...no more entries\n");
-        return EFI_SUCCESS;
-    }
     
     // calculate structure size
-    RequiredSize = SIZE_OF_EFI_FILE_INFO + (DirEntry->name_len + 1) * sizeof(CHAR16);
+    RequiredSize = SIZE_OF_EFI_FILE_INFO + StrSize(EntryInode->Name);
+    
     // check buffer size
     if (*BufferSize < RequiredSize) {
-        *BufferSize = RequiredSize;
-        
         // push the entry back for now
-        File->Inode.CurrentPosition = SavedPosition;
-        FreePool(DirEntry);
+        Ext2InodeClose(EntryInode);
+        File->InodeHandle.CurrentPosition = SavedPosition;
+        
+#if DEBUG_LEVEL
         Print(L"...BUFFER TOO SMALL\n");
+#endif
+        *BufferSize = RequiredSize;
         return EFI_BUFFER_TOO_SMALL;
-    }
-    
-    // read inode for further information
-    Status = Ext2InodeOpen(File->Volume, DirEntry->inode, &EntryInode);
-    if (EFI_ERROR(Status)) {
-        FreePool(DirEntry);
-        return Status;
     }
     
     // fill structure
     ZeroMem(Buffer, RequiredSize);
     FileInfo = (EFI_FILE_INFO *)Buffer;
     FileInfo->Size = RequiredSize;
-    Ext2InodeFillFileInfo(File->Volume, &EntryInode, FileInfo);
-    Ext2InodeClose(&EntryInode);
-    
-    // copy file name
-    DestNamePtr = FileInfo->FileName;
-    for (i = 0; i < DirEntry->name_len; i++)
-        DestNamePtr[i] = DirEntry->name[i];
-    DestNamePtr[i] = 0;
-    FreePool(DirEntry);
+    Ext2InodeFillFileInfo(EntryInode, FileInfo);
+    StrCpy(FileInfo->FileName, EntryInode->Name);
+    Ext2InodeClose(EntryInode);
     
     // prepare for return
     *BufferSize = RequiredSize;
+#if DEBUG_LEVEL
     Print(L"...found '%s'\n", FileInfo->FileName);
+#endif
     return EFI_SUCCESS;
 }
 
@@ -296,7 +307,7 @@ EFI_STATUS EFIAPI Ext2DirSetPosition(IN EFI_FILE *This,
     
     File = EXT2_FILE_FROM_FILE_HANDLE(This);
     if (Position == 0) {
-        File->Inode.CurrentPosition = 0;
+        File->InodeHandle.CurrentPosition = 0;
         return EFI_SUCCESS;
     } else {
         // directories can only rewind to the start

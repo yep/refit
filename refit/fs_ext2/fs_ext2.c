@@ -15,6 +15,9 @@
 
 #include "fs_ext2.h"
 
+#define DEBUG_LEVEL 0
+
+
 // functions
 
 EFI_STATUS EFIAPI Ext2DriverBindingSupported(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
@@ -149,7 +152,9 @@ EFI_STATUS EFIAPI Ext2DriverBindingStart(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
     EFI_DISK_IO         *DiskIo;
     EXT2_VOLUME_DATA    *Volume;
     
+#if DEBUG_LEVEL
     Print(L"Ext2DriverBindingStart\n");
+#endif
     
     // open consumed protocols
     Status = BS->OpenProtocol(ControllerHandle,
@@ -219,7 +224,9 @@ EFI_STATUS EFIAPI Ext2DriverBindingStop(IN  EFI_DRIVER_BINDING_PROTOCOL  *This,
     EFI_STATUS          Status;
     EXT2_VOLUME_DATA    *Volume;
     
+#if DEBUG_LEVEL
     Print(L"Ext2DriverBindingStop\n");
+#endif
     
     // get private data structure
     Volume = EXT2_VOLUME_FROM_FILE_SYSTEM(This);
