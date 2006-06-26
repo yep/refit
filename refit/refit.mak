@@ -20,15 +20,18 @@ all :
 	nmake -f gptsync.mak all
 	cd $(SOURCE_DIR)
 
-	cd $(SOURCE_DIR)\ebounce
-	nmake -f ebounce.mak all
-	cd $(SOURCE_DIR)
+#	cd $(SOURCE_DIR)\ebounce
+#	nmake -f ebounce.mak all
+#	cd $(SOURCE_DIR)
 
-	cd $(SOURCE_DIR)\TextMode
-	nmake -f TextMode.mak all
-	cd $(SOURCE_DIR)
+#	cd $(SOURCE_DIR)\TextMode
+#	nmake -f TextMode.mak all
+#	cd $(SOURCE_DIR)
 
 	cd $(SOURCE_DIR)\dumpprot
 	nmake -f dumpprot.mak all
 	cd $(SOURCE_DIR)
 
+	cd $(SOURCE_DIR)\fs_ext2
+	nmake -f fs_ext2.mak all
+	cd $(SOURCE_DIR)
