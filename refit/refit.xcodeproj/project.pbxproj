@@ -54,6 +54,9 @@
 
 /* Begin PBXFileReference section */
 		08FB7796FE84155DC02AAC07 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		9D1FDB970A4D3B160094C9A1 /* file.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = file.c; sourceTree = "<group>"; };
+		9D1FDBB90A4D429A0094C9A1 /* dir.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dir.c; sourceTree = "<group>"; };
+		9D1FDC7E0A4F27030094C9A1 /* inode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = inode.c; sourceTree = "<group>"; };
 		9D3AC8C60A0C915B0091F4FE /* Makefile.unix */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = Makefile.unix; sourceTree = "<group>"; };
 		9D47400709F54B7500C70CF4 /* config.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = config.c; sourceTree = "<group>"; };
 		9D574B1A09E907BE00EFE8D2 /* icns.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = icns.c; sourceTree = "<group>"; };
@@ -62,6 +65,11 @@
 		9D574B1F09E907BE00EFE8D2 /* menu.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = menu.c; sourceTree = "<group>"; };
 		9D574B2009E907BE00EFE8D2 /* screen.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = screen.c; sourceTree = "<group>"; };
 		9D574B3109E9080D00EFE8D2 /* refit-check */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "refit-check"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9DA115EC0A472D9800C2D0F4 /* fs_ext2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fs_ext2.c; sourceTree = "<group>"; };
+		9DA115ED0A472D9800C2D0F4 /* fs_ext2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fs_ext2.h; sourceTree = "<group>"; };
+		9DA116010A472E9100C2D0F4 /* fs_ext2.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = fs_ext2.mak; sourceTree = "<group>"; };
+		9DD3A1980A4AFA340005584A /* ext2_disk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ext2_disk.h; sourceTree = "<group>"; };
+		9DD3A1990A4AFA340005584A /* super.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = super.c; sourceTree = "<group>"; };
 		9DF0A9E40A09C40900058459 /* efiConsoleControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = efiConsoleControl.h; sourceTree = "<group>"; };
 		9DF0A9E50A09C40900058459 /* efiUgaDraw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = efiUgaDraw.h; sourceTree = "<group>"; };
 		9DF0A9E60A09C40900058459 /* egemb_font.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = egemb_font.h; sourceTree = "<group>"; };
@@ -127,6 +135,7 @@
 				9DF0A9DF0A09C3C100058459 /* libeg */,
 				9DF0AAAD0A0AA04600058459 /* gptsync */,
 				9DF0AA080A09C45000058459 /* dumpprot */,
+				9DA115E90A472D5400C2D0F4 /* fs_ext2 */,
 				9DF0A9E00A09C3D400058459 /* include */,
 			);
 			name = Source;
@@ -138,6 +147,28 @@
 				9D574B3109E9080D00EFE8D2 /* refit-check */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9DA115E90A472D5400C2D0F4 /* fs_ext2 */ = {
+			isa = PBXGroup;
+			children = (
+				9DA115EC0A472D9800C2D0F4 /* fs_ext2.c */,
+				9DA115ED0A472D9800C2D0F4 /* fs_ext2.h */,
+				9DD3A1990A4AFA340005584A /* super.c */,
+				9D1FDC7E0A4F27030094C9A1 /* inode.c */,
+				9D1FDB970A4D3B160094C9A1 /* file.c */,
+				9D1FDBB90A4D429A0094C9A1 /* dir.c */,
+				9DD3A1980A4AFA340005584A /* ext2_disk.h */,
+			);
+			path = fs_ext2;
+			sourceTree = "<group>";
+		};
+		9DA115F30A472E6800C2D0F4 /* fs_ext2 */ = {
+			isa = PBXGroup;
+			children = (
+				9DA116010A472E9100C2D0F4 /* fs_ext2.mak */,
+			);
+			path = fs_ext2;
 			sourceTree = "<group>";
 		};
 		9DF0A9DE0A09C39600058459 /* refit */ = {
@@ -203,6 +234,7 @@
 				9DF0AA1B0A09C51000058459 /* libeg */,
 				9DF0AAD80A0AA9F900058459 /* gptsync */,
 				9DF0AA240A09C55C00058459 /* dumpprot */,
+				9DA115F30A472E6800C2D0F4 /* fs_ext2 */,
 				9DF0AA120A09C4BA00058459 /* Make.common */,
 			);
 			name = Makefiles;
