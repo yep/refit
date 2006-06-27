@@ -18,9 +18,6 @@
 #define DEBUG_LEVEL 0
 
 
-#define INVALID_BLOCK_NO (0xffffffffUL)
-
-
 VOID Ext2DecodeTime(OUT EFI_TIME *EfiTime, IN UINT32 UnixTime)
 {
     ZeroMem(EfiTime, sizeof(EFI_TIME));

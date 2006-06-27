@@ -31,25 +31,23 @@ EFI_STATUS Ext2ReadSuper(IN EXT2_VOLUME_DATA *Volume)
 {
     EFI_STATUS          Status;
     
+    // NOTE: in the error case, the caller frees SuperBlock and BlockBuffer
+    
     // read the superblock from disk
     Volume->SuperBlock = AllocatePool(sizeof(struct ext2_super_block));
     Status = Volume->DiskIo->ReadDisk(Volume->DiskIo, Volume->MediaId,
                                       BLOCK_SIZE,
                                       sizeof(struct ext2_super_block),
                                       Volume->SuperBlock);
-    if (EFI_ERROR(Status)) {
-        FreePool(Volume->SuperBlock);
+    if (EFI_ERROR(Status))
         return Status;
-    }
     
     // check the superblock
-    if (Volume->SuperBlock->s_magic != EXT2_SUPER_MAGIC ||
-        (Volume->SuperBlock->s_rev_level != EXT2_GOOD_OLD_REV &&
-         Volume->SuperBlock->s_rev_level != EXT2_DYNAMIC_REV)) {
-        FreePool(Volume->SuperBlock);
+    if (Volume->SuperBlock->s_magic != EXT2_SUPER_MAGIC)
         return EFI_UNSUPPORTED;
-    }
-    
+    if (Volume->SuperBlock->s_rev_level != EXT2_GOOD_OLD_REV &&
+        Volume->SuperBlock->s_rev_level != EXT2_DYNAMIC_REV)
+        return EFI_UNSUPPORTED;
     // TODO: check s_feature_incompat (if EXT2_DYNAMIC_REV)
     
     Volume->BlockSize = 1024 << Volume->SuperBlock->s_log_block_size;
@@ -70,7 +68,7 @@ EFI_STATUS Ext2ReadSuper(IN EXT2_VOLUME_DATA *Volume)
     Volume->DirInodeList = NULL;
     
     Volume->BlockBuffer = AllocatePool(Volume->BlockSize);
-    Volume->BlockInBuffer = 0;   // NOTE: block 0 is never read through Ext2ReadBlock
+    Volume->BlockInBuffer = INVALID_BLOCK_NO;
     
 #if DEBUG_LEVEL
     Print(L"Ext2ReadSuper: successful, BlockSize %d\n", Volume->BlockSize);
@@ -135,17 +133,24 @@ EFI_STATUS Ext2ReadBlock(IN EXT2_VOLUME_DATA *Volume, IN UINT32 BlockNo)
     Print(L"Ext2ReadBlock: %d\n", BlockNo);
 #endif
     
+    // remember buffer state
+    Volume->BlockInBuffer = BlockNo;
+    
+    // special treatment for "holes" a.k.a. sparse files
+    if (BlockNo == 0) {
+        ZeroMem(Volume->BlockBuffer, Volume->BlockSize);
+        return EFI_SUCCESS;
+    }
+    
     // read from disk
     Status = Volume->DiskIo->ReadDisk(Volume->DiskIo, Volume->MediaId,
                                       (UINT64)BlockNo * Volume->BlockSize,
                                       Volume->BlockSize,
                                       Volume->BlockBuffer);
     if (EFI_ERROR(Status)) {
-        Volume->BlockInBuffer = 0;   // NOTE: block 0 is never read
+        Volume->BlockInBuffer = INVALID_BLOCK_NO;
         return Status;
     }
     
-    // remember buffer state
-    Volume->BlockInBuffer = BlockNo;
     return EFI_SUCCESS;
 }

@@ -162,9 +162,11 @@ EFI_STATUS EFIAPI Ext2DriverBindingStart(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
                               (VOID **) &BlockIo,
                               This->DriverBindingHandle,
                               ControllerHandle,
-                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-    if (EFI_ERROR(Status))
+                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);   // NOTE: we only want to look at the MediaId
+    if (EFI_ERROR(Status)) {
+        Print(L"Ext2 ERROR: OpenProtocol(BlockIo) returned %x\n", Status);
         return Status;
+    }
     
     Status = BS->OpenProtocol(ControllerHandle,
                               &DiskIoProtocol,
@@ -172,15 +174,16 @@ EFI_STATUS EFIAPI Ext2DriverBindingStart(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
                               This->DriverBindingHandle,
                               ControllerHandle,
                               EFI_OPEN_PROTOCOL_BY_DRIVER);
-    if (EFI_ERROR(Status))
+    if (EFI_ERROR(Status)) {
+        Print(L"Ext2 ERROR: OpenProtocol(DiskIo) returned %x\n", Status);
         return Status;
+    }
     
     // allocate volume structure
     Volume = AllocateZeroPool(sizeof(EXT2_VOLUME_DATA));
     Volume->Signature = EXT2_VOLUME_DATA_SIGNATURE;
     Volume->Handle    = ControllerHandle;
     Volume->DiskIo    = DiskIo;
-    Volume->BlockIo   = BlockIo;
     Volume->MediaId   = BlockIo->Media->MediaId;
     
     // read the superblock
@@ -188,23 +191,23 @@ EFI_STATUS EFIAPI Ext2DriverBindingStart(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
     
     if (!EFI_ERROR(Status)) {
         // register the SimpleFileSystem protocol
-        Status = BS->InstallProtocolInterface(&Volume->Handle,
-                                              &FileSystemProtocol,
-                                              EFI_NATIVE_INTERFACE,
-                                              &Volume->FileSystem);
+        Status = BS->InstallMultipleProtocolInterfaces(&ControllerHandle,
+                                                       &FileSystemProtocol, &Volume->FileSystem,
+                                                       NULL);
+        if (EFI_ERROR(Status))
+            Print(L"Ext2 ERROR: InstallMultipleProtocolInterfaces returned %x\n", Status);
     }
     
     // on errors, close the opened protocols
     if (EFI_ERROR(Status)) {
         if (Volume->BlockBuffer != NULL)
             FreePool(Volume->BlockBuffer);
+        if (Volume->SuperBlock != NULL)
+            FreePool(Volume->SuperBlock);
         FreePool(Volume);
+        
         BS->CloseProtocol(ControllerHandle,
                           &DiskIoProtocol,
-                          This->DriverBindingHandle,
-                          ControllerHandle);
-        BS->CloseProtocol(ControllerHandle,
-                          &BlockIoProtocol,
                           This->DriverBindingHandle,
                           ControllerHandle);
     }
@@ -222,38 +225,56 @@ EFI_STATUS EFIAPI Ext2DriverBindingStop(IN  EFI_DRIVER_BINDING_PROTOCOL  *This,
                                         IN  EFI_HANDLE                   *ChildHandleBuffer)
 {
     EFI_STATUS          Status;
+    EFI_FILE_IO_INTERFACE *FileSystem;
     EXT2_VOLUME_DATA    *Volume;
     
 #if DEBUG_LEVEL
     Print(L"Ext2DriverBindingStop\n");
 #endif
     
+    // get the installed SimpleFileSystem interface
+    Status = BS->OpenProtocol(ControllerHandle,
+                              &FileSystemProtocol,
+                              (VOID **) &FileSystem,
+                              This->DriverBindingHandle,
+                              ControllerHandle,
+                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+    if (EFI_ERROR(Status))
+        return EFI_UNSUPPORTED;
+    
     // get private data structure
-    Volume = EXT2_VOLUME_FROM_FILE_SYSTEM(This);
+    Volume = EXT2_VOLUME_FROM_FILE_SYSTEM(FileSystem);
     
     // uninstall Simple File System protocol
-    Status = BS->UninstallProtocolInterface(&Volume->Handle,
-                                            &FileSystemProtocol,
-                                            &Volume->FileSystem);
-    if (EFI_ERROR(Status))
+    Status = BS->UninstallMultipleProtocolInterfaces(ControllerHandle,
+                                                     &FileSystemProtocol, &Volume->FileSystem,
+                                                     NULL);
+    if (EFI_ERROR(Status)) {
+        Print(L"Ext2 ERROR: UninstallMultipleProtocolInterfaces returned %x\n", Status);
         return Status;
+    }
+#if DEBUG_LEVEL
+    Print(L"Ext2DriverBindingStop: protocol uninstalled successfully\n");
+#endif
     
     // release private data structure
+    if (Volume->RootInode != NULL)
+        Ext2InodeClose(Volume->RootInode);
+    // TODO: can we be called with other inodes still open???
+    if (Volume->DirInodeList != NULL)
+        Print(L"Ext2 WARNING: Driver stopped while files are open!\n");
     if (Volume->BlockBuffer != NULL)
         FreePool(Volume->BlockBuffer);
+    FreePool(Volume->SuperBlock);
     FreePool(Volume);
     
     // close the consumed protocols
-    BS->CloseProtocol(ControllerHandle,
-                      &DiskIoProtocol,
-                      This->DriverBindingHandle,
-                      ControllerHandle);
-    BS->CloseProtocol(ControllerHandle,
-                      &BlockIoProtocol,
-                      This->DriverBindingHandle,
-                      ControllerHandle);
+    Status = BS->CloseProtocol(ControllerHandle,
+                               &DiskIoProtocol,
+                               This->DriverBindingHandle,
+                               ControllerHandle);
     
-    return EFI_SUCCESS;
+    return Status;
 }
 
 //

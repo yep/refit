@@ -21,6 +21,8 @@
 
 #include "ext2_disk.h"
 
+#define INVALID_BLOCK_NO (0xffffffffUL)
+
 //
 // private data structures
 //
@@ -37,7 +39,6 @@ typedef struct {
     
     EFI_HANDLE                  Handle;
     EFI_DISK_IO                 *DiskIo;
-    EFI_BLOCK_IO                *BlockIo;
     UINT32                      MediaId;
     
     struct ext2_super_block     *SuperBlock;
