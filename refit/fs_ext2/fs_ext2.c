@@ -268,7 +268,7 @@ EFI_STATUS EFIAPI Ext2ComponentNameGetDriverName(IN  EFI_COMPONENT_NAME_PROTOCOL
         return EFI_INVALID_PARAMETER;
     
     if (Language[0] == 'e' && Language[1] == 'n' && Language[2] == 'g' && Language[3] == 0) {
-        *DriverName = L"Ext2 File System";
+        *DriverName = L"Ext2 File System Driver";
         return EFI_SUCCESS;
     }
     return EFI_UNSUPPORTED;
