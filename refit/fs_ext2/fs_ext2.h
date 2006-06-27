@@ -82,8 +82,12 @@ typedef struct {
     EFI_FILE                    FileHandle;
     
     EXT2_INODE_HANDLE           InodeHandle;
+    UINTN                       Kind;
     
 } EXT2_FILE_DATA;
+
+#define EXT2_FILE_KIND_FILE  (0)
+#define EXT2_FILE_KIND_DIR   (1)
 
 #define EXT2_FILE_FROM_FILE_HANDLE(a)  CR (a, EXT2_FILE_DATA, FileHandle, EXT2_FILE_DATA_SIGNATURE)
 

@@ -17,10 +17,82 @@
 
 #define DEBUG_LEVEL 0
 
+#define USE_DISPATCHERS 1
+
 
 EFI_GUID  gEfiFileInfoGuid = EFI_FILE_INFO_ID;
 EFI_GUID  gEfiFileSystemInfoGuid = EFI_FILE_SYSTEM_INFO_ID;
 EFI_GUID  gEfiFileSystemVolumeLabelInfoIdGuid = EFI_FILE_SYSTEM_VOLUME_LABEL_INFO_ID;
+
+
+//
+// dispatching interface functions
+//
+
+#if USE_DISPATCHERS
+
+EFI_STATUS EFIAPI Ext2HandleOpen(IN EFI_FILE *This,
+                                 OUT EFI_FILE **NewHandle,
+                                 IN CHAR16 *FileName,
+                                 IN UINT64 OpenMode,
+                                 IN UINT64 Attributes)
+{
+    EXT2_FILE_DATA      *File;
+    
+    File = EXT2_FILE_FROM_FILE_HANDLE(This);
+    
+    if (File->Kind == EXT2_FILE_KIND_FILE)
+        return Ext2FileOpen(This, NewHandle, FileName, OpenMode, Attributes);
+    else if (File->Kind == EXT2_FILE_KIND_DIR)
+        return Ext2DirOpen(This, NewHandle, FileName, OpenMode, Attributes);
+    return EFI_UNSUPPORTED;
+}
+
+
+EFI_STATUS EFIAPI Ext2HandleRead(IN EFI_FILE *This,
+                                 IN OUT UINTN *BufferSize,
+                                 OUT VOID *Buffer)
+{
+    EXT2_FILE_DATA      *File;
+    
+    File = EXT2_FILE_FROM_FILE_HANDLE(This);
+    
+    if (File->Kind == EXT2_FILE_KIND_FILE)
+        return Ext2FileRead(This, BufferSize, Buffer);
+    else if (File->Kind == EXT2_FILE_KIND_DIR)
+        return Ext2DirRead(This, BufferSize, Buffer);
+    return EFI_UNSUPPORTED;
+}
+
+EFI_STATUS EFIAPI Ext2HandleSetPosition(IN EFI_FILE *This,
+                                        IN UINT64 Position)
+{
+    EXT2_FILE_DATA      *File;
+    
+    File = EXT2_FILE_FROM_FILE_HANDLE(This);
+    
+    if (File->Kind == EXT2_FILE_KIND_FILE)
+        return Ext2FileSetPosition(This, Position);
+    else if (File->Kind == EXT2_FILE_KIND_DIR)
+        return Ext2DirSetPosition(This, Position);
+    return EFI_UNSUPPORTED;
+}
+
+EFI_STATUS EFIAPI Ext2HandleGetPosition(IN EFI_FILE *This,
+                                        OUT UINT64 *Position)
+{
+    EXT2_FILE_DATA      *File;
+    
+    File = EXT2_FILE_FROM_FILE_HANDLE(This);
+    
+    if (File->Kind == EXT2_FILE_KIND_FILE)
+        return Ext2FileGetPosition(This, Position);
+    else if (File->Kind == EXT2_FILE_KIND_DIR)
+        return Ext2DirGetPosition(This, Position);
+    return EFI_UNSUPPORTED;
+}
+
+#endif  // USE_DISPATCHERS
 
 
 //
@@ -43,6 +115,7 @@ EFI_STATUS Ext2FileFromInodeHandle(IN EXT2_INODE_HANDLE *InodeHandle,
     // check the type
     if (S_ISREG(File->InodeHandle.Inode->RawInode->i_mode)) {
         // regular file
+        File->Kind = EXT2_FILE_KIND_FILE;
         File->FileHandle.Revision    = EFI_FILE_HANDLE_REVISION;
         File->FileHandle.Open        = Ext2FileOpen;
         File->FileHandle.Close       = Ext2FileClose;
@@ -58,6 +131,7 @@ EFI_STATUS Ext2FileFromInodeHandle(IN EXT2_INODE_HANDLE *InodeHandle,
         
     } else if (S_ISDIR(File->InodeHandle.Inode->RawInode->i_mode)) {
         // directory
+        File->Kind = EXT2_FILE_KIND_DIR;
         File->FileHandle.Revision    = EFI_FILE_HANDLE_REVISION;
         File->FileHandle.Open        = Ext2DirOpen;
         File->FileHandle.Close       = Ext2FileClose;
@@ -86,6 +160,13 @@ EFI_STATUS Ext2FileFromInodeHandle(IN EXT2_INODE_HANDLE *InodeHandle,
         FreePool(File);
         return Status;
     }
+    
+#if USE_DISPATCHERS
+    File->FileHandle.Open        = Ext2HandleOpen;
+    File->FileHandle.Read        = Ext2HandleRead;
+    File->FileHandle.GetPosition = Ext2HandleGetPosition;
+    File->FileHandle.SetPosition = Ext2HandleSetPosition;
+#endif
     
     *NewFileHandle = &File->FileHandle;
     return EFI_SUCCESS;
