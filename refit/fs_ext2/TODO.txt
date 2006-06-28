@@ -1,0 +1,25 @@
+
+ rEFIt ext2 Driver TODO
+========================
+
+Things that need attention:
+
+- Support symbolic links: EFI does not have a concept of symbolic
+  links, so they should be resolved within the driver to look like
+  hard links.
+- Map ctime/mtime/atime timestamps to the EFI_TIME structure.
+- Read the block group descriptors once when the file system is
+  mounted and store the bg_inode_table field for all groups in the
+  volume structure. (Eliminates one block read in Ext2InodeOpen.)
+- Check the feature flags in the superblock for DYNAMIC_REV volumes.
+- Disable the workarounds for . and .. in Ext2DirOpen.
+- Make the dispatchers in file.c permanent.
+- Cache more than one block in memory. (Should probably be limited to
+  metadata blocks.)
+- Support indexed directories, at least by skipping the hash table
+  blocks.
+- Maybe support forward slashes in addition to backslashes in
+  Ext2DirOpen.
+
+
+EOF
