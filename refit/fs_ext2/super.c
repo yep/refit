@@ -48,7 +48,13 @@ EFI_STATUS Ext2ReadSuper(IN EXT2_VOLUME_DATA *Volume)
     if (Volume->SuperBlock->s_rev_level != EXT2_GOOD_OLD_REV &&
         Volume->SuperBlock->s_rev_level != EXT2_DYNAMIC_REV)
         return EFI_UNSUPPORTED;
-    // TODO: check s_feature_incompat (if EXT2_DYNAMIC_REV)
+    if (Volume->SuperBlock->s_rev_level == EXT2_DYNAMIC_REV &&
+        (Volume->SuperBlock->s_feature_incompat & ~(EXT2_FEATURE_INCOMPAT_FILETYPE | EXT3_FEATURE_INCOMPAT_RECOVER)))
+        return EFI_UNSUPPORTED;
+    
+    if (Volume->SuperBlock->s_rev_level == EXT2_DYNAMIC_REV &&
+        (Volume->SuperBlock->s_feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER))
+        Print(L"Ext2 WARNING: This ext3 file system needs recovery, trying to use it anyway.\n");
     
     Volume->BlockSize = 1024 << Volume->SuperBlock->s_log_block_size;
     Volume->IndBlockCount = Volume->BlockSize / sizeof(__u32);

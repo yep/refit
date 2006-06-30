@@ -327,6 +327,7 @@ struct ext2_super_block {
 #define EXT2_FEATURE_INCOMPAT_META_BG           0x0010
 #define EXT2_FEATURE_INCOMPAT_ANY               0xffffffff
 
+/*
 #define EXT2_FEATURE_COMPAT_SUPP        EXT2_FEATURE_COMPAT_EXT_ATTR
 #define EXT2_FEATURE_INCOMPAT_SUPP      (EXT2_FEATURE_INCOMPAT_FILETYPE| \
                                          EXT2_FEATURE_INCOMPAT_META_BG)
@@ -335,6 +336,7 @@ struct ext2_super_block {
                                          EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
 #define EXT2_FEATURE_RO_COMPAT_UNSUPPORTED      ~EXT2_FEATURE_RO_COMPAT_SUPP
 #define EXT2_FEATURE_INCOMPAT_UNSUPPORTED       ~EXT2_FEATURE_INCOMPAT_SUPP
+*/
 
 /*
  * Structure of a directory entry
