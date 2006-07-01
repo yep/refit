@@ -18,25 +18,68 @@
 #define DEBUG_LEVEL 0
 
 
+//
+// time conversion
+//
+// Adopted from public domain code in FreeBSD libc.
+//
+
+#define SECSPERMIN      60
+#define MINSPERHOUR     60
+#define HOURSPERDAY     24
+#define DAYSPERWEEK     7
+#define DAYSPERNYEAR    365
+#define DAYSPERLYEAR    366
+#define SECSPERHOUR     (SECSPERMIN * MINSPERHOUR)
+#define SECSPERDAY      ((long) SECSPERHOUR * HOURSPERDAY)
+#define MONSPERYEAR     12
+
+#define EPOCH_YEAR      1970
+#define EPOCH_WDAY      TM_THURSDAY
+
+#define isleap(y) (((y) % 4) == 0 && (((y) % 100) != 0 || ((y) % 400) == 0))
+#define LEAPS_THRU_END_OF(y)    ((y) / 4 - (y) / 100 + (y) / 400)
+
+static const int mon_lengths[2][MONSPERYEAR] = {
+    { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },
+    { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
+};
+static const int year_lengths[2] = {
+    DAYSPERNYEAR, DAYSPERLYEAR
+};
+
 VOID Ext2DecodeTime(OUT EFI_TIME *EfiTime, IN UINT32 UnixTime)
 {
+    long        days, rem;
+    int         y, newy, yleap;
+    const int   *ip;
+    
     ZeroMem(EfiTime, sizeof(EFI_TIME));
     
-    /* TODO: actually map the unix date to the EFI_TIME structure:
-     typedef struct {          
-         UINT16      Year;       // 1998 - 20XX
-         UINT8       Month;      // 1 - 12
-         UINT8       Day;        // 1 - 31
-         UINT8       Hour;       // 0 - 23
-         UINT8       Minute;     // 0 - 59
-         UINT8       Second;     // 0 - 59
-         UINT8       Pad1;
-         UINT32      Nanosecond; // 0 - 999,999,999
-         INT16       TimeZone;   // -1440 to 1440 or 2047
-         UINT8       Daylight;
-         UINT8       Pad2;
-     } EFI_TIME;
-     */
+    days = UnixTime / SECSPERDAY;
+    rem = UnixTime % SECSPERDAY;
+    
+    EfiTime->Hour = (int) (rem / SECSPERHOUR);
+    rem = rem % SECSPERHOUR;
+    EfiTime->Minute = (int) (rem / SECSPERMIN);
+    EfiTime->Second = (int) (rem % SECSPERMIN);
+    
+    y = EPOCH_YEAR;
+    while (days < 0 || days >= (long) year_lengths[yleap = isleap(y)]) {
+        newy = y + days / DAYSPERNYEAR;
+        if (days < 0)
+            --newy;
+        days -= (newy - y) * DAYSPERNYEAR +
+            LEAPS_THRU_END_OF(newy - 1) -
+            LEAPS_THRU_END_OF(y - 1);
+        y = newy;
+    }
+    EfiTime->Year = y;
+    ip = mon_lengths[yleap];
+    for (EfiTime->Month = 0; days >= (long) ip[EfiTime->Month]; ++(EfiTime->Month))
+        days = days - (long) ip[EfiTime->Month];
+    EfiTime->Month++;  // adjust range to EFI conventions
+    EfiTime->Day = (int) (days + 1);
 }
 
 //
