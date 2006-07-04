@@ -57,6 +57,10 @@
 		9D1FDB970A4D3B160094C9A1 /* file.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = file.c; sourceTree = "<group>"; };
 		9D1FDBB90A4D429A0094C9A1 /* dir.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dir.c; sourceTree = "<group>"; };
 		9D1FDC7E0A4F27030094C9A1 /* inode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = inode.c; sourceTree = "<group>"; };
+		9D28E0640A5A4DD300D8221F /* fsw_base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_base.h; sourceTree = "<group>"; };
+		9D28E0890A5A507D00D8221F /* fsw_ext2_disk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_ext2_disk.h; sourceTree = "<group>"; };
+		9D28E0DF0A5A5A1A00D8221F /* Doxyfile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Doxyfile; sourceTree = "<group>"; };
+		9D28E0E00A5A5A1A00D8221F /* fsw_ext2.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = fsw_ext2.mak; sourceTree = "<group>"; };
 		9D3AC8C60A0C915B0091F4FE /* Makefile.unix */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = Makefile.unix; sourceTree = "<group>"; };
 		9D47400709F54B7500C70CF4 /* config.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = config.c; sourceTree = "<group>"; };
 		9D574B1A09E907BE00EFE8D2 /* icns.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = icns.c; sourceTree = "<group>"; };
@@ -65,6 +69,13 @@
 		9D574B1F09E907BE00EFE8D2 /* menu.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = menu.c; sourceTree = "<group>"; };
 		9D574B2009E907BE00EFE8D2 /* screen.c */ = {isa = PBXFileReference; fileEncoding = 5; lastKnownFileType = sourcecode.c.c; path = screen.c; sourceTree = "<group>"; };
 		9D574B3109E9080D00EFE8D2 /* refit-check */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "refit-check"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D59EDFD0A5665EC004E3134 /* fsw_efi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_efi.c; sourceTree = "<group>"; };
+		9D59EE020A566903004E3134 /* fsw_efi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_efi.h; sourceTree = "<group>"; };
+		9D59EE030A566903004E3134 /* fsw_ext2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_ext2.h; sourceTree = "<group>"; };
+		9D59EE100A56702E004E3134 /* fsw_base_efi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_base_efi.h; sourceTree = "<group>"; };
+		9D59EE150A5714A7004E3134 /* fsw_ext2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_ext2.c; sourceTree = "<group>"; };
+		9D59EE470A579B1D004E3134 /* fsw_core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_core.h; sourceTree = "<group>"; };
+		9D59EE480A579B1D004E3134 /* fsw_core.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_core.c; sourceTree = "<group>"; };
 		9DA115EC0A472D9800C2D0F4 /* fs_ext2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fs_ext2.c; sourceTree = "<group>"; };
 		9DA115ED0A472D9800C2D0F4 /* fs_ext2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fs_ext2.h; sourceTree = "<group>"; };
 		9DA116010A472E9100C2D0F4 /* fs_ext2.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = fs_ext2.mak; sourceTree = "<group>"; };
@@ -98,7 +109,7 @@
 		9DF0AA2A0A09C58400058459 /* libeg.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = libeg.mak; sourceTree = "<group>"; };
 		9DF0AA2B0A09C58400058459 /* libeg.mkefi */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libeg.mkefi; sourceTree = "<group>"; };
 		9DF0AA2C0A09C58400058459 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		9DF0AA320A09C59E00058459 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = refit.mak; sourceTree = "<group>"; };
+		9DF0AA320A09C59E00058459 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = refit.mak; sourceTree = "<group>"; };
 		9DF0AA340A09C5A200058459 /* build.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build.bat; sourceTree = "<group>"; };
 		9DF0AAB50A0AA07300058459 /* gptsync.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gptsync.c; sourceTree = "<group>"; };
 		9DF0AAB60A0AA07300058459 /* gptsync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gptsync.h; sourceTree = "<group>"; };
@@ -136,6 +147,7 @@
 				9DF0AAAD0A0AA04600058459 /* gptsync */,
 				9DF0AA080A09C45000058459 /* dumpprot */,
 				9DA115E90A472D5400C2D0F4 /* fs_ext2 */,
+				9D59EDE10A5664D4004E3134 /* fsw */,
 				9DF0A9E00A09C3D400058459 /* include */,
 			);
 			name = Source;
@@ -147,6 +159,31 @@
 				9D574B3109E9080D00EFE8D2 /* refit-check */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9D28E0D80A5A59FA00D8221F /* fsw */ = {
+			isa = PBXGroup;
+			children = (
+				9D28E0DF0A5A5A1A00D8221F /* Doxyfile */,
+				9D28E0E00A5A5A1A00D8221F /* fsw_ext2.mak */,
+			);
+			path = fsw;
+			sourceTree = "<group>";
+		};
+		9D59EDE10A5664D4004E3134 /* fsw */ = {
+			isa = PBXGroup;
+			children = (
+				9D28E0640A5A4DD300D8221F /* fsw_base.h */,
+				9D59EE100A56702E004E3134 /* fsw_base_efi.h */,
+				9D59EE020A566903004E3134 /* fsw_efi.h */,
+				9D59EDFD0A5665EC004E3134 /* fsw_efi.c */,
+				9D59EE470A579B1D004E3134 /* fsw_core.h */,
+				9D59EE480A579B1D004E3134 /* fsw_core.c */,
+				9D28E0890A5A507D00D8221F /* fsw_ext2_disk.h */,
+				9D59EE030A566903004E3134 /* fsw_ext2.h */,
+				9D59EE150A5714A7004E3134 /* fsw_ext2.c */,
+			);
+			path = fsw;
 			sourceTree = "<group>";
 		};
 		9DA115E90A472D5400C2D0F4 /* fs_ext2 */ = {
@@ -235,6 +272,7 @@
 				9DF0AAD80A0AA9F900058459 /* gptsync */,
 				9DF0AA240A09C55C00058459 /* dumpprot */,
 				9DA115F30A472E6800C2D0F4 /* fs_ext2 */,
+				9D28E0D80A5A59FA00D8221F /* fsw */,
 				9DF0AA120A09C4BA00058459 /* Make.common */,
 			);
 			name = Makefiles;
