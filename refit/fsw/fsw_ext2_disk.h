@@ -1,7 +1,9 @@
-/*
- * fsw/fsw_ext2_disk.h
- * On-disk structures for ext2
- *
+/**
+ * \file fsw_ext2_disk.h
+ * ext2 file system on-disk structures.
+ */
+
+/*-
  * Copyright (c) 2006 Christoph Pfisterer
  * Portions Copyright (c) 1991-2006 by various Linux kernel contributors
  *

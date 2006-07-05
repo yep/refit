@@ -1,7 +1,9 @@
-/*
- * fsw/fsw_ext2.h
- * Header with ext2-specific definitions
- *
+/**
+ * \file fsw_ext2.h
+ * ext2 file system driver header.
+ */
+
+/*-
  * Copyright (c) 2006 Christoph Pfisterer
  *
  * This program is free software; you can redistribute it and/or

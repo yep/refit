@@ -1,7 +1,9 @@
-/*
- * fsw/fsw_efi.c
- * File System Wrapper: Generic functions for EFI host environment
- *
+/**
+ * \file fsw_efi.c
+ * EFI host environment code.
+ */
+
+/*-
  * Copyright (c) 2006 Christoph Pfisterer
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +39,13 @@
 
 #define DEBUG_LEVEL 0
 
+
+#ifndef FSTYPE
+#define FSTYPE ext2
+#endif
+
+#define FSW_EFI_STRINGIFY(x) L#x
+#define FSW_EFI_DRIVER_NAME(t) L"Fsw " FSW_EFI_STRINGIFY(t) L" File System Driver"
 
 // functions
 
@@ -127,7 +136,7 @@ struct fsw_host_table   fsw_efi_host_table = {
     fsw_efi_read_block
 };
 
-extern struct fsw_fstype_table   fsw_ext2_table;
+extern struct fsw_fstype_table   FSW_FSTYPE_TABLE_NAME(FSTYPE);
 
 
 //
@@ -260,7 +269,7 @@ EFI_STATUS EFIAPI FswDriverBindingStart(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
     
     // mount the filesystem
     Status = FswMapStatus(fsw_mount(Volume, &fsw_efi_host_table,
-                                    &fsw_ext2_table, &Volume->vol),
+                                    &FSW_FSTYPE_TABLE_NAME(FSTYPE), &Volume->vol),
                           Volume);
     
     if (!EFI_ERROR(Status)) {
@@ -361,7 +370,7 @@ EFI_STATUS EFIAPI FswComponentNameGetDriverName(IN  EFI_COMPONENT_NAME_PROTOCOL 
         return EFI_INVALID_PARAMETER;
     
     if (Language[0] == 'e' && Language[1] == 'n' && Language[2] == 'g' && Language[3] == 0) {
-        *DriverName = L"Fsw ext2 File System Driver";
+        *DriverName = FSW_EFI_DRIVER_NAME(FSTYPE);
         return EFI_SUCCESS;
     }
     return EFI_UNSUPPORTED;
@@ -693,11 +702,14 @@ EFI_STATUS FswDirOpen(IN FSW_FILE_DATA *File,
     EFI_STATUS          Status;
     FSW_VOLUME_DATA     *Volume = (FSW_VOLUME_DATA *)File->shand.dnode->vol->host_data;
     struct fsw_dnode    *dno;
-    struct fsw_dnode    *child_dno = NULL;
+    struct fsw_dnode    *target_dno;
+    /*
     CHAR16              *PathElement;
     CHAR16              *PathElementEnd;
     CHAR16              *NextPathElement;
     struct fsw_string   lookup_name;
+    */
+    struct fsw_string   lookup_path;
     
 #if DEBUG_LEVEL
     Print(L"FswDirOpen: '%s'\n", FileName);
@@ -705,6 +717,33 @@ EFI_STATUS FswDirOpen(IN FSW_FILE_DATA *File,
     
     if (OpenMode != EFI_FILE_MODE_READ)
         return EFI_WRITE_PROTECTED;
+    
+    lookup_path.type = FSW_STRING_TYPE_UTF16;
+    lookup_path.len  = StrLen(FileName);
+    lookup_path.size = lookup_path.len * sizeof(fsw_u16);
+    lookup_path.data = FileName;
+    
+    // resolve the path (symlinks along the way are automatically resolved)
+    Status = FswMapStatus(fsw_dnode_lookup_path(File->shand.dnode, &lookup_path, '\\', &dno),
+                          Volume);
+    if (EFI_ERROR(Status))
+        return Status;
+    
+    // if the final node is a symlink, also resolve it
+    Status = FswMapStatus(fsw_dnode_resolve(dno, &target_dno),
+                          Volume);
+    fsw_dnode_release(dno);
+    if (EFI_ERROR(Status))
+        return Status;
+    dno = target_dno;
+    
+    // make a new EFI handle for the target dnode
+    Status = FswFileHandleFromDnode(dno, NewHandle);
+    fsw_dnode_release(dno);
+    return Status;
+    
+    
+    /*
     
     // analyze start of path, pick starting point
     PathElement = FileName;
@@ -758,7 +797,7 @@ EFI_STATUS FswDirOpen(IN FSW_FILE_DATA *File,
             child_dno = dno->parent;
             fsw_dnode_retain(child_dno);
         } else {
-            Status = FswMapStatus(fsw_dnode_dir_lookup(dno, &lookup_name, &child_dno),
+            Status = FswMapStatus(fsw_dnode_lookup(dno, &lookup_name, &child_dno),
                                   Volume);
             if (EFI_ERROR(Status))
                 goto errorexit;
@@ -783,6 +822,7 @@ errorexit:
     if (child_dno != NULL)
         fsw_dnode_release(child_dno);
     return Status;
+     */
 }
 
 //

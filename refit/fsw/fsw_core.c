@@ -1,7 +1,9 @@
-/*
- * fsw/fsw_core.c
- * File System Wrapper: Generic functions
- *
+/**
+ * \file fsw_core.c
+ * Core file system wrapper abstraction layer code.
+ */
+
+/*-
  * Copyright (c) 2006 Christoph Pfisterer
  *
  * Redistribution and use in source and binary forms, with or without
@@ -250,8 +252,8 @@ fsw_status_t fsw_dnode_stat(struct fsw_dnode *dno, struct fsw_dnode_stat *sb)
     return status;
 }
 
-fsw_status_t fsw_dnode_dir_lookup(struct fsw_dnode *dno,
-                                  struct fsw_string *lookup_name, struct fsw_dnode **child_dno)
+fsw_status_t fsw_dnode_lookup(struct fsw_dnode *dno,
+                              struct fsw_string *lookup_name, struct fsw_dnode **child_dno_out)
 {
     fsw_status_t    status;
     
@@ -261,20 +263,129 @@ fsw_status_t fsw_dnode_dir_lookup(struct fsw_dnode *dno,
     if (dno->type != FSW_DNODE_TYPE_DIR)
         return FSW_UNSUPPORTED;
     
-    return dno->vol->fstype_table->dir_lookup(dno->vol, dno, lookup_name, child_dno);
+    return dno->vol->fstype_table->dir_lookup(dno->vol, dno, lookup_name, child_dno_out);
 }
 
-fsw_status_t fsw_dnode_dir_read(struct fsw_shandle *shand, struct fsw_dnode **child_dno)
+fsw_status_t fsw_dnode_lookup_path(struct fsw_dnode *dno,
+                                   struct fsw_string *lookup_path, char separator,
+                                   struct fsw_dnode **child_dno_out)
+{
+    fsw_status_t    status;
+    struct fsw_volume *vol = dno->vol;
+    struct fsw_dnode *child_dno = NULL;
+    struct fsw_string lookup_name;
+    struct fsw_string remaining_path;
+    int             root_if_empty;
+    
+    remaining_path = *lookup_path;
+    fsw_dnode_retain(dno);
+    
+    // loop over the path
+    for (root_if_empty = 1; fsw_strlen(&remaining_path) > 0; root_if_empty = 0) {
+        // parse next path component
+        fsw_strsplit(&lookup_name, &remaining_path, separator);
+        
+#if DEBUG_LEVEL
+        Print(L"fsw_dnode_lookup_path: split into %d '%s' and %d '%s'\n",
+              lookup_name.len, lookup_name.data,
+              remaining_path.len, remaining_path.data);
+#endif
+        
+        if (fsw_strlen(&lookup_name) == 0) {        // empty path component
+            if (root_if_empty)
+                child_dno = vol->root;
+            else
+                child_dno = dno;
+            fsw_dnode_retain(child_dno);
+            
+        } else {
+            // do an actual directory lookup
+            
+            // ensure we have full information
+            status = fsw_dnode_fill(dno);
+            if (status)
+                goto errorexit;
+            
+            // resolve symlink if necessary
+            if (dno->type == FSW_DNODE_TYPE_SYMLINK) {
+                status = fsw_dnode_resolve(dno, &child_dno);
+                if (status)
+                    goto errorexit;
+                
+                // symlink target becomes the new dno
+                fsw_dnode_release(dno);
+                dno = child_dno;   // is already retained
+                child_dno = NULL;
+                
+                // ensure we have full information
+                status = fsw_dnode_fill(dno);
+                if (status)
+                    goto errorexit;
+            }
+            
+            // make sure we operate on a directory
+            if (dno->type != FSW_DNODE_TYPE_DIR) {
+                return FSW_UNSUPPORTED;
+                goto errorexit;
+            }
+            
+            // check special paths
+            if (fsw_streq_cstr(&lookup_name, ".")) {    // self directory
+                child_dno = dno;
+                fsw_dnode_retain(child_dno);
+                
+            } else if (fsw_streq_cstr(&lookup_name, "..")) {   // parent directory
+                if (dno->parent == NULL) {
+                    // We cannot go up from the root directory. Caution: Certain apps like the EFI shell
+                    // rely on this behaviour!
+                    status = FSW_NOT_FOUND;
+                    goto errorexit;
+                }
+                child_dno = dno->parent;
+                fsw_dnode_retain(child_dno);
+                
+            } else {
+                // do an actual lookup
+                status = vol->fstype_table->dir_lookup(vol, dno, &lookup_name, &child_dno);
+                if (status)
+                    goto errorexit;
+            }
+        }
+        
+        // child_dno becomes the new dno
+        fsw_dnode_release(dno);
+        dno = child_dno;   // is already retained
+        child_dno = NULL;
+        
+#if DEBUG_LEVEL
+        Print(L"fsw_dnode_lookup_path: now at inode %d\n", dno->dnode_id);
+#endif
+    }
+    
+    *child_dno_out = dno;
+    return FSW_SUCCESS;
+    
+errorexit:
+#if DEBUG_LEVEL
+    Print(L"fsw_dnode_lookup_path: leaving with error %d\n", status);
+#endif
+    fsw_dnode_release(dno);
+    if (child_dno != NULL)
+        fsw_dnode_release(child_dno);
+    return status;
+}
+
+fsw_status_t fsw_dnode_dir_read(struct fsw_shandle *shand, struct fsw_dnode **child_dno_out)
 {
     struct fsw_dnode *dno = shand->dnode;
     
     if (dno->type != FSW_DNODE_TYPE_DIR)
         return FSW_UNSUPPORTED;
     
-    return dno->vol->fstype_table->dir_read(dno->vol, dno, shand, child_dno);
+    return dno->vol->fstype_table->dir_read(dno->vol, dno, shand, child_dno_out);
 }
 
-fsw_status_t fsw_dnode_readlink(struct fsw_dnode *dno, struct fsw_string *link_target)
+fsw_status_t fsw_dnode_readlink(struct fsw_dnode *dno, struct fsw_string *target_name)
 {
     fsw_status_t    status;
     
@@ -284,7 +395,51 @@ fsw_status_t fsw_dnode_readlink(struct fsw_dnode *dno, struct fsw_string *link_t
     if (dno->type != FSW_DNODE_TYPE_SYMLINK)
         return FSW_UNSUPPORTED;
     
-    return dno->vol->fstype_table->readlink(dno->vol, dno, link_target);
+    return dno->vol->fstype_table->readlink(dno->vol, dno, target_name);
+}
+
+fsw_status_t fsw_dnode_resolve(struct fsw_dnode *dno, struct fsw_dnode **target_dno_out)
+{
+    fsw_status_t    status;
+    struct fsw_string target_name;
+    struct fsw_dnode *target_dno;
+    
+    fsw_dnode_retain(dno);
+    
+    while (1) {
+        // get full information
+        status = fsw_dnode_fill(dno);
+        if (status)
+            goto errorexit;
+        if (dno->type != FSW_DNODE_TYPE_SYMLINK) {
+            // found a non-symlink target, return it
+            *target_dno_out = dno;
+            return FSW_SUCCESS;
+        }
+        if (dno->parent == NULL) {    // safety measure, cannot happen in theory
+            status = FSW_NOT_FOUND;
+            goto errorexit;
+        }
+        
+        // read the link's target
+        status = fsw_dnode_readlink(dno, &target_name);
+        if (status)
+            goto errorexit;
+        
+        // resolve it
+        status = fsw_dnode_lookup_path(dno->parent, &target_name, '/', &target_dno);
+        fsw_strfree(&target_name);
+        if (status)
+            goto errorexit;
+        
+        // target_dno becomes the new dno
+        fsw_dnode_release(dno);
+        dno = target_dno;   // is already retained
+    }
+    
+errorexit:
+    fsw_dnode_release(dno);
+    return status;
 }
 
 //
@@ -407,6 +562,13 @@ fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_in
 // string functions
 //
 
+int fsw_strlen(struct fsw_string *s)
+{
+    if (s->type == FSW_STRING_TYPE_EMPTY)
+        return 0;
+    return s->len;
+}
+
 int fsw_streq(struct fsw_string *s1, struct fsw_string *s2)
 {
     int i;
@@ -465,6 +627,21 @@ int fsw_streq(struct fsw_string *s1, struct fsw_string *s2)
     }
 }
 
+int fsw_streq_cstr(struct fsw_string *s1, const char *s2)
+{
+    struct fsw_string temp_s;
+    int i;
+    
+    for (i = 0; s2[i]; i++)
+        ;
+    
+    temp_s.type = FSW_STRING_TYPE_ISO88591;
+    temp_s.size = temp_s.len = i;
+    temp_s.data = (char *)s2;
+    
+    return fsw_streq(s1, &temp_s);
+}
+
 fsw_status_t fsw_strdup_coerce(struct fsw_string *dest, int type, struct fsw_string *src)
 {
     fsw_status_t    status;
@@ -510,6 +687,64 @@ fsw_status_t fsw_strdup_coerce(struct fsw_string *dest, int type, struct fsw_str
     // TODO
     
     return FSW_UNSUPPORTED;
+}
+
+void fsw_strsplit(struct fsw_string *element, struct fsw_string *buffer, char separator)
+{
+    int i, maxlen;
+    
+    if (buffer->type == FSW_STRING_TYPE_EMPTY || buffer->len == 0) {
+        element->type = FSW_STRING_TYPE_EMPTY;
+        return;
+    }
+    
+    maxlen = buffer->len;
+    *element = *buffer;
+    
+    if (buffer->type == FSW_STRING_TYPE_ISO88591) {
+        fsw_u8 *p;
+        
+        p = (fsw_u8 *)element->data;
+        for (i = 0; i < maxlen; i++, p++) {
+            if (*p == separator) {
+                buffer->data = p + 1;
+                buffer->len -= i + 1;
+                break;
+            }
+        }
+        element->len = i;
+        if (i == maxlen) {
+            buffer->data = p;
+            buffer->len -= i;
+        }
+        
+        element->size = element->len;
+        buffer->size  = buffer->len;
+        
+    } else if (buffer->type == FSW_STRING_TYPE_UTF16) {
+        fsw_u16 *p;
+        
+        p = (fsw_u16 *)element->data;
+        for (i = 0; i < maxlen; i++, p++) {
+            if (*p == separator) {
+                buffer->data = p + 1;
+                buffer->len -= i + 1;
+                break;
+            }
+        }
+        element->len = i;
+        if (i == maxlen) {
+            buffer->data = p;
+            buffer->len -= i;
+        }
+        
+        element->size = element->len * sizeof(fsw_u16);
+        buffer->size  = buffer->len  * sizeof(fsw_u16);
+        
+    } else {
+        // fallback
+        buffer->type = FSW_STRING_TYPE_EMPTY;
+    }
 }
 
 void fsw_strfree(struct fsw_string *s)

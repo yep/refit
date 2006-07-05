@@ -1,7 +1,9 @@
-/*
- * fsw/fsw_core.h
- * Generic fsw definitions
- *
+/**
+ * \file fsw_core.h
+ * Core file system wrapper abstraction layer header.
+ */
+
+/*-
  * Copyright (c) 2006 Christoph Pfisterer
  * Portions Copyright (c) The Regents of the University of California.
  * Portions Copyright (c) UNIX System Laboratories, Inc.
@@ -42,6 +44,9 @@
 
 
 #define FSW_PATH_MAX (4096)
+
+#define FSW_CONCAT3(a,b,c) a##b##c
+#define FSW_FSTYPE_TABLE_NAME(t) FSW_CONCAT3(fsw_,t,_table)
 
 //
 // The following evil hack avoids a lot of casts between generic and fstype-specific
@@ -276,10 +281,14 @@ void         fsw_dnode_release(struct fsw_dnode *dno);
 fsw_status_t fsw_dnode_fill(struct fsw_dnode *dno);
 fsw_status_t fsw_dnode_stat(struct fsw_dnode *dno, struct fsw_dnode_stat *sb);
 
-fsw_status_t fsw_dnode_dir_lookup(struct fsw_dnode *dno,
-                                  struct fsw_string *lookup_name, struct fsw_dnode **child_dno);
-fsw_status_t fsw_dnode_dir_read(struct fsw_shandle *shand, struct fsw_dnode **child_dno);
+fsw_status_t fsw_dnode_lookup(struct fsw_dnode *dno,
+                              struct fsw_string *lookup_name, struct fsw_dnode **child_dno_out);
+fsw_status_t fsw_dnode_lookup_path(struct fsw_dnode *dno,
+                                   struct fsw_string *lookup_path, char separator,
+                                   struct fsw_dnode **child_dno_out);
+fsw_status_t fsw_dnode_dir_read(struct fsw_shandle *shand, struct fsw_dnode **child_dno_out);
 fsw_status_t fsw_dnode_readlink(struct fsw_dnode *dno, struct fsw_string *link_target);
+fsw_status_t fsw_dnode_resolve(struct fsw_dnode *dno, struct fsw_dnode **target_dno_out);
 
 // shandle
 
@@ -289,8 +298,12 @@ fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_in
 
 // string
 
+int          fsw_strlen(struct fsw_string *s);
 int          fsw_streq(struct fsw_string *s1, struct fsw_string *s2);
+int          fsw_streq_cstr(struct fsw_string *s1, const char *s2);
 fsw_status_t fsw_strdup_coerce(struct fsw_string *dest, int type, struct fsw_string *src);
+void         fsw_strsplit(struct fsw_string *lookup_name, struct fsw_string *buffer, char separator);
+
 void         fsw_strfree(struct fsw_string *s);
 
 /*

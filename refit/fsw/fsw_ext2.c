@@ -1,7 +1,9 @@
-/*
- * fsw/fsw_ext2.c
- * Functions specific to ext2 file systems
- *
+/**
+ * \file fsw_ext2.c
+ * ext2 file system driver code.
+ */
+
+/*-
  * Copyright (c) 2006 Christoph Pfisterer
  *
  * This program is free software; you can redistribute it and/or
@@ -50,7 +52,7 @@ static fsw_status_t fsw_ext2_readlink(struct fsw_ext2_volume *vol, struct fsw_ex
 // Dispatch Table
 //
 
-struct fsw_fstype_table   fsw_ext2_table = {
+struct fsw_fstype_table   FSW_FSTYPE_TABLE_NAME(ext2) = {
     { FSW_STRING_TYPE_ISO88591, 4, 4, "ext2" },
     sizeof(struct fsw_ext2_volume),
     sizeof(struct fsw_ext2_dnode),
@@ -484,8 +486,43 @@ static fsw_status_t fsw_ext2_read_dentry(struct fsw_shandle *shand, struct ext2_
 static fsw_status_t fsw_ext2_readlink(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno,
                                       struct fsw_string *link_target)
 {
-    // TODO
-    return FSW_UNSUPPORTED;
+    fsw_status_t    status;
+    int             ea_blocks;
+    struct fsw_shandle shand;
+    fsw_u32         buffer_size;
+    char            buffer[FSW_PATH_MAX];
+    struct fsw_string s;
+    
+    if (dno->g.size > FSW_PATH_MAX)
+        return FSW_VOLUME_CORRUPTED;
+    
+    s.type = FSW_STRING_TYPE_ISO88591;
+    s.size = s.len = (int)dno->g.size;
+    
+    ea_blocks = dno->raw->i_file_acl ? (vol->g.log_blocksize >> 9) : 0;
+    
+    if (dno->raw->i_blocks - ea_blocks == 0) {
+        // "fast" symlink, path is stored inside the inode
+        s.data = dno->raw->i_block;
+    } else {
+        // "slow" symlink, path is stored in normal inode data
+        s.data = buffer;
+        
+        // open shandle and read the data
+        status = fsw_shandle_open(dno, &shand);
+        if (status)
+            return status;
+        buffer_size = (fsw_u32)s.size;
+        status = fsw_shandle_read(&shand, &buffer_size, buffer);
+        fsw_shandle_close(&shand);
+        if (status)
+            return status;
+        if ((int)buffer_size < s.size)
+            return FSW_VOLUME_CORRUPTED;
+    }
+    
+    status = fsw_strdup_coerce(link_target, vol->g.host_string_type, &s);
+    return status;
 }
 
 // EOF

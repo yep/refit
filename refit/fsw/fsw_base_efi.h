@@ -1,7 +1,9 @@
-/*
- * fsw/fsw_base_efi.h
- * Base type definitions for EFI host environment
- *
+/**
+ * \file fsw_base_efi.h
+ * Base definitions for the EFI host environment.
+ */
+
+/*-
  * Copyright (c) 2006 Christoph Pfisterer
  *
  * Redistribution and use in source and binary forms, with or without
