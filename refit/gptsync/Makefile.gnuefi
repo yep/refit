@@ -1,0 +1,17 @@
+#
+# gptsync/Makefile
+# Build control file for the gptsync tool
+#
+
+LOCAL_CPPFLAGS  = -I. -I../include -DEFI32
+LOCAL_LDFLAGS   = 
+LOCAL_LIBS      = 
+
+OBJS            = gptsync.o os_efi.o
+TARGET          = gptsync.efi
+
+all: $(TARGET)
+
+include ../Make.common
+
+# EOF
