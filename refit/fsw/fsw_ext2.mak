@@ -53,6 +53,7 @@ all : dirs $(LIBS) $(OBJECTS)
 OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\fsw_efi.obj \
     $(BUILD_DIR)\fsw_core.obj \
+    $(BUILD_DIR)\fsw_lib.obj \
     $(BUILD_DIR)\fsw_ext2.obj \
 
 INC_DEPS = $(INC_DEPS) fsw_efi.h fsw_base_efi.h fsw_core.h fsw_ext2.h fsw_ext2_disk.h
@@ -63,6 +64,7 @@ INC_DEPS = $(INC_DEPS) fsw_efi.h fsw_base_efi.h fsw_core.h fsw_ext2.h fsw_ext2_d
 
 $(BUILD_DIR)\fsw_efi.obj    : $(*B).c $(INC_DEPS)
 $(BUILD_DIR)\fsw_core.obj   : $(*B).c $(INC_DEPS)
+$(BUILD_DIR)\fsw_lib.obj    : $(*B).c $(INC_DEPS)
 $(BUILD_DIR)\fsw_ext2.obj   : $(*B).c $(INC_DEPS)
 
 #
