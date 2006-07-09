@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------------
 PROJECT_NAME           = "File System Wrapper"
 PROJECT_NUMBER         = 0.1
-OUTPUT_DIRECTORY       = /Users/chrisp/efi_toolkit/refit/fsw/doc
+OUTPUT_DIRECTORY       = doc
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
 USE_WINDOWS_ENCODING   = NO
@@ -25,8 +25,7 @@ ABBREVIATE_BRIEF       = "The $name class" \
 ALWAYS_DETAILED_SEC    = NO
 INLINE_INHERITED_MEMB  = NO
 FULL_PATH_NAMES        = YES
-STRIP_FROM_PATH        = /Applications/ \
-                         /Users/chrisp/efi_toolkit/refit/
+STRIP_FROM_PATH        = 
 STRIP_FROM_INC_PATH    = 
 SHORT_NAMES            = NO
 JAVADOC_AUTOBRIEF      = YES
@@ -83,7 +82,8 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = /Users/chrisp/efi_toolkit/refit/fsw
+#INPUT                  = /Users/chrisp/efi_toolkit/refit/fsw
+INPUT                  = .
 FILE_PATTERNS          = *.c \
                          *.cc \
                          *.cxx \
