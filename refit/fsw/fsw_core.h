@@ -43,9 +43,12 @@
 #include "fsw_base.h"
 
 
+/** Maximum size for a path, specifically symlink target paths. */
 #define FSW_PATH_MAX (4096)
 
+/** Helper macro for token concatenation. */
 #define FSW_CONCAT3(a,b,c) a##b##c
+/** Expands to the name of a fstype dispatch table (fsw_fstype_table) for a named file system type. */
 #define FSW_FSTYPE_TABLE_NAME(t) FSW_CONCAT3(fsw_,t,_table)
 
 //
@@ -64,14 +67,15 @@ struct VOLSTRUCTNAME;
 struct DNODESTRUCTNAME;
 #endif
 
-//
-// types
-//
 
-// status / errors
-
+/**
+ * Status code type, returned from all functions that can fail.
+ */
 typedef int fsw_status_t;
 
+/**
+ * Possible status codes.
+ */
 enum {
     FSW_SUCCESS,
     FSW_OUT_OF_MEMORY,
@@ -82,19 +86,22 @@ enum {
     FSW_UNKNOWN_ERROR
 };
 
-// string
 
 /**
  * Core: A string with explicit length and encoding information.
  */
 
 struct fsw_string {
-    int         type;               // encoding of the string - empty, ISO-8859-1, UTF8, UTF16
-    int         len;                // length in chars
-    int         size;               // total data size in bytes
-    void        *data;              // data pointer (may be NULL if type is EMPTY or len is zero)
+    int         type;               //!< Encoding of the string - empty, ISO-8859-1, UTF8, UTF16
+    int         len;                //!< Length in characters
+    int         size;               //!< Total data size in bytes
+    void        *data;              //!< Data pointer (may be NULL if type is EMPTY or len is zero)
 };
 
+/**
+ * Possible string types / encodings. In the case of FSW_STRING_TYPE_EMPTY,
+ * all other members of the fsw_string structure may be invalid.
+ */
 enum {
     FSW_STRING_TYPE_EMPTY,
     FSW_STRING_TYPE_ISO88591,
@@ -102,9 +109,11 @@ enum {
     FSW_STRING_TYPE_UTF16
 };
 
+/** Static initializer for an empty string. */
 #define FSW_STRING_INIT { FSW_STRING_TYPE_EMPTY, 0, 0, NULL }
 
-// volume
+
+/* forward declarations */
 
 struct fsw_dnode;
 struct fsw_host_table;
@@ -115,18 +124,18 @@ struct fsw_fstype_table;
  */
 
 struct fsw_volume {
-    fsw_u32     phys_blocksize;     // block size for file system structures
-    fsw_u32     log_blocksize;      // block size for logical file data
+    fsw_u32     phys_blocksize;     //!< Block size for disk access / file system structures
+    fsw_u32     log_blocksize;      //!< Block size for logical file data
     
-    struct DNODESTRUCTNAME *root;   // root directory dnode
-    struct fsw_string label;        // volume label
+    struct DNODESTRUCTNAME *root;   //!< Root directory dnode
+    struct fsw_string label;        //!< Volume label
     
-    struct fsw_dnode *dnode_head;   // list of all dnodes allocated for this volume
+    struct fsw_dnode *dnode_head;   //!< List of all dnodes allocated for this volume
     
-    void        *host_data;
-    struct fsw_host_table *host_table;
-    struct fsw_fstype_table *fstype_table;
-    int         host_string_type;
+    void        *host_data;         //!< Hook for a host-specific data structure
+    struct fsw_host_table *host_table;      //!< Dispatch table for host-specific functions
+    struct fsw_fstype_table *fstype_table;  //!< Dispatch table for file system specific functions
+    int         host_string_type;   //!< String type used by the host environment
 };
 
 /**
@@ -134,18 +143,24 @@ struct fsw_volume {
  */
 
 struct fsw_dnode {
-    struct VOLSTRUCTNAME *vol;      // volume we belong to
-    struct DNODESTRUCTNAME *parent; // parent directory
-    fsw_u32     dnode_id;           // unique id number (usually the inode number)
-    int         type;               // type of the dnode - file, dir, symlink, special
-    fsw_u32     refcount;           // reference count
-    fsw_u64     size;               // data size in bytes
-    struct fsw_string name;         // name of this item
+    fsw_u32     refcount;           //!< Reference count
     
-    struct fsw_dnode *next;         // linked list of all dnodes
-    struct fsw_dnode *prev;
+    struct VOLSTRUCTNAME *vol;      //!< The volume this dnode belongs to
+    struct DNODESTRUCTNAME *parent; //!< Parent directory dnode
+    struct fsw_string name;         //!< Name of this item in the parent directory
+    
+    fsw_u32     dnode_id;           //!< Unique id number (usually the inode number)
+    int         type;               //!< Type of the dnode - file, dir, symlink, special
+    fsw_u64     size;               //!< Data size in bytes
+    
+    struct fsw_dnode *next;         //!< Doubly-linked list of all dnodes: previous dnode
+    struct fsw_dnode *prev;         //!< Doubly-linked list of all dnodes: next dnode
 };
 
+/**
+ * Possible dnode types. FSW_DNODE_TYPE_UNKNOWN may only be used before
+ * fsw_dnode_fill has been called on the dnode.
+ */
 enum {
     FSW_DNODE_TYPE_UNKNOWN,
     FSW_DNODE_TYPE_FILE,
@@ -159,13 +174,17 @@ enum {
  */
 
 struct fsw_extent {
-    int         type;               // type of extent
-    fsw_u32     log_start;          // starting logical block number
-    fsw_u32     log_count;          // logical block count
-    fsw_u32     phys_start;         // starting physical block number
-    void        *buffer;            // allocated buffer pointer
+    int         type;               //!< Type of extent specification
+    fsw_u32     log_start;          //!< Starting logical block number
+    fsw_u32     log_count;          //!< Logical block count
+    fsw_u32     phys_start;         //!< Starting physical block number (for FSW_EXTENT_TYPE_PHYSBLOCK only)
+    void        *buffer;            //!< Allocated buffer pointer (for FSW_EXTENT_TYPE_BUFFER only)
 };
 
+/**
+ * Possible extent representation types. FSW_EXTENT_TYPE_INVALID is for shandle's
+ * internal use only, it must not be returned from a get_extent function.
+ */
 enum {
     FSW_EXTENT_TYPE_INVALID,
     FSW_EXTENT_TYPE_SPARSE,
@@ -179,10 +198,10 @@ enum {
  */
 
 struct fsw_shandle {
-    struct fsw_dnode *dnode;        // node to read data from
+    struct fsw_dnode *dnode;        //!< The dnode this handle reads data from
     
-    fsw_u64     pos;                // current file pointer in bytes
-    struct fsw_extent extent;       // current extent
+    fsw_u64     pos;                //!< Current file pointer in bytes
+    struct fsw_extent extent;       //!< Current extent
 };
 
 /**
@@ -190,8 +209,8 @@ struct fsw_shandle {
  */
 
 struct fsw_volume_stat {
-    fsw_u64     total_bytes;
-    fsw_u64     free_bytes;
+    fsw_u64     total_bytes;        //!< Total size of data area size in bytes
+    fsw_u64     free_bytes;         //!< Bytes still available for storing file data
 };
 
 /**
@@ -199,12 +218,15 @@ struct fsw_volume_stat {
  */
 
 struct fsw_dnode_stat {
-    fsw_u64     used_bytes;
-    void        (*store_time_posix)(struct fsw_dnode_stat *sb, int which, fsw_u32 posix_time);
-    void        (*store_attr_posix)(struct fsw_dnode_stat *sb, fsw_u16 posix_mode);
-    void        *host_data;
+    fsw_u64     used_bytes;         //!< Bytes actually used by the file on disk
+    void        (*store_time_posix)(struct fsw_dnode_stat *sb, int which, fsw_u32 posix_time);   //!< Callback for storing a Posix-style timestamp
+    void        (*store_attr_posix)(struct fsw_dnode_stat *sb, fsw_u16 posix_mode);   //!< Callbock for storing a Posix-style file mode
+    void        *host_data;         //!< Hook for a host-specific data structure
 };
 
+/**
+ * Type of the timestamp passed into store_time_posix.
+ */
 enum {
     FSW_DNODE_STAT_CTIME,
     FSW_DNODE_STAT_MTIME,
@@ -217,7 +239,7 @@ enum {
 
 struct fsw_host_table
 {
-    int         native_string_type;
+    int         native_string_type; //!< String type used by the host environment
     
     void         (*change_blocksize)(struct fsw_volume *vol,
                                      fsw_u32 old_phys_blocksize, fsw_u32 old_log_blocksize,
@@ -231,9 +253,9 @@ struct fsw_host_table
 
 struct fsw_fstype_table
 {
-    struct fsw_string name;
-    fsw_u32     volume_struct_size;
-    fsw_u32     dnode_struct_size;
+    struct fsw_string name;         //!< String giving the name of the file system
+    fsw_u32     volume_struct_size; //!< Size for allocating the fsw_volume structure
+    fsw_u32     dnode_struct_size;  //!< Size for allocating the fsw_dnode structure
     
     fsw_status_t (*volume_mount)(struct VOLSTRUCTNAME *vol);
     void         (*volume_free)(struct VOLSTRUCTNAME *vol);
@@ -254,11 +276,11 @@ struct fsw_fstype_table
                              struct fsw_string *link_target);
 };
 
-//
-// functions
-//
 
-// volume / general
+/**
+ * \name Volume Functions
+ */
+/*@{*/
 
 fsw_status_t fsw_mount(void *host_data,
                        struct fsw_host_table *host_table,
@@ -270,7 +292,13 @@ fsw_status_t fsw_volume_stat(struct fsw_volume *vol, struct fsw_volume_stat *sb)
 void         fsw_set_blocksize(struct VOLSTRUCTNAME *vol, fsw_u32 phys_blocksize, fsw_u32 log_blocksize);
 fsw_status_t fsw_read_block(struct VOLSTRUCTNAME *vol, fsw_u32 phys_bno, void **buffer_out);
 
-// dnode
+/*@}*/
+
+
+/**
+ * \name dnode Functions
+ */
+/*@{*/
 
 fsw_status_t fsw_dnode_create_root(struct VOLSTRUCTNAME *vol, fsw_u32 dnode_id, struct DNODESTRUCTNAME **dno_out);
 fsw_status_t fsw_dnode_create(struct DNODESTRUCTNAME *parent_dno, fsw_u32 dnode_id, int type,
@@ -290,13 +318,25 @@ fsw_status_t fsw_dnode_dir_read(struct fsw_shandle *shand, struct fsw_dnode **ch
 fsw_status_t fsw_dnode_readlink(struct fsw_dnode *dno, struct fsw_string *link_target);
 fsw_status_t fsw_dnode_resolve(struct fsw_dnode *dno, struct fsw_dnode **target_dno_out);
 
-// shandle
+/*@}*/
+
+
+/**
+ * \name shandle Functions
+ */
+/*@{*/
 
 fsw_status_t fsw_shandle_open(struct DNODESTRUCTNAME *dno, struct fsw_shandle *shand);
 void         fsw_shandle_close(struct fsw_shandle *shand);
 fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_inout, void *buffer);
 
-// string
+/*@}*/
+
+
+/**
+ * \name String Functions
+ */
+/*@{*/
 
 int          fsw_strlen(struct fsw_string *s);
 int          fsw_streq(struct fsw_string *s1, struct fsw_string *s2);
@@ -306,12 +346,17 @@ void         fsw_strsplit(struct fsw_string *lookup_name, struct fsw_string *buf
 
 void         fsw_strfree(struct fsw_string *s);
 
-/*
- * mode macros
- *
- * from FreeBSD sys/stat.h
- */
+/*@}*/
 
+
+/**
+ * \name Posix Mode Macros
+ * These macros can be used globally to test fields and bits in
+ * Posix-style modes.
+ *
+ * Taken from FreeBSD sys/stat.h.
+ */
+/*@{*/
 #ifndef S_IRWXU
 
 #define	S_ISUID	0004000			/* set user id on execution */
@@ -355,7 +400,8 @@ void         fsw_strfree(struct fsw_string *s);
 
 #define S_BLKSIZE	512		/* block size used in the stat struct */
 
-#endif  /* mode macros */
+#endif
+/*@}*/
 
 
 #endif

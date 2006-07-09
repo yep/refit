@@ -69,9 +69,10 @@ struct fsw_fstype_table   FSW_FSTYPE_TABLE_NAME(ext2) = {
     fsw_ext2_readlink,
 };
 
-//
-// Mount Volume: Read superblock, construct root dnode
-//
+/**
+ * Mount an ext2 volume. Reads the superblock and constructs the
+ * root directory dnode.
+ */
 
 static fsw_status_t fsw_ext2_volume_mount(struct fsw_ext2_volume *vol)
 {
@@ -142,9 +143,11 @@ static fsw_status_t fsw_ext2_volume_mount(struct fsw_ext2_volume *vol)
     return FSW_SUCCESS;
 }
 
-//
-// Free Volume: Free per-volume data structures after unmount
-//
+/**
+ * Free the volume data structure. Called by the core after an unmount or after
+ * an unsuccessful mount to release the memory used by the file system type specific
+ * part of the volume structure.
+ */
 
 static void fsw_ext2_volume_free(struct fsw_ext2_volume *vol)
 {
@@ -152,9 +155,9 @@ static void fsw_ext2_volume_free(struct fsw_ext2_volume *vol)
         fsw_free(vol->sb);
 }
 
-//
-// Get stat information on the volume
-//
+/**
+ * Get in-depth information on a volume.
+ */
 
 static fsw_status_t fsw_ext2_volume_stat(struct fsw_ext2_volume *vol, struct fsw_volume_stat *sb)
 {
@@ -163,9 +166,13 @@ static fsw_status_t fsw_ext2_volume_stat(struct fsw_ext2_volume *vol, struct fsw
     return FSW_SUCCESS;
 }
 
-//
-// Fill dnode: Get full information on a dnode from disk
-//
+/**
+ * Get full information on a dnode from disk. This function is called by the core
+ * whenever it needs to access fields in the dnode structure that may not
+ * be filled immediately upon creation of the dnode. In the case of ext2, we
+ * delay fetching of the inode structure until dnode_fill is called. The size and
+ * type fields are invalid until this function has been called.
+ */
 
 static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno)
 {
@@ -224,9 +231,11 @@ static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_
     return FSW_SUCCESS;
 }
 
-//
-// Free dnode: Free per-dnode data structures after close
-//
+/**
+ * Free the dnode data structure. Called by the core when deallocating a dnode
+ * structure to release the memory used by the file system type specific part
+ * of the dnode structure.
+ */
 
 static void fsw_ext2_dnode_free(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno)
 {
@@ -234,9 +243,12 @@ static void fsw_ext2_dnode_free(struct fsw_ext2_volume *vol, struct fsw_ext2_dno
         fsw_free(dno->raw);
 }
 
-//
-// Get stat information on a dnode
-//
+/**
+ * Get in-depth information on a dnode. The core makes sure that fsw_ext2_dnode_fill
+ * has been called on the dnode before this function is called. Note that some
+ * data is not directly stored into the structure, but passed to a host-specific
+ * callback that converts it to the host-specific format.
+ */
 
 static fsw_status_t fsw_ext2_dnode_stat(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno,
                                         struct fsw_dnode_stat *sb)
@@ -250,9 +262,18 @@ static fsw_status_t fsw_ext2_dnode_stat(struct fsw_ext2_volume *vol, struct fsw_
     return FSW_SUCCESS;
 }
 
-//
-// Get Extent: Find the next piece of storage for a file
-//
+/**
+ * Retrieve file data mapping information. This function is called by the core when
+ * fsw_shandle_read needs to know where on the disk the required piece of the file's
+ * data can be found. The core makes sure that fsw_ext2_dnode_fill has been called
+ * on the dnode before. Our task here is to get the physical disk block number for
+ * the requested logical block number.
+ *
+ * The ext2 file system does not use extents, but stores a list of block numbers
+ * using the usual direct, indirect, double-indirect, triple-indirect scheme. To
+ * optimize access, this function checks if the following file blocks are mapped
+ * to consecutive disk blocks and returns a combined extent if possible.
+ */
 
 static fsw_status_t fsw_ext2_get_extent(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno,
                                         struct fsw_extent *extent)
@@ -336,9 +357,12 @@ static fsw_status_t fsw_ext2_get_extent(struct fsw_ext2_volume *vol, struct fsw_
     return FSW_SUCCESS;
 }
 
-//
-// Directory Lookup: Get child dnode by name
-//
+/**
+ * Lookup a directory's child dnode by name. This function is called on a directory
+ * to retrieve the directory entry with the given name. A dnode is constructed for
+ * this entry and returned. The core makes sure that fsw_ext2_dnode_fill has been called
+ * and the dnode is actually a directory.
+ */
 
 static fsw_status_t fsw_ext2_dir_lookup(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno,
                                         struct fsw_string *lookup_name, struct fsw_ext2_dnode **child_dno_out)
@@ -388,9 +412,13 @@ errorexit:
     return status;
 }
 
-//
-// Directory Read: Get next child entry
-//
+/**
+ * Get the next directory entry when reading a directory. This function is called during
+ * directory iteration to retrieve the next directory entry. A dnode is constructed for
+ * the entry and returned. The core makes sure that fsw_ext2_dnode_fill has been called
+ * and the dnode is actually a directory. The shandle provided by the caller is used to
+ * record the position in the directory between calls.
+ */
 
 static fsw_status_t fsw_ext2_dir_read(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno,
                                       struct fsw_shandle *shand, struct fsw_ext2_dnode **child_dno_out)
@@ -431,9 +459,11 @@ static fsw_status_t fsw_ext2_dir_read(struct fsw_ext2_volume *vol, struct fsw_ex
     return status;
 }
 
-//
-// Read directory entry from storage handle
-//
+/**
+ * Read a directory entry from the directory's raw data. This internal function is used
+ * to read a raw ext2 directory entry into memory. The shandle's position pointer is adjusted
+ * to point to the next entry.
+ */
 
 static fsw_status_t fsw_ext2_read_dentry(struct fsw_shandle *shand, struct ext2_dir_entry *entry)
 {
@@ -479,9 +509,16 @@ static fsw_status_t fsw_ext2_read_dentry(struct fsw_shandle *shand, struct ext2_
     return FSW_SUCCESS;
 }
 
-//
-// Read the target of a symbolic link
-//
+/**
+ * Get the target path of a symbolic link. This function is called when a symbolic
+ * link needs to be resolved. The core makes sure that the fsw_ext2_dnode_fill has been
+ * called on the dnode and that it really is a symlink.
+ *
+ * For ext2, the target path can be stored inline in the inode structure (in the space
+ * otherwise occupied by the block pointers) or in the inode's data. There is no flag
+ * indicating this, only the number of blocks entry (i_blocks) can be used as an
+ * indication. The check used here comes from the Linux kernel.
+ */
 
 static fsw_status_t fsw_ext2_readlink(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno,
                                       struct fsw_string *link_target)

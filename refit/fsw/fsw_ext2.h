@@ -31,7 +31,9 @@
 #include "fsw_ext2_disk.h"
 
 
+//! Block size to be used when reading the ext2 superblock.
 #define EXT2_SUPERBLOCK_BLOCKSIZE  1024
+//! Block number where the (master copy of the) ext2 superblock resides.
 #define EXT2_SUPERBLOCK_BLOCKNO       1
 
 
@@ -40,22 +42,22 @@
  */
 
 struct fsw_ext2_volume {
-    struct fsw_volume g;
+    struct fsw_volume g;            //!< Generic volume structure
     
-    struct ext2_super_block *sb;    // full superblock structure
-    fsw_u32     ind_bcnt;           // number of blocks addressable through an indirect block
-    fsw_u32     dind_bcnt;          // number of blocks addressable through a double-indirect block
-    fsw_u32     inode_size;         // size of inode structure in bytes
+    struct ext2_super_block *sb;    //!< Full raw ext2 superblock structure
+    fsw_u32     ind_bcnt;           //!< Number of blocks addressable through an indirect block
+    fsw_u32     dind_bcnt;          //!< Number of blocks addressable through a double-indirect block
+    fsw_u32     inode_size;         //!< Size of inode structure in bytes
 };
 
 /**
- * ext2: dnode structure with ext2-specific data.
+ * ext2: Dnode structure with ext2-specific data.
  */
 
 struct fsw_ext2_dnode {
-    struct fsw_dnode g;
+    struct fsw_dnode g;             //!< Generic dnode structure
     
-    struct ext2_inode *raw;         // full inode structure
+    struct ext2_inode *raw;         //!< Full raw inode structure
 };
 
 
