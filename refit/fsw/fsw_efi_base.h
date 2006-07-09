@@ -1,5 +1,5 @@
 /**
- * \file fsw_base_efi.h
+ * \file fsw_efi_base.h
  * Base definitions for the EFI host environment.
  */
 
@@ -35,8 +35,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FSW_BASE_EFI_H_
-#define _FSW_BASE_EFI_H_
+#ifndef _FSW_EFI_BASE_H_
+#define _FSW_EFI_BASE_H_
 
 
 #include <efi.h>

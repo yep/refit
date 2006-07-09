@@ -38,7 +38,7 @@
 #ifndef _FSW_EFI_H_
 #define _FSW_EFI_H_
 
-#include "fsw_base_efi.h"
+#include "fsw_efi_base.h"
 #include "fsw_core.h"
 
 
@@ -92,6 +92,16 @@ typedef struct {
 #define FSW_EFI_FILE_TYPE_DIR   (1)
 
 #define FSW_FILE_FROM_FILE_HANDLE(a)  CR (a, FSW_FILE_DATA, FileHandle, FSW_FILE_DATA_SIGNATURE)
+
+
+//
+// Library functions
+//
+
+VOID FswDecodeTime(OUT EFI_TIME *EfiTime, IN UINT32 UnixTime);
+
+UINTN FswStringSize(struct fsw_string *s);
+VOID FswStringCopy(CHAR16 *Dest, struct fsw_string *src);
 
 
 #endif
