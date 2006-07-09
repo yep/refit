@@ -68,7 +68,7 @@ static const int year_lengths[2] = {
     DAYSPERNYEAR, DAYSPERLYEAR
 };
 
-VOID FswDecodeTime(OUT EFI_TIME *EfiTime, IN UINT32 UnixTime)
+VOID fsw_efi_decode_time(OUT EFI_TIME *EfiTime, IN UINT32 UnixTime)
 {
     long        days, rem;
     int         y, newy, yleap;
@@ -106,14 +106,14 @@ VOID FswDecodeTime(OUT EFI_TIME *EfiTime, IN UINT32 UnixTime)
 // String functions, used for file and volume info
 //
 
-UINTN FswStringSize(struct fsw_string *s)
+UINTN fsw_efi_strsize(struct fsw_string *s)
 {
     if (s->type == FSW_STRING_TYPE_EMPTY)
         return sizeof(CHAR16);
     return (s->len + 1) * sizeof(CHAR16);
 }
 
-VOID FswStringCopy(CHAR16 *Dest, struct fsw_string *src)
+VOID fsw_efi_strcpy(CHAR16 *Dest, struct fsw_string *src)
 {
     if (src->type == FSW_STRING_TYPE_EMPTY) {
         Dest[0] = 0;

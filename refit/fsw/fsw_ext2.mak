@@ -14,7 +14,7 @@
 #
 
 BASE_NAME         = fsw_ext2
-IMAGE_ENTRY_POINT = FswEntryPoint
+IMAGE_ENTRY_POINT = fsw_efi_main
 
 #
 # Globals needed by master.mak
