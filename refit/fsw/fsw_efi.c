@@ -50,7 +50,7 @@
 /** Expands to the EFI driver name given the file system type name. */
 #define FSW_EFI_DRIVER_NAME(t) L"Fsw " FSW_EFI_STRINGIFY(t) L" File System Driver"
 
-// functions
+// function prototypes
 
 EFI_STATUS EFIAPI fsw_efi_DriverBinding_Supported(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
                                                   IN EFI_HANDLE                   ControllerHandle,
@@ -112,7 +112,9 @@ EFI_STATUS fsw_efi_dnode_fill_FileInfo(IN FSW_VOLUME_DATA *Volume,
                                        IN OUT UINTN *BufferSize,
                                        OUT VOID *Buffer);
 
-// EFI interface structures
+/**
+ * Interface structure for the EFI Driver Binding protocol.
+ */
 
 EFI_DRIVER_BINDING_PROTOCOL fsw_efi_DriverBinding_table = {
     fsw_efi_DriverBinding_Supported,
@@ -123,13 +125,19 @@ EFI_DRIVER_BINDING_PROTOCOL fsw_efi_DriverBinding_table = {
     NULL
 };
 
+/**
+ * Interface structure for the EFI Component Name protocol.
+ */
+
 EFI_COMPONENT_NAME_PROTOCOL fsw_efi_ComponentName_table = {
     fsw_efi_ComponentName_GetDriverName,
     fsw_efi_ComponentName_GetControllerName,
     "eng"
 };
 
-// FSW interface structures
+/**
+ * Dispatch table for our FSW host driver.
+ */
 
 struct fsw_host_table   fsw_efi_host_table = {
     FSW_STRING_TYPE_UTF16,
@@ -141,15 +149,13 @@ struct fsw_host_table   fsw_efi_host_table = {
 extern struct fsw_fstype_table   FSW_FSTYPE_TABLE_NAME(FSTYPE);
 
 
-//
-// EFI image entry point
-//
-// Installs the Driver Binding and Component Name protocols on the image's handle.
-// Mounting a file system is initiated through Driver Binding at the firmware's
-// request.
-//
-
 EFI_DRIVER_ENTRY_POINT(fsw_efi_main)
+
+/**
+ * Image entry point. Installs the Driver Binding and Component Name protocols
+ * on the image's handle. Actually mounting a file system is initiated through
+ * the Driver Binding protocol at the firmware's request.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_main(IN EFI_HANDLE         ImageHandle,
                                IN EFI_SYSTEM_TABLE   *SystemTable)
@@ -182,9 +188,12 @@ EFI_STATUS EFIAPI fsw_efi_main(IN EFI_HANDLE         ImageHandle,
     return EFI_SUCCESS;
 }
 
-//
-// EFI Driver Binding interface: check if we support a "controller"
-//
+/**
+ * Driver Binding EFI protocol, Supported function. This function is called by EFI
+ * to test if this driver can handle a certain device. Our implementation only checks
+ * if the device is a disk (i.e. that it supports the Block I/O and Disk I/O protocols)
+ * and implicitly checks if the disk is already in use by another driver.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_DriverBinding_Supported(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
                                                   IN EFI_HANDLE                   ControllerHandle,
@@ -221,9 +230,18 @@ EFI_STATUS EFIAPI fsw_efi_DriverBinding_Supported(IN EFI_DRIVER_BINDING_PROTOCOL
     return Status;
 }
 
-//
-// EFI Driver Binding interface: start this driver on the given "controller"
-//
+/**
+ * Driver Binding EFI protocol, Start function. This function is called by EFI
+ * to start driving the given device. It is still possible at this point to
+ * return EFI_UNSUPPORTED, and in fact we will do so if the file system driver
+ * cannot find the superblock signature (or equivalent) that it expects.
+ *
+ * This function allocates memory for a per-volume structure, opens the
+ * required protocols (just Disk I/O in our case, Block I/O is only looked
+ * at to get the MediaId field), and lets the FSW core mount the file system.
+ * If successful, an EFI Simple File System protocol is exported on the
+ * device handle.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_DriverBinding_Start(IN EFI_DRIVER_BINDING_PROTOCOL  *This,
                                               IN EFI_HANDLE                   ControllerHandle,
@@ -302,9 +320,15 @@ EFI_STATUS EFIAPI fsw_efi_DriverBinding_Start(IN EFI_DRIVER_BINDING_PROTOCOL  *T
     return Status;
 }
 
-//
-// EFI Driver Binding interface: stop this driver on the given "controller"
-//
+/**
+ * Driver Binding EFI protocol, Stop function. This function is called by EFI
+ * to stop the driver on the given device. This translates to an unmount
+ * call for the FSW core.
+ *
+ * We assume that all file handles on the volume have been closed before
+ * the driver is stopped. At least with the EFI shell, that is actually the
+ * case; it closes all file handles between commands.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_DriverBinding_Stop(IN  EFI_DRIVER_BINDING_PROTOCOL  *This,
                                              IN  EFI_HANDLE                   ControllerHandle,
@@ -360,9 +384,11 @@ EFI_STATUS EFIAPI fsw_efi_DriverBinding_Stop(IN  EFI_DRIVER_BINDING_PROTOCOL  *T
     return Status;
 }
 
-//
-// EFI Component Name protocol interface
-//
+/**
+ * Component Name EFI protocol, GetDriverName function. Used by the EFI
+ * environment to inquire the name of this driver. The name returned is
+ * based on the file system type actually used in compilation.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_ComponentName_GetDriverName(IN  EFI_COMPONENT_NAME_PROTOCOL  *This,
                                                       IN  CHAR8                        *Language,
@@ -378,6 +404,11 @@ EFI_STATUS EFIAPI fsw_efi_ComponentName_GetDriverName(IN  EFI_COMPONENT_NAME_PRO
     return EFI_UNSUPPORTED;
 }
 
+/**
+ * Component Name EFI protocol, GetControllerName function. Not implemented
+ * because this is not a "bus" driver in the sense of the EFI Driver Model.
+ */
+
 EFI_STATUS EFIAPI fsw_efi_ComponentName_GetControllerName(IN  EFI_COMPONENT_NAME_PROTOCOL    *This,
                                                           IN  EFI_HANDLE                     ControllerHandle,
                                                           IN  EFI_HANDLE                     ChildHandle  OPTIONAL,
@@ -387,9 +418,12 @@ EFI_STATUS EFIAPI fsw_efi_ComponentName_GetControllerName(IN  EFI_COMPONENT_NAME
     return EFI_UNSUPPORTED;
 }
 
-//
-// FSW interface functions
-//
+/**
+ * FSW interface function for block size changes. This function is called by the FSW core
+ * when the file system driver changes the block sizes for the volume. The block cache
+ * is dropped and invalidated. A new block buffer will be allocated the next time
+ * fsw_efi_read_block is called.
+ */
 
 void fsw_efi_change_blocksize(struct fsw_volume *vol,
                               fsw_u32 old_phys_blocksize, fsw_u32 old_log_blocksize,
@@ -404,6 +438,14 @@ void fsw_efi_change_blocksize(struct fsw_volume *vol,
     Volume->BlockInBuffer = INVALID_BLOCK_NO;
 }
 
+/**
+ * FSW interface function to read data blocks. This function is called by the FSW core
+ * to read a block of data from the device. The buffer is allocated by the host driver.
+ * Currently, the last block read is cached in memory. In the future, the core may
+ * implement a generic block cache for host environments that don't have their own
+ * caching mechanisms.
+ */
+
 fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void **buffer_out)
 {
     EFI_STATUS          Status;
@@ -416,7 +458,7 @@ fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void *
     }
     
 #if DEBUG_LEVEL == 2
-    Print(L"FswReadBlock: %d  (%d)\n", phys_bno, vol->phys_blocksize);
+    Print(L"fsw_efi_read_block: %d  (%d)\n", phys_bno, vol->phys_blocksize);
 #endif
     
     // allocate buffer if necessary
@@ -442,9 +484,11 @@ fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void *
     return FSW_SUCCESS;
 }
 
-//
-// FSW error code mapping
-//
+/**
+ * Map FSW status codes to EFI status codes. The FSW_IO_ERROR code is only produced
+ * by fsw_efi_read_block, so we map it back to the EFI status code remembered from
+ * the last I/O operation.
+ */
 
 EFI_STATUS fsw_efi_map_status(fsw_status_t fsw_status, FSW_VOLUME_DATA *Volume)
 {
@@ -466,9 +510,12 @@ EFI_STATUS fsw_efi_map_status(fsw_status_t fsw_status, FSW_VOLUME_DATA *Volume)
     }
 }
 
-//
-// EFI File System interface
-//
+/**
+ * File System EFI protocol, OpenVolume function. Creates a file handle for
+ * the root directory and returns it. Note that this function may be called
+ * multiple times and returns a new file handle each time. Each returned
+ * handle is closed by the client using it.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_FileSystem_OpenVolume(IN EFI_FILE_IO_INTERFACE *This,
                                                 OUT EFI_FILE **Root)
@@ -485,9 +532,10 @@ EFI_STATUS EFIAPI fsw_efi_FileSystem_OpenVolume(IN EFI_FILE_IO_INTERFACE *This,
     return Status;
 }
 
-//
-// EFI File Handle interface (dispatching only)
-//
+/**
+ * File Handle EFI protocol, Open function. Dispatches the call
+ * based on the kind of file handle.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_FileHandle_Open(IN EFI_FILE *This,
                                           OUT EFI_FILE **NewHandle,
@@ -503,12 +551,17 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_Open(IN EFI_FILE *This,
     return EFI_UNSUPPORTED;
 }
 
+/**
+ * File Handle EFI protocol, Close function. Closes the FSW shandle
+ * and frees the memory used for the structure.
+ */
+
 EFI_STATUS EFIAPI fsw_efi_FileHandle_Close(IN EFI_FILE *This)
 {
     FSW_FILE_DATA      *File = FSW_FILE_FROM_FILE_HANDLE(This);
     
 #if DEBUG_LEVEL
-    Print(L"FswFileClose\n");
+    Print(L"fsw_efi_FileHandle_Close\n");
 #endif
     
     fsw_shandle_close(&File->shand);
@@ -516,6 +569,11 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_Close(IN EFI_FILE *This)
     
     return EFI_SUCCESS;
 }
+
+/**
+ * File Handle EFI protocol, Delete function. Calls through to Close
+ * and returns a warning because this driver is read-only.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_FileHandle_Delete(IN EFI_FILE *This)
 {
@@ -530,6 +588,11 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_Delete(IN EFI_FILE *This)
     return Status;
 }
 
+/**
+ * File Handle EFI protocol, Read function. Dispatches the call
+ * based on the kind of file handle.
+ */
+
 EFI_STATUS EFIAPI fsw_efi_FileHandle_Read(IN EFI_FILE *This,
                                           IN OUT UINTN *BufferSize,
                                           OUT VOID *Buffer)
@@ -543,6 +606,11 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_Read(IN EFI_FILE *This,
     return EFI_UNSUPPORTED;
 }
 
+/**
+ * File Handle EFI protocol, Write function. Returns unsupported status
+ * because this driver is read-only.
+ */
+
 EFI_STATUS EFIAPI fsw_efi_FileHandle_Write(IN EFI_FILE *This,
                                            IN OUT UINTN *BufferSize,
                                            IN VOID *Buffer)
@@ -550,6 +618,11 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_Write(IN EFI_FILE *This,
     // this driver is read-only
     return EFI_WRITE_PROTECTED;
 }
+
+/**
+ * File Handle EFI protocol, GetPosition function. Dispatches the call
+ * based on the kind of file handle.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_FileHandle_GetPosition(IN EFI_FILE *This,
                                                  OUT UINT64 *Position)
@@ -561,6 +634,11 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_GetPosition(IN EFI_FILE *This,
     // not defined for directories
     return EFI_UNSUPPORTED;
 }
+
+/**
+ * File Handle EFI protocol, SetPosition function. Dispatches the call
+ * based on the kind of file handle.
+ */
 
 EFI_STATUS EFIAPI fsw_efi_FileHandle_SetPosition(IN EFI_FILE *This,
                                                  IN UINT64 Position)
@@ -574,6 +652,11 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_SetPosition(IN EFI_FILE *This,
     return EFI_UNSUPPORTED;
 }
 
+/**
+ * File Handle EFI protocol, GetInfo function. Dispatches to the common
+ * function implementing this.
+ */
+
 EFI_STATUS EFIAPI fsw_efi_FileHandle_GetInfo(IN EFI_FILE *This,
                                              IN EFI_GUID *InformationType,
                                              IN OUT UINTN *BufferSize,
@@ -584,6 +667,11 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_GetInfo(IN EFI_FILE *This,
     return fsw_efi_dnode_getinfo(File, InformationType, BufferSize, Buffer);
 }
 
+/**
+ * File Handle EFI protocol, SetInfo function. Returns unsupported status
+ * because this driver is read-only.
+ */
+
 EFI_STATUS EFIAPI fsw_efi_FileHandle_SetInfo(IN EFI_FILE *This,
                                              IN EFI_GUID *InformationType,
                                              IN UINTN BufferSize,
@@ -593,15 +681,22 @@ EFI_STATUS EFIAPI fsw_efi_FileHandle_SetInfo(IN EFI_FILE *This,
     return EFI_WRITE_PROTECTED;
 }
 
+/**
+ * File Handle EFI protocol, Flush function. Returns unsupported status
+ * because this driver is read-only.
+ */
+
 EFI_STATUS EFIAPI fsw_efi_FileHandle_Flush(IN EFI_FILE *This)
 {
     // this driver is read-only
     return EFI_WRITE_PROTECTED;
 }
 
-//
-// Create file handle for a dnode
-//
+/**
+ * Set up a file handle for a dnode. This function allocates a data structure
+ * for a file handle, opens a FSW shandle and populates the EFI_FILE structure
+ * with the interface functions.
+ */
 
 EFI_STATUS fsw_efi_dnode_to_FileHandle(IN struct fsw_dnode *dno,
                                        OUT EFI_FILE **NewFileHandle)
@@ -651,9 +746,9 @@ EFI_STATUS fsw_efi_dnode_to_FileHandle(IN struct fsw_dnode *dno,
     return EFI_SUCCESS;
 }
 
-//
-// Functions for regular files
-//
+/**
+ * Data read function for regular files. Calls through to fsw_shandle_read.
+ */
 
 EFI_STATUS fsw_efi_file_read(IN FSW_FILE_DATA *File,
                              IN OUT UINTN *BufferSize,
@@ -674,12 +769,21 @@ EFI_STATUS fsw_efi_file_read(IN FSW_FILE_DATA *File,
     return Status;
 }
 
+/**
+ * Get file position for regular files.
+ */
+
 EFI_STATUS fsw_efi_file_getpos(IN FSW_FILE_DATA *File,
                                OUT UINT64 *Position)
 {
     *Position = File->shand.pos;
     return EFI_SUCCESS;
 }
+
+/**
+ * Set file position for regular files. EFI specifies the all-ones value
+ * to be a special value for the end of the file.
+ */
 
 EFI_STATUS fsw_efi_file_setpos(IN FSW_FILE_DATA *File,
                                IN UINT64 Position)
@@ -691,9 +795,13 @@ EFI_STATUS fsw_efi_file_setpos(IN FSW_FILE_DATA *File,
     return EFI_SUCCESS;
 }
 
-//
-// Functions for directories
-//
+/**
+ * Open function used to open new file handles relative to a directory.
+ * In EFI, the "open file" function is implemented by directory file handles
+ * and is passed a relative or volume-absolute path to the file or directory
+ * to open. We use fsw_dnode_lookup_path to find the node plus an additional
+ * call to fsw_dnode_resolve because EFI has no concept of symbolic links.
+ */
 
 EFI_STATUS fsw_efi_dir_open(IN FSW_FILE_DATA *File,
                             OUT EFI_FILE **NewHandle,
@@ -739,9 +847,10 @@ EFI_STATUS fsw_efi_dir_open(IN FSW_FILE_DATA *File,
     return Status;
 }
 
-//
-// EFI_FILE Read for directories
-//
+/**
+ * Read function for directories. A file handle read on a directory retrieves
+ * the next directory entry.
+ */
 
 EFI_STATUS fsw_efi_dir_read(IN FSW_FILE_DATA *File,
                             IN OUT UINTN *BufferSize,
@@ -775,9 +884,11 @@ EFI_STATUS fsw_efi_dir_read(IN FSW_FILE_DATA *File,
     return Status;
 }
 
-//
-// EFI_FILE SetPosition for directories
-//
+/**
+ * Set file position for directories. The only allowed set position operation
+ * for directories is to rewind the directory completely by setting the
+ * position to zero.
+ */
 
 EFI_STATUS fsw_efi_dir_setpos(IN FSW_FILE_DATA *File,
                               IN UINT64 Position)
@@ -791,9 +902,11 @@ EFI_STATUS fsw_efi_dir_setpos(IN FSW_FILE_DATA *File,
     }
 }
 
-//
-// Functions for both files and directories
-//
+/**
+ * Get file or volume information. This function implements the GetInfo call
+ * for all file handles. Control is dispatched according to the type of information
+ * requested by the caller.
+ */
 
 EFI_STATUS fsw_efi_dnode_getinfo(IN FSW_FILE_DATA *File,
                                  IN EFI_GUID *InformationType,
@@ -870,6 +983,12 @@ EFI_STATUS fsw_efi_dnode_getinfo(IN FSW_FILE_DATA *File,
     return Status;
 }
 
+/**
+ * Time mapping callback for the fsw_dnode_stat call. This function converts
+ * a Posix style timestamp into an EFI_TIME structure and writes it to the
+ * appropriate member of the EFI_FILE_INFO structure that we're filling.
+ */
+
 static void fsw_efi_store_time_posix(struct fsw_dnode_stat *sb, int which, fsw_u32 posix_time)
 {
     EFI_FILE_INFO       *FileInfo = (EFI_FILE_INFO *)sb->host_data;
@@ -882,6 +1001,12 @@ static void fsw_efi_store_time_posix(struct fsw_dnode_stat *sb, int which, fsw_u
         fsw_efi_decode_time(&FileInfo->LastAccessTime,   posix_time);
 }
 
+/**
+ * Mode mapping callback for the fsw_dnode_stat call. This function looks at
+ * the Posix mode passed by the file system driver and makes appropriate
+ * adjustments to the EFI_FILE_INFO structure that we're filling.
+ */
+
 static void fsw_efi_store_attr_posix(struct fsw_dnode_stat *sb, fsw_u16 posix_mode)
 {
     EFI_FILE_INFO       *FileInfo = (EFI_FILE_INFO *)sb->host_data;
@@ -889,6 +1014,10 @@ static void fsw_efi_store_attr_posix(struct fsw_dnode_stat *sb, fsw_u16 posix_mo
     if ((posix_mode & S_IWUSR) == 0)
         FileInfo->Attribute |= EFI_FILE_READ_ONLY;
 }
+
+/**
+ * Common function to fill an EFI_FILE_INFO with information about a dnode.
+ */
 
 EFI_STATUS fsw_efi_dnode_fill_FileInfo(IN FSW_VOLUME_DATA *Volume,
                                        IN struct fsw_dnode *dno,
