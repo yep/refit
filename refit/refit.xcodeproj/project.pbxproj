@@ -14,9 +14,6 @@
 		9D574B2609E907BF00EFE8D2 /* lib.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D574B1D09E907BE00EFE8D2 /* lib.h */; };
 		9D574B2809E907BF00EFE8D2 /* menu.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1F09E907BE00EFE8D2 /* menu.c */; };
 		9D574B2909E907BF00EFE8D2 /* screen.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B2009E907BE00EFE8D2 /* screen.c */; };
-		9DBBAAD30A610823003899D7 /* design.dox in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DBBAAD20A610823003899D7 /* design.dox */; };
-		9DBBAB180A61303D003899D7 /* fsw_base.dox in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DBBAB170A61303D003899D7 /* fsw_base.dox */; };
-		9DBBAB340A6141B8003899D7 /* fsw_efi_lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DBBAB330A6141B8003899D7 /* fsw_efi_lib.c */; };
 		9DF0A9EF0A09C40900058459 /* efiConsoleControl.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9E40A09C40900058459 /* efiConsoleControl.h */; };
 		9DF0A9F00A09C40900058459 /* efiUgaDraw.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9E50A09C40900058459 /* efiUgaDraw.h */; };
 		9DF0A9F10A09C40900058459 /* egemb_font.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9E60A09C40900058459 /* egemb_font.h */; };
@@ -30,7 +27,7 @@
 		9DF0AA010A09C41700058459 /* efiConsoleControl.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9FA0A09C41700058459 /* efiConsoleControl.h */; };
 		9DF0AA050A09C41700058459 /* egemb_back_selected_small.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9FE0A09C41700058459 /* egemb_back_selected_small.h */; };
 		9DF0AA060A09C41700058459 /* egemb_refit_banner.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9FF0A09C41700058459 /* egemb_refit_banner.h */; };
-		9DF0AA070A09C41700058459 /* syslinux_mbr.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0AA000A09C41700058459 /* syslinux_mbr.h */; };
+		9DF628670A7369950084F7BE /* syslinux_mbr.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0AA000A09C41700058459 /* syslinux_mbr.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -49,9 +46,7 @@
 				9DF0AA010A09C41700058459 /* efiConsoleControl.h in CopyFiles */,
 				9DF0AA050A09C41700058459 /* egemb_back_selected_small.h in CopyFiles */,
 				9DF0AA060A09C41700058459 /* egemb_refit_banner.h in CopyFiles */,
-				9DF0AA070A09C41700058459 /* syslinux_mbr.h in CopyFiles */,
-				9DBBAAD30A610823003899D7 /* design.dox in CopyFiles */,
-				9DBBAB180A61303D003899D7 /* fsw_base.dox in CopyFiles */,
+				9DF628670A7369950084F7BE /* syslinux_mbr.h in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -392,7 +387,6 @@
 				9DF0A9F60A09C40900058459 /* load_icns.c in Sources */,
 				9DF0A9F80A09C40900058459 /* screen.c in Sources */,
 				9DF0A9F90A09C40900058459 /* text.c in Sources */,
-				9DBBAB340A6141B8003899D7 /* fsw_efi_lib.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
