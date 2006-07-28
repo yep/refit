@@ -8,8 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		8DD76FAC0486AB0100D96B5E /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* main.c */; settings = {ATTRIBUTES = (); }; };
-		9D0307940A7A095F001EDFBC /* fsw_posix.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0307920A7A095F001EDFBC /* fsw_posix.c */; };
-		9D0307950A7A095F001EDFBC /* fsw_posix.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D0307930A7A095F001EDFBC /* fsw_posix.h */; };
 		9D0308300A7A1BED001EDFBC /* fsw_core.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D59EE480A579B1D004E3134 /* fsw_core.c */; };
 		9D0308310A7A1BF1001EDFBC /* fsw_ext2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D59EE150A5714A7004E3134 /* fsw_ext2.c */; };
 		9D0308320A7A1BF6001EDFBC /* fsw_lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D58C6840A5EC67500F17BEC /* fsw_lib.c */; };
@@ -54,7 +52,6 @@
 				9DF0AA050A09C41700058459 /* egemb_back_selected_small.h in CopyFiles */,
 				9DF0AA060A09C41700058459 /* egemb_refit_banner.h in CopyFiles */,
 				9DF628670A7369950084F7BE /* syslinux_mbr.h in CopyFiles */,
-				9D0307950A7A095F001EDFBC /* fsw_posix.h in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -435,7 +432,6 @@
 				9DF0A9F60A09C40900058459 /* load_icns.c in Sources */,
 				9DF0A9F80A09C40900058459 /* screen.c in Sources */,
 				9DF0A9F90A09C40900058459 /* text.c in Sources */,
-				9D0307940A7A095F001EDFBC /* fsw_posix.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
