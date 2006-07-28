@@ -758,6 +758,118 @@ static VOID ScanTool(VOID)
 }
 
 //
+// pre-boot driver functions
+//
+
+static VOID ScanDriverDir(IN CHAR16 *Path)
+{
+    EFI_STATUS              Status;
+    REFIT_DIR_ITER          DirIter;
+    EFI_FILE_INFO           *DirEntry;
+    CHAR16                  FileName[256];
+    
+    // look through contents of the directory
+    DirIterOpen(SelfRootDir, Path, &DirIter);
+    while (DirIterNext(&DirIter, 2, L"*.EFI", &DirEntry)) {
+        if (DirEntry->FileName[0] == '.')
+            continue;   // skip this
+        
+        SPrint(FileName, 255, L"%s\\%s", Path, DirEntry->FileName);
+        Status = StartEFIImage(FileDevicePath(SelfLoadedImage->DeviceHandle, FileName),
+                               L"", DirEntry->FileName, DirEntry->FileName);
+    }
+    Status = DirIterClose(&DirIter);
+    if (Status != EFI_NOT_FOUND) {
+        SPrint(FileName, 255, L"while scanning the %s directory", Path);
+        CheckError(Status, FileName);
+    }
+}
+
+static EFI_STATUS ConnectAllDriversToAllControllers(VOID)
+{
+    EFI_STATUS  Status;
+    UINTN       AllHandleCount;
+    EFI_HANDLE  *AllHandleBuffer;
+    UINTN       Index;
+    UINTN       HandleCount;
+    EFI_HANDLE  *HandleBuffer;
+    UINT32      *HandleType;
+    UINTN       HandleIndex;
+    BOOLEAN     Parent;
+    BOOLEAN     Device;
+    
+    Status = LibLocateHandle(AllHandles,
+                             NULL,
+                             NULL,
+                             &AllHandleCount,
+                             &AllHandleBuffer);
+    if (EFI_ERROR(Status))
+        return Status;
+    
+    for (Index = 0; Index < AllHandleCount; Index++) {
+        //
+        // Scan the handle database
+        //
+        Status = LibScanHandleDatabase(NULL,
+                                       NULL,
+                                       AllHandleBuffer[Index],
+                                       NULL,
+                                       &HandleCount,
+                                       &HandleBuffer,
+                                       &HandleType);
+        if (EFI_ERROR (Status))
+            goto Done;
+        
+        Device = TRUE;
+        if (HandleType[Index] & EFI_HANDLE_TYPE_DRIVER_BINDING_HANDLE)
+            Device = FALSE;
+        if (HandleType[Index] & EFI_HANDLE_TYPE_IMAGE_HANDLE)
+            Device = FALSE;
+        
+        if (Device) {
+            Parent = FALSE;
+            for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
+                if (HandleType[HandleIndex] & EFI_HANDLE_TYPE_PARENT_HANDLE)
+                    Parent = TRUE;
+            }
+            
+            if (!Parent) {
+                if (HandleType[Index] & EFI_HANDLE_TYPE_DEVICE_HANDLE) {
+                    Status = BS->ConnectController(AllHandleBuffer[Index],
+                                                   NULL,
+                                                   NULL,
+                                                   TRUE);
+                }
+            }
+        }
+        
+        FreePool (HandleBuffer);
+        FreePool (HandleType);
+    }
+    
+Done:
+    FreePool (AllHandleBuffer);
+    return Status;
+}
+
+static VOID LoadDrivers(VOID)
+{
+    CHAR16                  DirName[256];
+    
+    Print(L"Scanning for drivers...\n");
+    
+    // load drivers from /efi/refit/drivers
+    SPrint(DirName, 255, L"%s\\drivers", SelfDirPath);
+    ScanDriverDir(DirName);
+    
+    // load drivers from /efi/tools/drivers
+    ScanDriverDir(L"\\efi\\tools\\drivers");
+    
+    // connect all devices
+    ConnectAllDriversToAllControllers();
+}
+
+//
 // main entry point
 //
 
@@ -792,6 +904,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     
     // further bootstrap (now with config available)
     SetupScreen();
+    LoadDrivers();
     ScanVolumes();
     DebugPause();
     
