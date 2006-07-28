@@ -176,7 +176,8 @@ fsw_status_t fsw_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void **buf
 static void fsw_dnode_register(struct fsw_volume *vol, struct fsw_dnode *dno)
 {
     dno->next = vol->dnode_head;
-    vol->dnode_head->prev = dno;
+    if (vol->dnode_head != NULL)
+        vol->dnode_head->prev = dno;
     dno->prev = NULL;
     vol->dnode_head = dno;
 }
