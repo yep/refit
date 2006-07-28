@@ -8,6 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		8DD76FAC0486AB0100D96B5E /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* main.c */; settings = {ATTRIBUTES = (); }; };
+		9D0307940A7A095F001EDFBC /* fsw_posix.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0307920A7A095F001EDFBC /* fsw_posix.c */; };
+		9D0307950A7A095F001EDFBC /* fsw_posix.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D0307930A7A095F001EDFBC /* fsw_posix.h */; };
+		9D0308300A7A1BED001EDFBC /* fsw_core.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D59EE480A579B1D004E3134 /* fsw_core.c */; };
+		9D0308310A7A1BF1001EDFBC /* fsw_ext2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D59EE150A5714A7004E3134 /* fsw_ext2.c */; };
+		9D0308320A7A1BF6001EDFBC /* fsw_lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D58C6840A5EC67500F17BEC /* fsw_lib.c */; };
+		9D0308330A7A1BF6001EDFBC /* fsw_posix.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0307920A7A095F001EDFBC /* fsw_posix.c */; };
+		9D0308340A7A1BF9001EDFBC /* lsroot.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0308280A7A1AC8001EDFBC /* lsroot.c */; };
 		9D47400809F54B7500C70CF4 /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D47400709F54B7500C70CF4 /* config.c */; };
 		9D574B2309E907BF00EFE8D2 /* icns.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1A09E907BE00EFE8D2 /* icns.c */; };
 		9D574B2509E907BF00EFE8D2 /* lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1C09E907BE00EFE8D2 /* lib.c */; };
@@ -47,6 +54,7 @@
 				9DF0AA050A09C41700058459 /* egemb_back_selected_small.h in CopyFiles */,
 				9DF0AA060A09C41700058459 /* egemb_refit_banner.h in CopyFiles */,
 				9DF628670A7369950084F7BE /* syslinux_mbr.h in CopyFiles */,
+				9D0307950A7A095F001EDFBC /* fsw_posix.h in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -54,6 +62,11 @@
 
 /* Begin PBXFileReference section */
 		08FB7796FE84155DC02AAC07 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		9D0307920A7A095F001EDFBC /* fsw_posix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_posix.c; sourceTree = "<group>"; };
+		9D0307930A7A095F001EDFBC /* fsw_posix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_posix.h; sourceTree = "<group>"; };
+		9D0307BD0A7A0975001EDFBC /* fsw_posix_base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_posix_base.h; sourceTree = "<group>"; };
+		9D0308280A7A1AC8001EDFBC /* lsroot.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lsroot.c; sourceTree = "<group>"; };
+		9D03082E0A7A1BD3001EDFBC /* lsroot */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = lsroot; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1FDB970A4D3B160094C9A1 /* file.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = file.c; sourceTree = "<group>"; };
 		9D1FDBB90A4D429A0094C9A1 /* dir.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dir.c; sourceTree = "<group>"; };
 		9D1FDC7E0A4F27030094C9A1 /* inode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = inode.c; sourceTree = "<group>"; };
@@ -120,10 +133,20 @@
 		9DF0AACF0A0AA60700058459 /* os_efi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_efi.c; sourceTree = "<group>"; };
 		9DF0AAE90A0AAA3500058459 /* gptsync.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = gptsync.mak; sourceTree = "<group>"; };
 		9DF0AB0E0A0C88F300058459 /* os_unix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_unix.c; sourceTree = "<group>"; };
+		9DF64A230A7770E400F2D76F /* fsw_reiserfs_disk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_reiserfs_disk.h; sourceTree = "<group>"; };
+		9DF64A240A7770E400F2D76F /* fsw_reiserfs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_reiserfs.c; sourceTree = "<group>"; };
+		9DF64A250A7770E400F2D76F /* fsw_reiserfs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_reiserfs.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8DD76FAD0486AB0100D96B5E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D03082C0A7A1BD3001EDFBC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -161,6 +184,7 @@
 			isa = PBXGroup;
 			children = (
 				9D574B3109E9080D00EFE8D2 /* refit-check */,
+				9D03082E0A7A1BD3001EDFBC /* lsroot */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -184,12 +208,19 @@
 				9D59EE020A566903004E3134 /* fsw_efi.h */,
 				9D59EDFD0A5665EC004E3134 /* fsw_efi.c */,
 				9DBBAB330A6141B8003899D7 /* fsw_efi_lib.c */,
+				9D0307BD0A7A0975001EDFBC /* fsw_posix_base.h */,
+				9D0307930A7A095F001EDFBC /* fsw_posix.h */,
+				9D0307920A7A095F001EDFBC /* fsw_posix.c */,
 				9D59EE470A579B1D004E3134 /* fsw_core.h */,
 				9D59EE480A579B1D004E3134 /* fsw_core.c */,
 				9D58C6840A5EC67500F17BEC /* fsw_lib.c */,
 				9D28E0890A5A507D00D8221F /* fsw_ext2_disk.h */,
 				9D59EE030A566903004E3134 /* fsw_ext2.h */,
 				9D59EE150A5714A7004E3134 /* fsw_ext2.c */,
+				9DF64A230A7770E400F2D76F /* fsw_reiserfs_disk.h */,
+				9DF64A250A7770E400F2D76F /* fsw_reiserfs.h */,
+				9DF64A240A7770E400F2D76F /* fsw_reiserfs.c */,
+				9D0308280A7A1AC8001EDFBC /* lsroot.c */,
 			);
 			path = fsw;
 			sourceTree = "<group>";
@@ -356,6 +387,22 @@
 			productReference = 9D574B3109E9080D00EFE8D2 /* refit-check */;
 			productType = "com.apple.product-type.tool";
 		};
+		9D03082D0A7A1BD3001EDFBC /* lsroot */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9D03083D0A7A1C3E001EDFBC /* Build configuration list for PBXNativeTarget "lsroot" */;
+			buildPhases = (
+				9D03082B0A7A1BD3001EDFBC /* Sources */,
+				9D03082C0A7A1BD3001EDFBC /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = lsroot;
+			productName = lsroot;
+			productReference = 9D03082E0A7A1BD3001EDFBC /* lsroot */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -367,6 +414,7 @@
 			projectDirPath = "";
 			targets = (
 				8DD76FA90486AB0100D96B5E /* refit-check */,
+				9D03082D0A7A1BD3001EDFBC /* lsroot */,
 			);
 		};
 /* End PBXProject section */
@@ -387,6 +435,19 @@
 				9DF0A9F60A09C40900058459 /* load_icns.c in Sources */,
 				9DF0A9F80A09C40900058459 /* screen.c in Sources */,
 				9DF0A9F90A09C40900058459 /* text.c in Sources */,
+				9D0307940A7A095F001EDFBC /* fsw_posix.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D03082B0A7A1BD3001EDFBC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D0308300A7A1BED001EDFBC /* fsw_core.c in Sources */,
+				9D0308310A7A1BF1001EDFBC /* fsw_ext2.c in Sources */,
+				9D0308320A7A1BF6001EDFBC /* fsw_lib.c in Sources */,
+				9D0308330A7A1BF6001EDFBC /* fsw_posix.c in Sources */,
+				9D0308340A7A1BF9001EDFBC /* lsroot.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -435,6 +496,19 @@
 			};
 			name = CompileCheck;
 		};
+		9D03083E0A7A1C3E001EDFBC /* CompileCheck */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_PREPROCESSOR_DEFINITIONS = HOST_POSIX;
+				INSTALL_PATH = "$(HOME)/bin";
+				PREBINDING = NO;
+				PRODUCT_NAME = lsroot;
+				ZERO_LINK = YES;
+			};
+			name = CompileCheck;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -450,6 +524,14 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1DEB928A08733DD80010E9CD /* CompileCheck */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CompileCheck;
+		};
+		9D03083D0A7A1C3E001EDFBC /* Build configuration list for PBXNativeTarget "lsroot" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D03083E0A7A1C3E001EDFBC /* CompileCheck */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = CompileCheck;
