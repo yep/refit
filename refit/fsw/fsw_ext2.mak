@@ -24,6 +24,8 @@ TARGET_BS_DRIVER = $(BASE_NAME)
 SOURCE_DIR       = $(SDK_INSTALL_DIR)\refit\fsw
 BUILD_DIR        = $(SDK_BUILD_DIR)\refit\$(BASE_NAME)
 
+C_FLAGS = $(C_FLAGS) /D HOST_EFI /D FSTYPE=ext2
+
 #
 # Include paths
 #
