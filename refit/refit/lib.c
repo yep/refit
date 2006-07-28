@@ -615,7 +615,8 @@ EFI_STATUS DirNextEntry(IN EFI_FILE *Directory, IN OUT EFI_FILE_INFO **DirEntry,
 {
     EFI_STATUS Status;
     VOID *Buffer;
-    UINTN InitialBufferSize, BufferSize;
+    UINTN LastBufferSize, BufferSize;
+    INTN IterCount;
     
     for (;;) {
         
@@ -626,12 +627,22 @@ EFI_STATUS DirNextEntry(IN EFI_FILE *Directory, IN OUT EFI_FILE_INFO **DirEntry,
         }
         
         // read next directory entry
-        BufferSize = InitialBufferSize = 256;
+        LastBufferSize = BufferSize = 256;
         Buffer = AllocatePool(BufferSize);
-        Status = Directory->Read(Directory, &BufferSize, Buffer);
-        if (Status == EFI_BUFFER_TOO_SMALL) {
-            Buffer = ReallocatePool(Buffer, InitialBufferSize, BufferSize);
+        for (IterCount = 0; ; IterCount++) {
             Status = Directory->Read(Directory, &BufferSize, Buffer);
+            if (Status != EFI_BUFFER_TOO_SMALL || IterCount >= 4)
+                break;
+            if (BufferSize <= LastBufferSize) {
+                Print(L"FS Driver requests bad buffer size %d (was %d), using %d instead\n", BufferSize, LastBufferSize, LastBufferSize * 2);
+                BufferSize = LastBufferSize * 2;
+#if REFIT_DEBUG > 0
+            } else {
+                Print(L"Reallocating buffer from %d to %d\n", LastBufferSize, BufferSize);
+#endif
+            }
+            Buffer = ReallocatePool(Buffer, LastBufferSize, BufferSize);
+            LastBufferSize = BufferSize;
         }
         if (EFI_ERROR(Status)) {
             FreePool(Buffer);
