@@ -39,9 +39,11 @@
 #define _FSW_POSIX_BASE_H_
 
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 
 // types
@@ -66,6 +68,16 @@ typedef unsigned long long  fsw_u64;
 #define fsw_memzero(dest,size) memset(dest,0,size)
 #define fsw_memcpy(dest,src,size) memcpy(dest,src,size)
 #define fsw_memeq(p1,p2,size) (memcmp(p1,p2,size) == 0)
+
+// message printing
+
+#define FSW_MSGSTR(s) s
+#define FSW_MSGFUNC printf
+
+// 64-bit hooks
+
+#define FSW_U64_SHR(val,shiftbits) ((val) >> (shiftbits))
+#define FSW_U64_DIV(val,divisor) ((val) / (divisor))
 
 
 #endif

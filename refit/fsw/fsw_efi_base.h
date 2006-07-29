@@ -66,5 +66,15 @@ typedef UINT64  fsw_u64;
 #define fsw_memcpy(dest,src,size) CopyMem(dest,src,size)
 #define fsw_memeq(p1,p2,size) (CompareMem(p1,p2,size) == 0)
 
+// message printing
+
+#define FSW_MSGSTR(s) L##s
+#define FSW_MSGFUNC Print
+
+// 64-bit hooks
+
+#define FSW_U64_SHR(val,shiftbits) RShiftU64((val), (shiftbits))
+#define FSW_U64_DIV(val,divisor) DivU64x32((val), (divisor), NULL)
+
 
 #endif
