@@ -37,8 +37,6 @@
 
 #include "fsw_posix.h"
 
-#define DEBUG_LEVEL 0
-
 
 #ifndef FSTYPE
 /** The file system type name to use. */
@@ -90,6 +88,7 @@ struct fsw_posix_volume * fsw_posix_mount(const char *path, struct fsw_fstype_ta
     // open underlying file/device
     pvol->fd = open(path, O_RDONLY, 0);
     if (pvol->fd < 0) {
+        fprintf(stderr, "fsw_posix_mount: %s: %s\n", path, strerror(errno));
         fsw_free(pvol);
         return NULL;
     }
@@ -99,6 +98,7 @@ struct fsw_posix_volume * fsw_posix_mount(const char *path, struct fsw_fstype_ta
         fstype_table = &FSW_FSTYPE_TABLE_NAME(FSTYPE);
     status = fsw_mount(pvol, &fsw_posix_host_table, fstype_table, &pvol->vol);
     if (status) {
+        fprintf(stderr, "fsw_posix_mount: fsw_mount returned %d\n", status);
         if (pvol->BlockBuffer != NULL)
             fsw_free(pvol->BlockBuffer);
         fsw_free(pvol);
@@ -142,6 +142,7 @@ struct fsw_posix_file * fsw_posix_open(struct fsw_posix_volume *pvol, const char
     // open the file
     status = fsw_posix_open_dno(pvol, path, FSW_DNODE_TYPE_FILE, &file->shand);
     if (status) {
+        fprintf(stderr, "fsw_posix_open: open_dno returned %d\n", status);
         fsw_free(file);
         return NULL;
     }
@@ -218,6 +219,7 @@ struct fsw_posix_dir * fsw_posix_opendir(struct fsw_posix_volume *pvol, const ch
     // open the directory
     status = fsw_posix_open_dno(pvol, path, FSW_DNODE_TYPE_DIR, &dir->shand);
     if (status) {
+        fprintf(stderr, "fsw_posix_opendir: open_dno returned %d\n", status);
         fsw_free(dir);
         return NULL;
     }
@@ -237,10 +239,13 @@ struct dirent * fsw_posix_readdir(struct fsw_posix_dir *dir)
     
     // get next entry from file system
     status = fsw_dnode_dir_read(&dir->shand, &dno);
-    if (status)
+    if (status) {
+        fprintf(stderr, "fsw_posix_readdir: fsw_dnode_dir_read returned %d\n", status);
         return NULL;
+    }
     status = fsw_dnode_fill(dno);
     if (status) {
+        fprintf(stderr, "fsw_posix_readdir: fsw_dnode_fill returned %d\n", status);
         fsw_dnode_release(dno);
         return NULL;
     }
@@ -307,29 +312,38 @@ fsw_status_t fsw_posix_open_dno(struct fsw_posix_volume *pvol, const char *path,
     
     // resolve the path (symlinks along the way are automatically resolved)
     status = fsw_dnode_lookup_path(pvol->vol->root, &lookup_path, '/', &dno);
-    if (status)
+    if (status) {
+        fprintf(stderr, "fsw_posix_open_dno: fsw_dnode_lookup_path returned %d\n", status);
         return status;
+    }
     
     // if the final node is a symlink, also resolve it
     status = fsw_dnode_resolve(dno, &target_dno);
     fsw_dnode_release(dno);
-    if (status)
+    if (status) {
+        fprintf(stderr, "fsw_posix_open_dno: fsw_dnode_resolve returned %d\n", status);
         return status;
+    }
     dno = target_dno;
     
     // check that it is a regular file
     status = fsw_dnode_fill(dno);
     if (status) {
+        fprintf(stderr, "fsw_posix_open_dno: fsw_dnode_fill returned %d\n", status);
         fsw_dnode_release(dno);
         return status;
     }
     if (dno->type != required_type) {
+        fprintf(stderr, "fsw_posix_open_dno: dnode is not of the requested type\n");
         fsw_dnode_release(dno);
         return FSW_UNSUPPORTED;
     }
     
     // open shandle
     status = fsw_shandle_open(dno, shand);
+    if (status) {
+        fprintf(stderr, "fsw_posix_open_dno: fsw_shandle_open returned %d\n", status);
+    }
     fsw_dnode_release(dno);
     return status;
 }
@@ -375,9 +389,7 @@ fsw_status_t fsw_posix_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void
         return FSW_SUCCESS;
     }
     
-#if DEBUG_LEVEL == 2
-    Print(L"fsw_posix_read_block: %d  (%d)\n", phys_bno, vol->phys_blocksize);
-#endif
+    FSW_MSG_DEBUGV((FSW_MSGSTR("fsw_posix_read_block: %d  (%d)\n"), phys_bno, vol->phys_blocksize));
     
     // allocate buffer if necessary
     if (pvol->BlockBuffer == NULL) {
@@ -468,9 +480,6 @@ EFI_STATUS fsw_posix_dnode_fill_FileInfo(IN FSW_VOLUME_DATA *Volume,
     if (*BufferSize < RequiredSize) {
         // TODO: wind back the directory in this case
         
-#if DEBUG_LEVEL
-        Print(L"...BUFFER TOO SMALL\n");
-#endif
         *BufferSize = RequiredSize;
         return EFI_BUFFER_TOO_SMALL;
     }
@@ -497,9 +506,6 @@ EFI_STATUS fsw_posix_dnode_fill_FileInfo(IN FSW_VOLUME_DATA *Volume,
     
     // prepare for return
     *BufferSize = RequiredSize;
-#if DEBUG_LEVEL
-    Print(L"...returning '%s'\n", FileInfo->FileName);
-#endif
     return EFI_SUCCESS;
 }
 */
