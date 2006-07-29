@@ -38,7 +38,6 @@
 #ifndef _FSW_POSIX_H_
 #define _FSW_POSIX_H_
 
-#include "fsw_base.h"
 #include "fsw_core.h"
 
 #include <fcntl.h>
