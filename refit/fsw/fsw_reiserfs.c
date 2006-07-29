@@ -21,8 +21,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define FSW_DEBUG_LEVEL 2
-
 #include "fsw_reiserfs.h"
 
 
@@ -49,7 +47,9 @@ static fsw_status_t fsw_reiserfs_readlink(struct fsw_reiserfs_volume *vol, struc
 
 static fsw_status_t fsw_reiserfs_search_key(struct fsw_reiserfs_volume *vol,
                                             fsw_u32 dir_id, fsw_u32 objectid, fsw_u64 offset,
-                                            struct fsw_reiserfs_search_result *item_out);
+                                            struct fsw_reiserfs_search_result *item);
+static fsw_status_t fsw_reiserfs_next_key(struct fsw_reiserfs_volume *vol,
+                                          struct fsw_reiserfs_search_result *item);
 
 //
 // Dispatch Table
@@ -158,7 +158,8 @@ static fsw_status_t fsw_reiserfs_volume_mount(struct fsw_reiserfs_volume *vol)
         return status;
     vol->g.root->dir_id = REISERFS_ROOT_PARENT_OBJECTID;
     
-    FSW_MSG_DEBUG((FSW_MSGSTR("fsw_reiserfs_volume_mount: success, blocksize %d\n"), blocksize));
+    FSW_MSG_DEBUG((FSW_MSGSTR("fsw_reiserfs_volume_mount: success, blocksize %d tree height %d\n"),
+                   blocksize, vol->sb->s_v1.s_tree_height));
     
     return FSW_SUCCESS;
 }
@@ -398,8 +399,6 @@ static fsw_status_t fsw_reiserfs_get_extent(struct fsw_reiserfs_volume *vol, str
             break;
     }
     */
-    
-    return FSW_SUCCESS;
 }
 
 /**
@@ -417,16 +416,13 @@ static fsw_status_t fsw_reiserfs_dir_lookup(struct fsw_reiserfs_volume *vol, str
     fsw_u32         nr_item, i, name_offset, next_name_offset, name_len;
     struct reiserfs_de_head *dhead;
     struct fsw_string entry_name;
-    fsw_u32         child_dir_id, child_objectid;
     
     // Preconditions: The caller has checked that dno is a directory node.
     
     // BIG TODOS: Use the hash function to start with the item containing the entry.
     //  Use binary search within the item.
-    //  Get the next item when this one is exhausted (may be unnecessary if the above is used).
     
     entry_name.type = FSW_STRING_TYPE_ISO88591;
-    child_objectid = 0;
     
     // get the item for that position
     status = fsw_reiserfs_search_key(vol, dno->dir_id, dno->g.dnode_id, FIRST_ITEM_OFFSET, &item);
@@ -435,46 +431,47 @@ static fsw_status_t fsw_reiserfs_dir_lookup(struct fsw_reiserfs_volume *vol, str
     if (item.item_offset == 0)
         return FSW_NOT_FOUND;       // empty directory or something
     
-    // search the directory item
-    dhead = (struct reiserfs_de_head *)item.item_data;
-    nr_item = item.ih.u.ih_entry_count;
-    next_name_offset = item.ih.ih_item_len;
-    for (i = 0; i < nr_item; i++, dhead++, next_name_offset = name_offset) {
-        // get the name
-        name_offset = dhead->deh_location;
-        name_len = next_name_offset - name_offset;
-        while (name_len > 0 && item.item_data[name_offset + name_len - 1] == 0)
-            name_len--;
+    for(;;) {
         
-        entry_name.len = entry_name.size = name_len;
-        entry_name.data = item.item_data + name_offset;
-        
-        if (fsw_streq_cstr(&entry_name, ".reiserfs_priv"))
-            continue;
-        
-        // compare name
-        if (fsw_streq(lookup_name, &entry_name)) {
-            child_dir_id = dhead->deh_dir_id;
-            child_objectid = dhead->deh_objectid;
-            break;
+        // search the directory item
+        dhead = (struct reiserfs_de_head *)item.item_data;
+        nr_item = item.ih.u.ih_entry_count;
+        next_name_offset = item.ih.ih_item_len;
+        for (i = 0; i < nr_item; i++, dhead++, next_name_offset = name_offset) {
+            // get the name
+            name_offset = dhead->deh_location;
+            name_len = next_name_offset - name_offset;
+            while (name_len > 0 && item.item_data[name_offset + name_len - 1] == 0)
+                name_len--;
+            
+            entry_name.len = entry_name.size = name_len;
+            entry_name.data = item.item_data + name_offset;
+            
+            // compare name
+            if (fsw_streq(lookup_name, &entry_name)) {
+                // found the entry we're looking for!
+                
+                // setup a dnode for the child item
+                status = fsw_dnode_create(dno, dhead->deh_objectid, FSW_DNODE_TYPE_UNKNOWN, &entry_name, child_dno_out);
+                if (status)
+                    return status;
+                (*child_dno_out)->dir_id = dhead->deh_dir_id;
+                
+                return FSW_SUCCESS;
+            }
         }
-    }
-    
-    if (child_objectid == 0) {
-        // TODO: If we drop out here, the entry was not found in the current item.
-        //  Get the next item in tree order (using the remembered info from the last
-        //  search) and look there.
         
-        return FSW_NOT_FOUND;
+        // We didn't find the next directory entry in this item. Look for the next
+        // item of the directory.
+        
+        status = fsw_reiserfs_next_key(vol, &item);
+        if (status)
+            return status;
+        
     }
-    
-    // setup a dnode for the child item
-    status = fsw_dnode_create(dno, child_objectid, FSW_DNODE_TYPE_UNKNOWN, &entry_name, child_dno_out);
-    if (status)
-        return status;
-    
-    (*child_dno_out)->dir_id = child_dir_id;
-    return FSW_SUCCESS;
+    // This statement cannot be reached; fsw_reiserfs_next_key returns FSW_NOT_FOUND
+    // at the end of the directory. Still, we want to keep the compiler happy.
+    return FSW_NOT_FOUND;
 }
 
 /**
@@ -501,7 +498,6 @@ static fsw_status_t fsw_reiserfs_dir_read(struct fsw_reiserfs_volume *vol, struc
     // TODO: save position and restore on error
     
     // BIG TODOS: Use binary search within the item.
-    //  Get the next item when this one is exhausted.
     
     // adjust pointer to first entry if necessary
     if (shand->pos == 0)
@@ -514,12 +510,14 @@ static fsw_status_t fsw_reiserfs_dir_read(struct fsw_reiserfs_volume *vol, struc
     if (item.item_offset == 0)
         return FSW_NOT_FOUND;       // empty directory or something
     
-    // search the directory item
-    dhead = (struct reiserfs_de_head *)item.item_data;
-    nr_item = item.ih.u.ih_entry_count;
-    for (i = 0; i < nr_item; i++, dhead++) {
-        if (dhead->deh_offset >= shand->pos) {
-            // found the next entry
+    for(;;) {
+        
+        // search the directory item
+        dhead = (struct reiserfs_de_head *)item.item_data;
+        nr_item = item.ih.u.ih_entry_count;
+        for (i = 0; i < nr_item; i++, dhead++) {
+            if (dhead->deh_offset < shand->pos)
+                continue;  // not yet past the last entry returned
             if (dhead->deh_offset == DOT_OFFSET || dhead->deh_offset == DOT_DOT_OFFSET)
                 continue;  // never report . or ..
             
@@ -538,7 +536,7 @@ static fsw_status_t fsw_reiserfs_dir_read(struct fsw_reiserfs_volume *vol, struc
             entry_name.data = item.item_data + name_offset;
             
             if (fsw_streq_cstr(&entry_name, ".reiserfs_priv"))
-                continue;
+                continue;  // never report this special file
             
             // setup a dnode for the child item
             status = fsw_dnode_create(dno, dhead->deh_objectid, FSW_DNODE_TYPE_UNKNOWN, &entry_name, child_dno_out);
@@ -549,12 +547,17 @@ static fsw_status_t fsw_reiserfs_dir_read(struct fsw_reiserfs_volume *vol, struc
             shand->pos = dhead->deh_offset + 1;
             return FSW_SUCCESS;
         }
+        
+        // We didn't find the next directory entry in this item. Look for the next
+        // item of the directory.
+        
+        status = fsw_reiserfs_next_key(vol, &item);
+        if (status)
+            return status;
+        
     }
-    
-    // TODO: If we drop out here, the entry was not found in the current item.
-    //  Get the next item in tree order (using the remembered info from the last
-    //  search) and look there.
-    
+    // This statement cannot be reached; fsw_reiserfs_next_key returns FSW_NOT_FOUND
+    // at the end of the directory. Still, we want to keep the compiler happy.
     return FSW_NOT_FOUND;
 }
 
@@ -612,7 +615,7 @@ static int fsw_reiserfs_compare_key(struct reiserfs_key *key,
 
 static fsw_status_t fsw_reiserfs_search_key(struct fsw_reiserfs_volume *vol,
                                             fsw_u32 dir_id, fsw_u32 objectid, fsw_u64 offset,
-                                            struct fsw_reiserfs_search_result *item_out)
+                                            struct fsw_reiserfs_search_result *item)
 {
     fsw_status_t    status;
     int             comp_result;
@@ -627,6 +630,8 @@ static fsw_status_t fsw_reiserfs_search_key(struct fsw_reiserfs_volume *vol,
     // BIG TODOS: Use binary search within the item.
     //  Remember tree path for "get next item" function.
     
+    item->valid = 0;
+    
     // walk the tree
     tree_bno = vol->sb->s_v1.s_root_block;
     for (;;) {
@@ -639,6 +644,7 @@ static fsw_status_t fsw_reiserfs_search_key(struct fsw_reiserfs_volume *vol,
         tree_level = bhead->blk_level;
         nr_item = bhead->blk_nr_item;
         FSW_MSG_DEBUGV((FSW_MSGSTR("fsw_reiserfs_search_key: visiting block %d level %d items %d\n"), tree_bno, tree_level, nr_item));
+        item->path_bno[tree_level] = tree_bno;
         
         // TODO: check the level against a running counter
         
@@ -648,17 +654,17 @@ static fsw_status_t fsw_reiserfs_search_key(struct fsw_reiserfs_volume *vol,
         
         // search internal node block, look for the path to follow
         key = (struct reiserfs_key *)(buffer + BLKH_SIZE);
-        for (i = 0; i < nr_item; i++) {
+        for (i = 0; i < nr_item; i++, key++) {
             if (fsw_reiserfs_compare_key(key, dir_id, objectid, offset) == FIRST_GREATER)
                 break;
-            key++;
         }
+        item->path_index[tree_level] = i;
         tree_bno = ((struct disk_child *)(buffer + BLKH_SIZE + nr_item * KEY_SIZE))[i].dc_block_number;
     }
     
     // search leaf node block, look for our data
     ihead = (struct item_head *)(buffer + BLKH_SIZE);
-    for (i = 0; i < nr_item; i++) {
+    for (i = 0; i < nr_item; i++, ihead++) {
         comp_result = fsw_reiserfs_compare_key(&ihead->ih_key, dir_id, objectid, offset);
         if (comp_result == KEYS_IDENTICAL)
             break;
@@ -667,40 +673,142 @@ static fsw_status_t fsw_reiserfs_search_key(struct fsw_reiserfs_volume *vol,
             // one as the preliminary result.
             if (i == 0)
                 return FSW_NOT_FOUND;
-            ihead--;
+            i--, ihead--;
             break;
         }
-        ihead++;
     }
     if (i >= nr_item) {
         // Go back to the last key, it was smaller than the search key.
         // NOTE: The first key of the next leaf block is guaranteed to be greater than
         //  our search key.
-        ihead--;
+        i--, ihead--;
     }
+    item->path_index[tree_level] = i;
     // Since we may have a key that is smaller than the search key, verify that
     // it is for the same object.
     if (ihead->ih_key.k_dir_id != dir_id || ihead->ih_key.k_objectid != objectid)
         return FSW_NOT_FOUND;   // Found no key for this object at all
     
     // return results
-    fsw_memcpy(&item_out->ih, ihead, sizeof(struct item_head));
-    item_out->item_type = (fsw_u32)FSW_U64_SHR(ihead->ih_key.u.k_offset_v2.v, 60);
-    if (item_out->item_type != TYPE_DIRECT &&
-        item_out->item_type != TYPE_INDIRECT &&
-        item_out->item_type != TYPE_DIRENTRY) {
+    fsw_memcpy(&item->ih, ihead, sizeof(struct item_head));
+    item->item_type = (fsw_u32)FSW_U64_SHR(ihead->ih_key.u.k_offset_v2.v, 60);
+    if (item->item_type != TYPE_DIRECT &&
+        item->item_type != TYPE_INDIRECT &&
+        item->item_type != TYPE_DIRENTRY) {
         // 3.5 format (_v1)
-        item_out->item_type = ihead->ih_key.u.k_offset_v1.k_uniqueness;
-        item_out->item_offset = ihead->ih_key.u.k_offset_v1.k_offset;
+        item->item_type = ihead->ih_key.u.k_offset_v1.k_uniqueness;
+        item->item_offset = ihead->ih_key.u.k_offset_v1.k_offset;
     } else {
         // 3.6 format (_v2)
-        item_out->item_offset = ihead->ih_key.u.k_offset_v2.v & (~0ULL >> 4);
+        item->item_offset = ihead->ih_key.u.k_offset_v2.v & (~0ULL >> 4);
     }
-    item_out->item_data = buffer + ihead->ih_item_location;
+    item->item_data = buffer + ihead->ih_item_location;
+    item->valid = 1;
     
     FSW_MSG_DEBUG((FSW_MSGSTR("fsw_reiserfs_search_key: found %d/%d/%lld (%d)\n"),
-                   ihead->ih_key.k_dir_id, ihead->ih_key.k_objectid, item_out->item_offset, item_out->item_type));
+                   ihead->ih_key.k_dir_id, ihead->ih_key.k_objectid, item->item_offset, item->item_type));
     return FSW_SUCCESS;
+}
+
+/**
+ * Find the next item in the reiserfs tree for an already-found item.
+ */
+
+static fsw_status_t fsw_reiserfs_next_key(struct fsw_reiserfs_volume *vol,
+                                          struct fsw_reiserfs_search_result *item)
+{
+    fsw_status_t    status;
+    fsw_u32         dir_id, objectid;
+    fsw_u64         offset;
+    fsw_u32         tree_bno, tree_level, nr_item, nr_ptr_item;
+    fsw_u8          *buffer;
+    struct block_head *bhead;
+    struct item_head *ihead;
+    
+    if (!item->valid)
+        return FSW_NOT_FOUND;
+    
+    dir_id = item->ih.ih_key.k_dir_id;
+    objectid = item->ih.ih_key.k_objectid;
+    offset = item->item_offset;
+    
+    FSW_MSG_DEBUG((FSW_MSGSTR("fsw_reiserfs_next_key: next for %d/%d/%lld\n"), dir_id, objectid, offset));
+    
+    // find a node that has more items, moving up until we find one
+    
+    for (tree_level = DISK_LEAF_NODE_LEVEL; tree_level < vol->sb->s_v1.s_tree_height; tree_level++) {
+    
+        // get the current tree block into memory
+        tree_bno = item->path_bno[tree_level];
+        status = fsw_read_block(vol, tree_bno, (void **)&buffer);
+        if (status)
+            return status;
+        bhead = (struct block_head *)buffer;
+        if (bhead->blk_level != tree_level) {
+            FSW_MSG_ASSERT((FSW_MSGSTR("fsw_reiserfs_next_key: tree block %d has not expected level %d\n"), tree_bno, tree_level));
+            return FSW_VOLUME_CORRUPTED;
+        }
+        nr_item = bhead->blk_nr_item;
+        FSW_MSG_DEBUGV((FSW_MSGSTR("fsw_reiserfs_next_key: visiting block %d level %d items %d\n"), tree_bno, tree_level, nr_item));
+        
+        nr_ptr_item = nr_item + ((tree_level > DISK_LEAF_NODE_LEVEL) ? 1 : 0);  // internal nodes have (nr_item) keys and (nr_item+1) pointers
+        item->path_index[tree_level]++;
+        if (item->path_index[tree_level] >= nr_ptr_item) {
+            item->path_index[tree_level] = 0;
+            continue;  // this node doesn't have any more items, move up one level
+        }
+        
+        // we have a new path to follow, move down to the leaf node again
+        while (tree_level > DISK_LEAF_NODE_LEVEL) {
+            // get next pointer from current block
+            tree_bno = ((struct disk_child *)(buffer + BLKH_SIZE + nr_item * KEY_SIZE))[item->path_index[tree_level]].dc_block_number;
+            tree_level--;
+            
+            // get the current tree block into memory
+            status = fsw_read_block(vol, tree_bno, (void **)&buffer);
+            if (status)
+                return status;
+            bhead = (struct block_head *)buffer;
+            if (bhead->blk_level != tree_level) {
+                FSW_MSG_ASSERT((FSW_MSGSTR("fsw_reiserfs_next_key: tree block %d has not expected level %d\n"), tree_bno, tree_level));
+                return FSW_VOLUME_CORRUPTED;
+            }
+            nr_item = bhead->blk_nr_item;
+            FSW_MSG_DEBUGV((FSW_MSGSTR("fsw_reiserfs_next_key: visiting block %d level %d items %d\n"), tree_bno, tree_level, nr_item));
+            item->path_bno[tree_level] = tree_bno;
+        }
+        
+        // get the item from the leaf node
+        ihead = ((struct item_head *)(buffer + BLKH_SIZE)) + item->path_index[tree_level];
+        
+        // We now have the item that follows the previous one in the tree. Check that it
+        // belongs to the same object.
+        if (ihead->ih_key.k_dir_id != dir_id || ihead->ih_key.k_objectid != objectid)
+            return FSW_NOT_FOUND;   // Found no next key for this object
+        
+        // return results
+        fsw_memcpy(&item->ih, ihead, sizeof(struct item_head));
+        item->item_type = (fsw_u32)FSW_U64_SHR(ihead->ih_key.u.k_offset_v2.v, 60);
+        if (item->item_type != TYPE_DIRECT &&
+            item->item_type != TYPE_INDIRECT &&
+            item->item_type != TYPE_DIRENTRY) {
+            // 3.5 format (_v1)
+            item->item_type = ihead->ih_key.u.k_offset_v1.k_uniqueness;
+            item->item_offset = ihead->ih_key.u.k_offset_v1.k_offset;
+        } else {
+            // 3.6 format (_v2)
+            item->item_offset = ihead->ih_key.u.k_offset_v2.v & (~0ULL >> 4);
+        }
+        item->item_data = buffer + ihead->ih_item_location;
+        item->valid = 1;
+        
+        FSW_MSG_DEBUG((FSW_MSGSTR("fsw_reiserfs_next_key: found %d/%d/%lld (%d)\n"),
+                       ihead->ih_key.k_dir_id, ihead->ih_key.k_objectid, item->item_offset, item->item_type));
+        return FSW_SUCCESS;
+    }
+    
+    // we went to the highest level node and there still were no more items...
+    return FSW_NOT_FOUND;
 }
 
 // EOF

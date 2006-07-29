@@ -42,10 +42,18 @@
  */
 
 struct fsw_reiserfs_search_result {
+    int valid;
+    
+    // the found item
     struct item_head ih;
     fsw_u64 item_offset;
     fsw_u32 item_type;
+    
     fsw_u8 *item_data;
+    
+    // path information
+    fsw_u32 path_bno[MAX_HEIGHT];
+    fsw_u32 path_index[MAX_HEIGHT];
 };
 
 
