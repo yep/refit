@@ -23,8 +23,6 @@
 
 #include "fsw_ext2.h"
 
-#define DEBUG_LEVEL 0
-
 
 // functions
 
@@ -136,9 +134,7 @@ static fsw_status_t fsw_ext2_volume_mount(struct fsw_ext2_volume *vol)
     if (status)
         return status;
     
-#if DEBUG_LEVEL
-    Print(L"fsw_ext2_volume_mount: success, blocksize %d\n", blocksize);
-#endif
+    FSW_MSG_DEBUG((FSW_MSGSTR("fsw_ext2_volume_mount: success, blocksize %d\n"), blocksize));
     
     return FSW_SUCCESS;
 }
@@ -185,16 +181,14 @@ static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_
     if (dno->raw)
         return FSW_SUCCESS;
     
-#if DEBUG_LEVEL
-    Print(L"fsw_ext2_dnode_fill: inode %d\n", dno->g.dnode_id);
-#endif
+    FSW_MSG_DEBUG((FSW_MSGSTR("fsw_ext2_dnode_fill: inode %d\n"), dno->g.dnode_id));
     
     // get the block group descriptor
     groupno = (dno->g.dnode_id - 1) / vol->sb->s_inodes_per_group;
     gdesc_bno = (vol->sb->s_first_data_block + 1) +
         groupno / (vol->g.phys_blocksize / sizeof(struct ext2_group_desc));
     gdesc_index = groupno % (vol->g.phys_blocksize / sizeof(struct ext2_group_desc));
-    status = fsw_read_block(vol, gdesc_bno, &buffer);
+    status = fsw_read_block(vol, gdesc_bno, (void **)&buffer);
     if (status)
         return status;
     gdesc = ((struct ext2_group_desc *)(buffer)) + gdesc_index;
@@ -206,7 +200,7 @@ static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_
     ino_bno = gdesc->bg_inode_table +
         ino_in_group / (vol->g.phys_blocksize / vol->inode_size);
     ino_index = ino_in_group % (vol->g.phys_blocksize / vol->inode_size);
-    status = fsw_read_block(vol, ino_bno, &buffer);
+    status = fsw_read_block(vol, ino_bno, (void **)&buffer);
     if (status)
         return status;
     
@@ -337,7 +331,7 @@ static fsw_status_t fsw_ext2_get_extent(struct fsw_ext2_volume *vol, struct fsw_
         if (path[i+1] < 0)
             break;
         
-        status = fsw_read_block(vol, bno, &buffer);
+        status = fsw_read_block(vol, bno, (void **)&buffer);
         if (status)
             return status;
         buf_bcnt = vol->ind_bcnt;
@@ -525,40 +519,24 @@ static fsw_status_t fsw_ext2_readlink(struct fsw_ext2_volume *vol, struct fsw_ex
 {
     fsw_status_t    status;
     int             ea_blocks;
-    struct fsw_shandle shand;
-    fsw_u32         buffer_size;
-    char            buffer[FSW_PATH_MAX];
     struct fsw_string s;
     
     if (dno->g.size > FSW_PATH_MAX)
         return FSW_VOLUME_CORRUPTED;
     
-    s.type = FSW_STRING_TYPE_ISO88591;
-    s.size = s.len = (int)dno->g.size;
-    
     ea_blocks = dno->raw->i_file_acl ? (vol->g.log_blocksize >> 9) : 0;
     
     if (dno->raw->i_blocks - ea_blocks == 0) {
         // "fast" symlink, path is stored inside the inode
+        s.type = FSW_STRING_TYPE_ISO88591;
+        s.size = s.len = (int)dno->g.size;
         s.data = dno->raw->i_block;
+        status = fsw_strdup_coerce(link_target, vol->g.host_string_type, &s);
     } else {
         // "slow" symlink, path is stored in normal inode data
-        s.data = buffer;
-        
-        // open shandle and read the data
-        status = fsw_shandle_open(dno, &shand);
-        if (status)
-            return status;
-        buffer_size = (fsw_u32)s.size;
-        status = fsw_shandle_read(&shand, &buffer_size, buffer);
-        fsw_shandle_close(&shand);
-        if (status)
-            return status;
-        if ((int)buffer_size < s.size)
-            return FSW_VOLUME_CORRUPTED;
+        status = fsw_dnode_readlink_data(dno, link_target);
     }
     
-    status = fsw_strdup_coerce(link_target, vol->g.host_string_type, &s);
     return status;
 }
 
