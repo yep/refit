@@ -59,7 +59,7 @@ OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\fsw_lib.obj \
     $(BUILD_DIR)\fsw_ext2.obj \
 
-INC_DEPS = $(INC_DEPS) fsw_efi.h fsw_efi_base.h fsw_core.h fsw_ext2.h fsw_ext2_disk.h
+INC_DEPS = $(INC_DEPS) fsw_base.h fsw_efi_base.h fsw_core.h fsw_efi.h fsw_ext2.h fsw_ext2_disk.h
 
 #
 # Source file dependencies
