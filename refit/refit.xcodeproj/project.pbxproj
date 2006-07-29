@@ -6,6 +6,21 @@
 	objectVersion = 42;
 	objects = {
 
+/* Begin PBXAggregateTarget section */
+		9D0309300A7A300F001EDFBC /* Doxygen */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 9D0309310A7A302D001EDFBC /* Build configuration list for PBXAggregateTarget "Doxygen" */;
+			buildPhases = (
+				9D03092F0A7A300F001EDFBC /* ShellScript */,
+			);
+			comments = "Re-creates documentation for FSW with doxygen.";
+			dependencies = (
+			);
+			name = Doxygen;
+			productName = Doxygen;
+		};
+/* End PBXAggregateTarget section */
+
 /* Begin PBXBuildFile section */
 		8DD76FAC0486AB0100D96B5E /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* main.c */; settings = {ATTRIBUTES = (); }; };
 		9D0308300A7A1BED001EDFBC /* fsw_core.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D59EE480A579B1D004E3134 /* fsw_core.c */; };
@@ -13,6 +28,7 @@
 		9D0308320A7A1BF6001EDFBC /* fsw_lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D58C6840A5EC67500F17BEC /* fsw_lib.c */; };
 		9D0308330A7A1BF6001EDFBC /* fsw_posix.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0307920A7A095F001EDFBC /* fsw_posix.c */; };
 		9D0308340A7A1BF9001EDFBC /* lsroot.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0308280A7A1AC8001EDFBC /* lsroot.c */; };
+		9D0309520A7A3711001EDFBC /* fsw_reiserfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DF64A240A7770E400F2D76F /* fsw_reiserfs.c */; };
 		9D47400809F54B7500C70CF4 /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D47400709F54B7500C70CF4 /* config.c */; };
 		9D574B2309E907BF00EFE8D2 /* icns.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1A09E907BE00EFE8D2 /* icns.c */; };
 		9D574B2509E907BF00EFE8D2 /* lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1C09E907BE00EFE8D2 /* lib.c */; };
@@ -64,6 +80,8 @@
 		9D0307BD0A7A0975001EDFBC /* fsw_posix_base.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_posix_base.h; sourceTree = "<group>"; };
 		9D0308280A7A1AC8001EDFBC /* lsroot.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lsroot.c; sourceTree = "<group>"; };
 		9D03082E0A7A1BD3001EDFBC /* lsroot */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = lsroot; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D0309450A7A31F0001EDFBC /* index.html */ = {isa = PBXFileReference; explicitFileType = text.html.documentation; fileEncoding = 4; name = index.html; path = fsw/doc/html/index.html; sourceTree = SOURCE_ROOT; };
+		9D030B7E0A7B72E3001EDFBC /* fsw_reiserfs.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = fsw_reiserfs.mak; sourceTree = "<group>"; };
 		9D1FDB970A4D3B160094C9A1 /* file.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = file.c; sourceTree = "<group>"; };
 		9D1FDBB90A4D429A0094C9A1 /* dir.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dir.c; sourceTree = "<group>"; };
 		9D1FDC7E0A4F27030094C9A1 /* inode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = inode.c; sourceTree = "<group>"; };
@@ -91,7 +109,6 @@
 		9DA115ED0A472D9800C2D0F4 /* fs_ext2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fs_ext2.h; sourceTree = "<group>"; };
 		9DA116010A472E9100C2D0F4 /* fs_ext2.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = fs_ext2.mak; sourceTree = "<group>"; };
 		9DBBAAD20A610823003899D7 /* design.dox */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = design.dox; sourceTree = "<group>"; };
-		9DBBAB170A61303D003899D7 /* fsw_base.dox */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = fsw_base.dox; sourceTree = "<group>"; };
 		9DBBAB330A6141B8003899D7 /* fsw_efi_lib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_efi_lib.c; sourceTree = "<group>"; };
 		9DD3A1980A4AFA340005584A /* ext2_disk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ext2_disk.h; sourceTree = "<group>"; };
 		9DD3A1990A4AFA340005584A /* super.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = super.c; sourceTree = "<group>"; };
@@ -124,7 +141,7 @@
 		9DF0AA2B0A09C58400058459 /* libeg.mkefi */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libeg.mkefi; sourceTree = "<group>"; };
 		9DF0AA2C0A09C58400058459 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DF0AA320A09C59E00058459 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = refit.mak; sourceTree = "<group>"; };
-		9DF0AA340A09C5A200058459 /* build.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build.bat; sourceTree = "<group>"; };
+		9DF0AA340A09C5A200058459 /* build.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; lineEnding = 2; path = build.bat; sourceTree = "<group>"; };
 		9DF0AAB50A0AA07300058459 /* gptsync.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gptsync.c; sourceTree = "<group>"; };
 		9DF0AAB60A0AA07300058459 /* gptsync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gptsync.h; sourceTree = "<group>"; };
 		9DF0AACF0A0AA60700058459 /* os_efi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_efi.c; sourceTree = "<group>"; };
@@ -158,6 +175,7 @@
 			children = (
 				08FB7795FE84155DC02AAC07 /* Source */,
 				9DF0AA110A09C4A300058459 /* Makefiles */,
+				9D0309440A7A31A4001EDFBC /* Documentation */,
 				1AB674ADFE9D54B511CA2CBB /* Products */,
 			);
 			name = "refit-check";
@@ -186,13 +204,21 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		9D0309440A7A31A4001EDFBC /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+				9D0309450A7A31F0001EDFBC /* index.html */,
+			);
+			name = Documentation;
+			sourceTree = "<group>";
+		};
 		9D28E0D80A5A59FA00D8221F /* fsw */ = {
 			isa = PBXGroup;
 			children = (
 				9D28E0DF0A5A5A1A00D8221F /* Doxyfile */,
 				9DBBAAD20A610823003899D7 /* design.dox */,
-				9DBBAB170A61303D003899D7 /* fsw_base.dox */,
 				9D28E0E00A5A5A1A00D8221F /* fsw_ext2.mak */,
+				9D030B7E0A7B72E3001EDFBC /* fsw_reiserfs.mak */,
 			);
 			path = fsw;
 			sourceTree = "<group>";
@@ -412,9 +438,26 @@
 			targets = (
 				8DD76FA90486AB0100D96B5E /* refit-check */,
 				9D03082D0A7A1BD3001EDFBC /* lsroot */,
+				9D0309300A7A300F001EDFBC /* Doxygen */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9D03092F0A7A300F001EDFBC /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd ${SRCROOT}/fsw\n/Applications/Doxygen.app/Contents/Resources/doxygen\nexit 0";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8DD76FAB0486AB0100D96B5E /* Sources */ = {
@@ -444,6 +487,7 @@
 				9D0308320A7A1BF6001EDFBC /* fsw_lib.c in Sources */,
 				9D0308330A7A1BF6001EDFBC /* fsw_posix.c in Sources */,
 				9D0308340A7A1BF9001EDFBC /* lsroot.c in Sources */,
+				9D0309520A7A3711001EDFBC /* fsw_reiserfs.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,6 +549,13 @@
 			};
 			name = CompileCheck;
 		};
+		9D0309320A7A302D001EDFBC /* CompileCheck */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = Doxygen;
+			};
+			name = CompileCheck;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -528,6 +579,14 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9D03083E0A7A1C3E001EDFBC /* CompileCheck */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CompileCheck;
+		};
+		9D0309310A7A302D001EDFBC /* Build configuration list for PBXAggregateTarget "Doxygen" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D0309320A7A302D001EDFBC /* CompileCheck */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = CompileCheck;
