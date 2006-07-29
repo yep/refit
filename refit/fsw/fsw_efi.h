@@ -38,7 +38,6 @@
 #ifndef _FSW_EFI_H_
 #define _FSW_EFI_H_
 
-#include "fsw_efi_base.h"
 #include "fsw_core.h"
 
 

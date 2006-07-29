@@ -457,9 +457,7 @@ fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void *
         return FSW_SUCCESS;
     }
     
-#if DEBUG_LEVEL == 2
-    Print(L"fsw_efi_read_block: %d  (%d)\n", phys_bno, vol->phys_blocksize);
-#endif
+    FSW_MSG_DEBUGV((FSW_MSGSTR("fsw_efi_read_block: %d  (%d)\n"), phys_bno, vol->phys_blocksize));
     
     // allocate buffer if necessary
     if (Volume->BlockBuffer == NULL) {
