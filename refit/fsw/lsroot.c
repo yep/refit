@@ -37,8 +37,8 @@
 
 #include "fsw_posix.h"
 
-#include <stdio.h>
 
+extern struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(reiserfs);
 
 int main(int argc, char **argv)
 {
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         return 1;
     }
     
-    vol = fsw_posix_mount(argv[1], NULL);
+    vol = fsw_posix_mount(argv[1], &FSW_FSTYPE_TABLE_NAME(reiserfs));
     if (vol == NULL) {
         printf("Mounting failed.\n");
         return 1;
