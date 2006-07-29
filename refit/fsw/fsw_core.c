@@ -37,8 +37,6 @@
 
 #include "fsw_core.h"
 
-#define DEBUG_LEVEL 0
-
 
 /**
  * Mount a volume with a given file system driver. This function is called by the
@@ -421,11 +419,9 @@ fsw_status_t fsw_dnode_lookup_path(struct fsw_dnode *dno,
         // parse next path component
         fsw_strsplit(&lookup_name, &remaining_path, separator);
         
-#if DEBUG_LEVEL
-        Print(L"fsw_dnode_lookup_path: split into %d '%s' and %d '%s'\n",
-              lookup_name.len, lookup_name.data,
-              remaining_path.len, remaining_path.data);
-#endif
+        FSW_MSG_DEBUG((FSW_MSGSTR("fsw_dnode_lookup_path: split into %d '%s' and %d '%s'\n"),
+                       lookup_name.len, lookup_name.data,
+                       remaining_path.len, remaining_path.data));
         
         if (fsw_strlen(&lookup_name) == 0) {        // empty path component
             if (root_if_empty)
@@ -493,18 +489,14 @@ fsw_status_t fsw_dnode_lookup_path(struct fsw_dnode *dno,
         dno = child_dno;   // is already retained
         child_dno = NULL;
         
-#if DEBUG_LEVEL
-        Print(L"fsw_dnode_lookup_path: now at inode %d\n", dno->dnode_id);
-#endif
+        FSW_MSG_DEBUG((FSW_MSGSTR("fsw_dnode_lookup_path: now at inode %d\n"), dno->dnode_id));
     }
     
     *child_dno_out = dno;
     return FSW_SUCCESS;
     
 errorexit:
-#if DEBUG_LEVEL
-    Print(L"fsw_dnode_lookup_path: leaving with error %d\n", status);
-#endif
+    FSW_MSG_DEBUG((FSW_MSGSTR("fsw_dnode_lookup_path: leaving with error %d\n"), status));
     fsw_dnode_release(dno);
     if (child_dno != NULL)
         fsw_dnode_release(child_dno);
@@ -554,6 +546,49 @@ fsw_status_t fsw_dnode_readlink(struct fsw_dnode *dno, struct fsw_string *target
         return FSW_UNSUPPORTED;
     
     return dno->vol->fstype_table->readlink(dno->vol, dno, target_name);
+}
+
+/**
+ * Read the target path of a symbolic link by accessing file data. This function can
+ * be called by the file system driver if the file system stores the target path
+ * as normal file data. This function will open an shandle, read the whole content
+ * of the file into a buffer, and build a string from that. Currently the encoding
+ * for the string is fixed as FSW_STRING_TYPE_ISO88591.
+ *
+ * If the function returns FSW_SUCCESS, the string handle provided by the caller is
+ * filled with a string in the host's preferred encoding. The caller is responsible
+ * for calling fsw_strfree on the string.
+ */
+
+fsw_status_t fsw_dnode_readlink_data(struct fsw_dnode *dno, struct fsw_string *link_target)
+{
+    fsw_status_t    status;
+    struct fsw_shandle shand;
+    fsw_u32         buffer_size;
+    char            buffer[FSW_PATH_MAX];
+    struct fsw_string s;
+    
+    if (dno->size > FSW_PATH_MAX)
+        return FSW_VOLUME_CORRUPTED;
+    
+    s.type = FSW_STRING_TYPE_ISO88591;
+    s.size = s.len = (int)dno->size;
+    s.data = buffer;
+    
+    // open shandle and read the data
+    status = fsw_shandle_open(dno, &shand);
+    if (status)
+        return status;
+    buffer_size = (fsw_u32)s.size;
+    status = fsw_shandle_read(&shand, &buffer_size, buffer);
+    fsw_shandle_close(&shand);
+    if (status)
+        return status;
+    if ((int)buffer_size < s.size)
+        return FSW_VOLUME_CORRUPTED;
+    
+    status = fsw_strdup_coerce(link_target, dno->vol->host_string_type, &s);
+    return status;
 }
 
 /**
@@ -719,7 +754,7 @@ fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_in
                 copylen = buflen;
             
             // get one physical block
-            status = fsw_read_block(vol, phys_bno, &block_buffer);
+            status = fsw_read_block(vol, phys_bno, (void **)&block_buffer);
             if (status)
                 return status;
             

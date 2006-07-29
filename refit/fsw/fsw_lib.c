@@ -39,6 +39,36 @@
 
 
 /**
+ * Allocate memory and clear it.
+ */
+
+fsw_status_t fsw_alloc_zero(int len, void **ptr_out)
+{
+    fsw_status_t status;
+    
+    status = fsw_alloc(len, ptr_out);
+    if (status)
+        return status;
+    fsw_memzero(*ptr_out, len);
+    return FSW_SUCCESS;
+}
+
+/**
+ * Duplicate a piece of data.
+ */
+
+fsw_status_t fsw_memdup(void **dest_out, void *src, int len)
+{
+    fsw_status_t status;
+    
+    status = fsw_alloc(len, dest_out);
+    if (status)
+        return status;
+    fsw_memcpy(*dest_out, src, len);
+    return FSW_SUCCESS;
+}
+
+/**
  * Get the length of a string. Returns the number of characters in the string.
  */
 

@@ -316,6 +316,7 @@ fsw_status_t fsw_dnode_lookup_path(struct fsw_dnode *dno,
                                    struct fsw_dnode **child_dno_out);
 fsw_status_t fsw_dnode_dir_read(struct fsw_shandle *shand, struct fsw_dnode **child_dno_out);
 fsw_status_t fsw_dnode_readlink(struct fsw_dnode *dno, struct fsw_string *link_target);
+fsw_status_t fsw_dnode_readlink_data(struct DNODESTRUCTNAME *dno, struct fsw_string *link_target);
 fsw_status_t fsw_dnode_resolve(struct fsw_dnode *dno, struct fsw_dnode **target_dno_out);
 
 /*@}*/
@@ -329,6 +330,17 @@ fsw_status_t fsw_dnode_resolve(struct fsw_dnode *dno, struct fsw_dnode **target_
 fsw_status_t fsw_shandle_open(struct DNODESTRUCTNAME *dno, struct fsw_shandle *shand);
 void         fsw_shandle_close(struct fsw_shandle *shand);
 fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_inout, void *buffer);
+
+/*@}*/
+
+
+/**
+ * \name Memory Functions
+ */
+/*@{*/
+
+fsw_status_t fsw_alloc_zero(int len, void **ptr_out);
+fsw_status_t fsw_memdup(void **dest_out, void *src, int len);
 
 /*@}*/
 
