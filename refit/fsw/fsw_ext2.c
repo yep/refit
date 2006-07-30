@@ -87,10 +87,11 @@ static fsw_status_t fsw_ext2_volume_mount(struct fsw_ext2_volume *vol)
     
     // read the superblock into its buffer
     fsw_set_blocksize(vol, EXT2_SUPERBLOCK_BLOCKSIZE, EXT2_SUPERBLOCK_BLOCKSIZE);
-    status = fsw_read_block(vol, EXT2_SUPERBLOCK_BLOCKNO, &buffer);
+    status = fsw_block_get(vol, EXT2_SUPERBLOCK_BLOCKNO, 0, &buffer);
     if (status)
         return status;
     fsw_memcpy(vol->sb, buffer, sizeof(struct ext2_super_block));
+    fsw_block_release(vol, EXT2_SUPERBLOCK_BLOCKNO, buffer);
     
     // check the superblock
     if (vol->sb->s_magic != EXT2_SUPER_MAGIC)
@@ -188,7 +189,7 @@ static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_
     gdesc_bno = (vol->sb->s_first_data_block + 1) +
         groupno / (vol->g.phys_blocksize / sizeof(struct ext2_group_desc));
     gdesc_index = groupno % (vol->g.phys_blocksize / sizeof(struct ext2_group_desc));
-    status = fsw_read_block(vol, gdesc_bno, (void **)&buffer);
+    status = fsw_block_get(vol, gdesc_bno, 3, (void **)&buffer);
     if (status)
         return status;
     gdesc = ((struct ext2_group_desc *)(buffer)) + gdesc_index;
@@ -200,15 +201,16 @@ static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_
     ino_bno = gdesc->bg_inode_table +
         ino_in_group / (vol->g.phys_blocksize / vol->inode_size);
     ino_index = ino_in_group % (vol->g.phys_blocksize / vol->inode_size);
-    status = fsw_read_block(vol, ino_bno, (void **)&buffer);
+    fsw_block_release(vol, gdesc_bno, buffer);
+    status = fsw_block_get(vol, ino_bno, 2, (void **)&buffer);
     if (status)
         return status;
     
     // keep our inode around
-    status = fsw_alloc(vol->inode_size, &dno->raw);
+    status = fsw_memdup((void **)&dno->raw, buffer + ino_index * vol->inode_size, vol->inode_size);
+    fsw_block_release(vol, ino_bno, buffer);
     if (status)
         return status;
-    fsw_memcpy(dno->raw, buffer + ino_index * vol->inode_size, vol->inode_size);
     
     // get info from the inode
     dno->g.size = dno->raw->i_size;
@@ -273,7 +275,7 @@ static fsw_status_t fsw_ext2_get_extent(struct fsw_ext2_volume *vol, struct fsw_
                                         struct fsw_extent *extent)
 {
     fsw_status_t    status;
-    fsw_u32         bno, buf_bcnt, file_bcnt;
+    fsw_u32         bno, release_bno, buf_bcnt, file_bcnt;
     fsw_u32         *buffer;
     int             path[5], i;
     
@@ -322,18 +324,24 @@ static fsw_status_t fsw_ext2_get_extent(struct fsw_ext2_volume *vol, struct fsw_
     // follow the indirection path
     buffer = dno->raw->i_block;
     buf_bcnt = EXT2_NDIR_BLOCKS;
+    release_bno = 0;
     for (i = 0; ; i++) {
         bno = buffer[path[i]];
         if (bno == 0) {
             extent->type = FSW_EXTENT_TYPE_SPARSE;
+            if (release_bno)
+                fsw_block_release(vol, release_bno, buffer);
             return FSW_SUCCESS;
         }
         if (path[i+1] < 0)
             break;
         
-        status = fsw_read_block(vol, bno, (void **)&buffer);
+        if (release_bno)
+            fsw_block_release(vol, release_bno, buffer);
+        status = fsw_block_get(vol, bno, 1, (void **)&buffer);
         if (status)
             return status;
+        release_bno = bno;
         buf_bcnt = vol->ind_bcnt;
     }
     extent->phys_start = bno;
@@ -348,6 +356,8 @@ static fsw_status_t fsw_ext2_get_extent(struct fsw_ext2_volume *vol, struct fsw_
             break;
     }
     
+    if (release_bno)
+        fsw_block_release(vol, release_bno, buffer);
     return FSW_SUCCESS;
 }
 
@@ -424,8 +434,6 @@ static fsw_status_t fsw_ext2_dir_read(struct fsw_ext2_volume *vol, struct fsw_ex
     // Preconditions: The caller has checked that dno is a directory node. The caller
     //  has opened a storage handle to the directory's storage and keeps it around between
     //  calls.
-    
-    // TODO: save position and restore on error
     
     while (1) {
         // read next entry
