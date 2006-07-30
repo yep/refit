@@ -41,7 +41,7 @@
  * ReiserFS: Results from a tree search.
  */
 
-struct fsw_reiserfs_search_result {
+struct fsw_reiserfs_item {
     int valid;
     
     // the found item
@@ -54,6 +54,10 @@ struct fsw_reiserfs_search_result {
     // path information
     fsw_u32 path_bno[MAX_HEIGHT];
     fsw_u32 path_index[MAX_HEIGHT];
+    
+    // block release information
+    fsw_u32 block_bno;
+    void *block_buffer;
 };
 
 
