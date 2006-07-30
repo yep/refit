@@ -38,6 +38,13 @@
 #include "fsw_core.h"
 
 
+// functions
+
+static void fsw_blockcache_free(struct fsw_volume *vol);
+
+#define MAX_CACHE_LEVEL (5)
+
+
 /**
  * Mount a volume with a given file system driver. This function is called by the
  * host driver to make a volume accessible. The file system driver to use is specified
@@ -106,6 +113,7 @@ void fsw_unmount(struct fsw_volume *vol)
     
     vol->fstype_table->volume_free(vol);
     
+    fsw_blockcache_free(vol);
     fsw_strfree(&vol->label);
     fsw_free(vol);
 }
@@ -127,9 +135,9 @@ fsw_status_t fsw_volume_stat(struct fsw_volume *vol, struct fsw_volume_stat *sb)
  * Usually both sizes will be the same but there may be file systems that need to access
  * metadata at a smaller block size than the allocation unit for files.
  *
- * Calling this function will usually cause the host driver to drop its buffers and
- * block cache. It should only be called while mounting the file system, not as a
- * part of file access operations.
+ * Calling this function causes the block cache to be dropped. All pointers returned
+ * from fsw_block_get become invalid. This function should only be called while
+ * mounting the file system, not as a part of file access operations.
  *
  * Both sizes are measured in bytes, must be powers of 2, and must not be smaller
  * than 512 bytes. The logical block size cannot be smaller than the physical block size.
@@ -139,6 +147,9 @@ void fsw_set_blocksize(struct fsw_volume *vol, fsw_u32 phys_blocksize, fsw_u32 l
 {
     // TODO: Check the sizes. Both must be powers of 2. log_blocksize must not be smaller than
     //  phys_blocksize.
+    
+    // drop core block cache if present
+    fsw_blockcache_free(vol);
     
     // signal host driver to drop caches etc.
     vol->host_table->change_blocksize(vol,
@@ -150,19 +161,142 @@ void fsw_set_blocksize(struct fsw_volume *vol, fsw_u32 phys_blocksize, fsw_u32 l
 }
 
 /**
- * Read a block of data from the disk. This function is called by the file system driver
+ * Get a block of data from the disk. This function is called by the file system driver
  * or by core functions. It calls through to the host driver's device access routine.
- * Given a physical block number, it reads the block into memory and returns the
- * address of the memory buffer.
+ * Given a physical block number, it reads the block into memory (or fetches it from the
+ * block cache) and returns the address of the memory buffer. The caller should provide
+ * an indication of how important the block is in the cache_level parameter. Blocks with
+ * a low level are purged first. Some suggestions for cache levels:
  *
- * With the current design, the buffer stays valid until the next call to fsw_read_block
- * is made. A future redesign will probably change that to an explicit get/release
- * sequence, in order to support proper caching.
+ *  - 0: File data
+ *  - 1: Directory data, symlink data
+ *  - 2: File system metadata
+ *  - 3..5: File system metadata with a high rate of access
+ *
+ * If this function returns successfully, the returned data pointer is valid until the
+ * caller calls fsw_block_release.
  */
 
-fsw_status_t fsw_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void **buffer_out)
+fsw_status_t fsw_block_get(struct VOLSTRUCTNAME *vol, fsw_u32 phys_bno, fsw_u32 cache_level, void **buffer_out)
 {
-    return vol->host_table->read_block(vol, phys_bno, buffer_out);
+    fsw_status_t    status;
+    fsw_u32         i, discard_level, new_bcache_size;
+    struct fsw_blockcache *new_bcache;
+    
+    // TODO: allow the host driver to do its own caching; just call through if
+    //  the appropriate function pointers are set
+    
+    if (cache_level > MAX_CACHE_LEVEL)
+        cache_level = MAX_CACHE_LEVEL;
+    
+    // check block cache
+    for (i = 0; i < vol->bcache_size; i++) {
+        if (vol->bcache[i].phys_bno == phys_bno) {
+            // cache hit!
+            if (vol->bcache[i].cache_level < cache_level)
+                vol->bcache[i].cache_level = cache_level;  // promote the entry
+            vol->bcache[i].refcount++;
+            *buffer_out = vol->bcache[i].data;
+            return FSW_SUCCESS;
+        }
+    }
+    
+    // find a free entry in the cache table
+    for (i = 0; i < vol->bcache_size; i++) {
+        if (vol->bcache[i].phys_bno == FSW_INVALID_BNO)
+            break;
+    }
+    if (i >= vol->bcache_size) {
+        for (discard_level = 0; discard_level <= MAX_CACHE_LEVEL; discard_level++) {
+            for (i = 0; i < vol->bcache_size; i++) {
+                if (vol->bcache[i].refcount == 0 && vol->bcache[i].cache_level <= discard_level)
+                    break;
+            }
+            if (i < vol->bcache_size)
+                break;
+        }
+    }
+    if (i >= vol->bcache_size) {
+        // enlarge / create the cache
+        if (vol->bcache_size < 16)
+            new_bcache_size = 16;
+        else
+            new_bcache_size = vol->bcache_size << 1;
+        status = fsw_alloc(new_bcache_size * sizeof(struct fsw_blockcache), &new_bcache);
+        if (status)
+            return status;
+        if (vol->bcache_size > 0)
+            fsw_memcpy(new_bcache, vol->bcache, vol->bcache_size * sizeof(struct fsw_blockcache));
+        for (i = vol->bcache_size; i < new_bcache_size; i++) {
+            new_bcache[i].refcount = 0;
+            new_bcache[i].cache_level = 0;
+            new_bcache[i].phys_bno = FSW_INVALID_BNO;
+            new_bcache[i].data = NULL;
+        }
+        i = vol->bcache_size;
+        
+        // switch caches
+        if (vol->bcache != NULL)
+            fsw_free(vol->bcache);
+        vol->bcache = new_bcache;
+        vol->bcache_size = new_bcache_size;
+    }
+    vol->bcache[i].phys_bno = FSW_INVALID_BNO;
+    
+    // read the data
+    if (vol->bcache[i].data == NULL) {
+        status = fsw_alloc(vol->phys_blocksize, &vol->bcache[i].data);
+        if (status)
+            return status;
+    }
+    status = vol->host_table->read_block(vol, phys_bno, vol->bcache[i].data);
+    if (status)
+        return status;
+    
+    vol->bcache[i].phys_bno = phys_bno;
+    vol->bcache[i].cache_level = cache_level;
+    vol->bcache[i].refcount = 1;
+    *buffer_out = vol->bcache[i].data;
+    return FSW_SUCCESS;
+}
+
+/**
+ * Releases a disk block. This function must be called to release disk blocks returned
+ * from fsw_block_get.
+ */
+
+void fsw_block_release(struct VOLSTRUCTNAME *vol, fsw_u32 phys_bno, void *buffer)
+{
+    fsw_u32 i;
+    
+    // TODO: allow the host driver to do its own caching; just call through if
+    //  the appropriate function pointers are set
+    
+    // update block cache
+    for (i = 0; i < vol->bcache_size; i++) {
+        if (vol->bcache[i].phys_bno == phys_bno && vol->bcache[i].refcount > 0)
+            vol->bcache[i].refcount--;
+    }
+}
+
+/**
+ * Release the block cache. Called internally when changing block sizes and when
+ * unmounting the volume. It frees all data occupied by the generic block cache.
+ */
+
+static void fsw_blockcache_free(struct fsw_volume *vol)
+{
+    fsw_u32 i;
+    
+    for (i = 0; i < vol->bcache_size; i++) {
+        if (vol->bcache[i].data != NULL)
+            fsw_free(vol->bcache[i].data);
+    }
+    if (vol->bcache != NULL) {
+        fsw_free(vol->bcache);
+        vol->bcache = NULL;
+    }
+    vol->bcache_size = 0;
 }
 
 /**
@@ -517,12 +651,18 @@ errorexit:
 
 fsw_status_t fsw_dnode_dir_read(struct fsw_shandle *shand, struct fsw_dnode **child_dno_out)
 {
+    fsw_status_t    status;
     struct fsw_dnode *dno = shand->dnode;
+    fsw_u64         saved_pos;
     
     if (dno->type != FSW_DNODE_TYPE_DIR)
         return FSW_UNSUPPORTED;
     
-    return dno->vol->fstype_table->dir_read(dno->vol, dno, shand, child_dno_out);
+    saved_pos = shand->pos;
+    status = dno->vol->fstype_table->dir_read(dno->vol, dno, shand, child_dno_out);
+    if (status)
+        shand->pos = saved_pos;
+    return status;
 }
 
 /**
@@ -709,6 +849,7 @@ fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_in
     fsw_u8          *buffer, *block_buffer;
     fsw_u32         buflen, copylen, pos;
     fsw_u32         log_bno, pos_in_extent, phys_bno, pos_in_physblock;
+    fsw_u32         cache_level;
     
     if (shand->pos >= dno->size) {   // already at EOF
         *buffer_size_inout = 0;
@@ -719,6 +860,7 @@ fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_in
     buffer = buffer_in;
     buflen = *buffer_size_inout;
     pos = (fsw_u32)shand->pos;
+    cache_level = (dno->type != FSW_DNODE_TYPE_FILE) ? 1 : 0;
     // restrict read to file size
     if (buflen > dno->size - pos)
         buflen = (fsw_u32)(dno->size - pos);
@@ -754,12 +896,13 @@ fsw_status_t fsw_shandle_read(struct fsw_shandle *shand, fsw_u32 *buffer_size_in
                 copylen = buflen;
             
             // get one physical block
-            status = fsw_read_block(vol, phys_bno, (void **)&block_buffer);
+            status = fsw_block_get(vol, phys_bno, cache_level, (void **)&block_buffer);
             if (status)
                 return status;
             
             // copy data from it
             fsw_memcpy(buffer, block_buffer + pos_in_physblock, copylen);
+            fsw_block_release(vol, phys_bno, block_buffer);
             
         } else if (shand->extent.type == FSW_EXTENT_TYPE_BUFFER) {
             copylen = shand->extent.log_count * vol->log_blocksize - pos_in_extent;

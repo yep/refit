@@ -41,9 +41,6 @@
 #include "fsw_core.h"
 
 
-/** Indicates that the block buffer is empty. */
-#define INVALID_BLOCK_NO (0xffffffffUL)
-
 /**
  * EFI Host: Private per-volume structure.
  */
@@ -59,9 +56,6 @@ typedef struct {
     EFI_STATUS                  LastIOStatus;   //!< Last status from Disk I/O
     
     struct fsw_volume           *vol;           //!< FSW volume structure
-    
-    fsw_u32                     BlockInBuffer;  //!< Number of the block currently cached
-    void                        *BlockBuffer;   //!< Disk block buffer and cache
     
 } FSW_VOLUME_DATA;
 

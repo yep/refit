@@ -75,7 +75,7 @@ EFI_STATUS EFIAPI fsw_efi_ComponentName_GetControllerName(IN  EFI_COMPONENT_NAME
 void fsw_efi_change_blocksize(struct fsw_volume *vol,
                               fsw_u32 old_phys_blocksize, fsw_u32 old_log_blocksize,
                               fsw_u32 new_phys_blocksize, fsw_u32 new_log_blocksize);
-fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void **buffer_out);
+fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void *buffer);
 
 EFI_STATUS fsw_efi_map_status(fsw_status_t fsw_status, FSW_VOLUME_DATA *Volume);
 
@@ -307,8 +307,6 @@ EFI_STATUS EFIAPI fsw_efi_DriverBinding_Start(IN EFI_DRIVER_BINDING_PROTOCOL  *T
     if (EFI_ERROR(Status)) {
         if (Volume->vol != NULL)
             fsw_unmount(Volume->vol);
-        if (Volume->BlockBuffer != NULL)
-            FreePool(Volume->BlockBuffer);
         FreePool(Volume);
         
         BS->CloseProtocol(ControllerHandle,
@@ -371,8 +369,6 @@ EFI_STATUS EFIAPI fsw_efi_DriverBinding_Stop(IN  EFI_DRIVER_BINDING_PROTOCOL  *T
     // release private data structure
     if (Volume->vol != NULL)
         fsw_unmount(Volume->vol);
-    if (Volume->BlockBuffer != NULL)
-        FreePool(Volume->BlockBuffer);
     FreePool(Volume);
     
     // close the consumed protocols
@@ -420,65 +416,36 @@ EFI_STATUS EFIAPI fsw_efi_ComponentName_GetControllerName(IN  EFI_COMPONENT_NAME
 
 /**
  * FSW interface function for block size changes. This function is called by the FSW core
- * when the file system driver changes the block sizes for the volume. The block cache
- * is dropped and invalidated. A new block buffer will be allocated the next time
- * fsw_efi_read_block is called.
+ * when the file system driver changes the block sizes for the volume.
  */
 
 void fsw_efi_change_blocksize(struct fsw_volume *vol,
                               fsw_u32 old_phys_blocksize, fsw_u32 old_log_blocksize,
                               fsw_u32 new_phys_blocksize, fsw_u32 new_log_blocksize)
 {
-    FSW_VOLUME_DATA     *Volume = (FSW_VOLUME_DATA *)vol->host_data;
-    
-    if (Volume->BlockBuffer != NULL) {
-        FreePool(Volume->BlockBuffer);
-        Volume->BlockBuffer = NULL;
-    }
-    Volume->BlockInBuffer = INVALID_BLOCK_NO;
+    // nothing to do
 }
 
 /**
  * FSW interface function to read data blocks. This function is called by the FSW core
- * to read a block of data from the device. The buffer is allocated by the host driver.
- * Currently, the last block read is cached in memory. In the future, the core may
- * implement a generic block cache for host environments that don't have their own
- * caching mechanisms.
+ * to read a block of data from the device. The buffer is allocated by the core code.
  */
 
-fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void **buffer_out)
+fsw_status_t fsw_efi_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void *buffer)
 {
     EFI_STATUS          Status;
     FSW_VOLUME_DATA     *Volume = (FSW_VOLUME_DATA *)vol->host_data;
     
-    // check buffer
-    if (phys_bno == Volume->BlockInBuffer) {
-        *buffer_out = Volume->BlockBuffer;
-        return FSW_SUCCESS;
-    }
-    
     FSW_MSG_DEBUGV((FSW_MSGSTR("fsw_efi_read_block: %d  (%d)\n"), phys_bno, vol->phys_blocksize));
-    
-    // allocate buffer if necessary
-    if (Volume->BlockBuffer == NULL) {
-        Volume->BlockBuffer = AllocatePool(vol->phys_blocksize);
-        if (Volume->BlockBuffer == NULL)
-            return FSW_OUT_OF_MEMORY;
-    }
     
     // read from disk
     Status = Volume->DiskIo->ReadDisk(Volume->DiskIo, Volume->MediaId,
                                       (UINT64)phys_bno * vol->phys_blocksize,
                                       vol->phys_blocksize,
-                                      Volume->BlockBuffer);
+                                      buffer);
     Volume->LastIOStatus = Status;
-    if (EFI_ERROR(Status)) {
-        Volume->BlockInBuffer = INVALID_BLOCK_NO;
+    if (EFI_ERROR(Status))
         return FSW_IO_ERROR;
-    }
-    Volume->BlockInBuffer = phys_bno;
-    *buffer_out = Volume->BlockBuffer;
-    
     return FSW_SUCCESS;
 }
 

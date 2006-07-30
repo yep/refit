@@ -52,7 +52,7 @@ fsw_status_t fsw_posix_open_dno(struct fsw_posix_volume *pvol, const char *path,
 void fsw_posix_change_blocksize(struct fsw_volume *vol,
                               fsw_u32 old_phys_blocksize, fsw_u32 old_log_blocksize,
                               fsw_u32 new_phys_blocksize, fsw_u32 new_log_blocksize);
-fsw_status_t fsw_posix_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void **buffer_out);
+fsw_status_t fsw_posix_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void *buffer);
 
 /**
  * Dispatch table for our FSW host driver.
@@ -78,12 +78,10 @@ struct fsw_posix_volume * fsw_posix_mount(const char *path, struct fsw_fstype_ta
     struct fsw_posix_volume *pvol;
     
     // allocate volume structure
-    status = fsw_alloc(sizeof(struct fsw_posix_volume), &pvol);
+    status = fsw_alloc_zero(sizeof(struct fsw_posix_volume), (void **)&pvol);
     if (status)
         return NULL;
-    fsw_memzero(pvol, sizeof(struct fsw_posix_volume));
     pvol->fd = -1;
-    pvol->BlockInBuffer = INVALID_BLOCK_NO;
     
     // open underlying file/device
     pvol->fd = open(path, O_RDONLY, 0);
@@ -99,8 +97,6 @@ struct fsw_posix_volume * fsw_posix_mount(const char *path, struct fsw_fstype_ta
     status = fsw_mount(pvol, &fsw_posix_host_table, fstype_table, &pvol->vol);
     if (status) {
         fprintf(stderr, "fsw_posix_mount: fsw_mount returned %d\n", status);
-        if (pvol->BlockBuffer != NULL)
-            fsw_free(pvol->BlockBuffer);
         fsw_free(pvol);
         return NULL;
     }
@@ -116,8 +112,6 @@ int fsw_posix_unmount(struct fsw_posix_volume *pvol)
 {
     if (pvol->vol != NULL)
         fsw_unmount(pvol->vol);
-    if (pvol->BlockBuffer != NULL)
-        fsw_free(pvol->BlockBuffer);
     fsw_free(pvol);
     return 0;
 }
@@ -350,69 +344,38 @@ fsw_status_t fsw_posix_open_dno(struct fsw_posix_volume *pvol, const char *path,
 
 /**
  * FSW interface function for block size changes. This function is called by the FSW core
- * when the file system driver changes the block sizes for the volume. The block cache
- * is dropped and invalidated. A new block buffer will be allocated the next time
- * fsw_posix_read_block is called.
+ * when the file system driver changes the block sizes for the volume.
  */
 
 void fsw_posix_change_blocksize(struct fsw_volume *vol,
                                 fsw_u32 old_phys_blocksize, fsw_u32 old_log_blocksize,
                                 fsw_u32 new_phys_blocksize, fsw_u32 new_log_blocksize)
 {
-    struct fsw_posix_volume *pvol = (struct fsw_posix_volume *)vol->host_data;
-    
-    if (pvol->BlockBuffer != NULL) {
-        fsw_free(pvol->BlockBuffer);
-        pvol->BlockBuffer = NULL;
-    }
-    pvol->BlockInBuffer = INVALID_BLOCK_NO;
+    // nothing to do
 }
 
 /**
  * FSW interface function to read data blocks. This function is called by the FSW core
- * to read a block of data from the device. The buffer is allocated by the host driver.
- * Currently, the last block read is cached in memory. In the future, the core may
- * implement a generic block cache for host environments that don't have their own
- * caching mechanisms.
+ * to read a block of data from the device. The buffer is allocated by the core code.
  */
 
-fsw_status_t fsw_posix_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void **buffer_out)
+fsw_status_t fsw_posix_read_block(struct fsw_volume *vol, fsw_u32 phys_bno, void *buffer)
 {
-    fsw_status_t    status;
     struct fsw_posix_volume *pvol = (struct fsw_posix_volume *)vol->host_data;
     off_t           block_offset, seek_result;
     ssize_t         read_result;
     
-    // check buffer
-    if (phys_bno == pvol->BlockInBuffer) {
-        *buffer_out = pvol->BlockBuffer;
-        return FSW_SUCCESS;
-    }
-    
     FSW_MSG_DEBUGV((FSW_MSGSTR("fsw_posix_read_block: %d  (%d)\n"), phys_bno, vol->phys_blocksize));
-    
-    // allocate buffer if necessary
-    if (pvol->BlockBuffer == NULL) {
-        status = fsw_alloc(vol->phys_blocksize, &pvol->BlockBuffer);
-        if (status)
-            return status;
-    }
     
     // read from disk
     block_offset = (off_t)phys_bno * vol->phys_blocksize;
     seek_result = lseek(pvol->fd, block_offset, SEEK_SET);
-    if (seek_result != block_offset) {
-        pvol->BlockInBuffer = INVALID_BLOCK_NO;
+    if (seek_result != block_offset)
         return FSW_IO_ERROR;
-    }
-    read_result = read(pvol->fd, pvol->BlockBuffer, vol->phys_blocksize);
-    if (read_result != vol->phys_blocksize) {
-        pvol->BlockInBuffer = INVALID_BLOCK_NO;
+    read_result = read(pvol->fd, buffer, vol->phys_blocksize);
+    if (read_result != vol->phys_blocksize)
         return FSW_IO_ERROR;
-    }
     
-    pvol->BlockInBuffer = phys_bno;
-    *buffer_out = pvol->BlockBuffer;
     return FSW_SUCCESS;
 }
 

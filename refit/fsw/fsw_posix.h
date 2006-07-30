@@ -45,9 +45,6 @@
 #include <sys/dir.h>
 
 
-/** Indicates that the block buffer is empty. */
-#define INVALID_BLOCK_NO (0xffffffffUL)
-
 /**
  * POSIX Host: Private per-volume structure.
  */
@@ -56,9 +53,6 @@ struct fsw_posix_volume {
     struct fsw_volume           *vol;           //!< FSW volume structure
     
     int                         fd;             //!< System file descriptor for data access
-    
-    fsw_u32                     BlockInBuffer;  //!< Number of the block currently cached
-    void                        *BlockBuffer;   //!< Disk block buffer and cache
     
 };
 
