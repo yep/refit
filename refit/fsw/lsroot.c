@@ -56,7 +56,7 @@ int main(int argc, char **argv)
         printf("Mounting failed.\n");
         return 1;
     }
-    dir = fsw_posix_opendir(vol, "/");
+    dir = fsw_posix_opendir(vol, "/drivers/net/");
     if (dir == NULL) {
         printf("opendir call failed.\n");
         return 1;
