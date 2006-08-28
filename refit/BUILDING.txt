@@ -50,7 +50,7 @@ run 'make' in the 'refit' directory.
 As a third alternative, you can use the cross-platform 'efironment'
 build environment. The development of efironment was sparked out of
 frustration with both gnu-efi and Intel's various build environments
-(EFI Application Toolkit, TianoCore). The goal is to have single,
+(EFI Application Toolkit, TianoCore). The goal is to have a single,
 up-to-date package that compiles with Visual Studio on Windows as well
 as gcc on Linux (and with some limitations, on Mac OS X).
 
