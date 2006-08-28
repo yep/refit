@@ -32,3 +32,11 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+ Additional Notice
+===================
+
+Parts of the file system driver sub-projects are covered by the GNU
+GPL instead. See the LICENSE.txt files in the fs_ext2 and fsw
+directories for more information.
