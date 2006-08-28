@@ -38,8 +38,5 @@ all :
 
 	cd $(SOURCE_DIR)\fsw
 	nmake -f fsw_ext2.mak all
-	cd $(SOURCE_DIR)
-
-	cd $(SOURCE_DIR)\fsw
 	nmake -f fsw_reiserfs.mak all
 	cd $(SOURCE_DIR)
