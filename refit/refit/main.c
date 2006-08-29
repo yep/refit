@@ -58,7 +58,6 @@ typedef struct {
 // variables
 
 #define MACOSX_LOADER_PATH      L"\\System\\Library\\CoreServices\\boot.efi"
-#define MACOSX_HIBERNATE_PATH   L"\\var\\vm\\sleepimage"
 
 #define TAG_RESET  (1)
 #define TAG_ABOUT  (2)
@@ -392,12 +391,6 @@ static VOID ScanLoader(VOID)
         if (FileExists(Volume->RootDir, FileName)) {
             Print(L"  - Mac OS X boot file found\n");
             Entry = AddLoaderEntry(FileName, L"Mac OS X", Volume);
-            /*
-            if (FileExists(Volume->RootDir, MACOSX_HIBERNATE_PATH)) {
-                // system is suspended in Safe Sleep, skip the menu
-                StartLoader(Entry);
-            }
-             */
         }
         
         // check for XOM
