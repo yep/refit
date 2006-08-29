@@ -32,6 +32,10 @@ all :
 	nmake -f dumpprot.mak all
 	cd $(SOURCE_DIR)
 
+	cd $(SOURCE_DIR)\dumpfv
+	nmake -f dumpfv.mak all
+	cd $(SOURCE_DIR)
+
 #	cd $(SOURCE_DIR)\fs_ext2
 #	nmake -f fs_ext2.mak all
 #	cd $(SOURCE_DIR)

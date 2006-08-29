@@ -112,6 +112,8 @@
 		9DBBAB330A6141B8003899D7 /* fsw_efi_lib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_efi_lib.c; sourceTree = "<group>"; };
 		9DD3A1980A4AFA340005584A /* ext2_disk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ext2_disk.h; sourceTree = "<group>"; };
 		9DD3A1990A4AFA340005584A /* super.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = super.c; sourceTree = "<group>"; };
+		9DD81B3A0AA4B46500652885 /* dumpfv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dumpfv.c; sourceTree = "<group>"; };
+		9DD81B400AA4B49F00652885 /* dumpfv.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = dumpfv.mak; sourceTree = "<group>"; };
 		9DF0A9E40A09C40900058459 /* efiConsoleControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = efiConsoleControl.h; sourceTree = "<group>"; };
 		9DF0A9E50A09C40900058459 /* efiUgaDraw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = efiUgaDraw.h; sourceTree = "<group>"; };
 		9DF0A9E60A09C40900058459 /* egemb_font.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = egemb_font.h; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 				9DF0A9DF0A09C3C100058459 /* libeg */,
 				9DF0AAAD0A0AA04600058459 /* gptsync */,
 				9DF0AA080A09C45000058459 /* dumpprot */,
+				9DD81B360AA4B43000652885 /* dumpfv */,
 				9DA115E90A472D5400C2D0F4 /* fs_ext2 */,
 				9D59EDE10A5664D4004E3134 /* fsw */,
 				9DF0A9E00A09C3D400058459 /* include */,
@@ -270,6 +273,22 @@
 			path = fs_ext2;
 			sourceTree = "<group>";
 		};
+		9DD81B360AA4B43000652885 /* dumpfv */ = {
+			isa = PBXGroup;
+			children = (
+				9DD81B3A0AA4B46500652885 /* dumpfv.c */,
+			);
+			path = dumpfv;
+			sourceTree = "<group>";
+		};
+		9DD81B3B0AA4B47600652885 /* dumpfv */ = {
+			isa = PBXGroup;
+			children = (
+				9DD81B400AA4B49F00652885 /* dumpfv.mak */,
+			);
+			path = dumpfv;
+			sourceTree = "<group>";
+		};
 		9DF0A9DE0A09C39600058459 /* refit */ = {
 			isa = PBXGroup;
 			children = (
@@ -333,6 +352,7 @@
 				9DF0AA1B0A09C51000058459 /* libeg */,
 				9DF0AAD80A0AA9F900058459 /* gptsync */,
 				9DF0AA240A09C55C00058459 /* dumpprot */,
+				9DD81B3B0AA4B47600652885 /* dumpfv */,
 				9DA115F30A472E6800C2D0F4 /* fs_ext2 */,
 				9D28E0D80A5A59FA00D8221F /* fsw */,
 				9DF0AA120A09C4BA00058459 /* Make.common */,
