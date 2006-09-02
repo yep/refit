@@ -1,18 +1,50 @@
 #!/bin/bash
 
-sudo rm -rf root-blesser
+sudo rm -rf root-main root-fsdriver root-blesser
 
-### set up root for Blesser package
+### set up root for main package
 
-mkdir root-blesser
-mkdir root-blesser/StartupItems
-cp -R ../dist/rEFItBlesser root-blesser/StartupItems/
+R=root-main
 
-find root-blesser -name .svn -exec rm -r '{}' ';' -prune
+mkdir $R
+mkdir $R/efi
+cp -R ../dist/efi/refit $R/efi/
+cp -R ../dist/efi/tools $R/efi/
+cp -R ../dist/*.rtf* $R/efi/
+rm -rf $R/efi/tools/drivers
 
-chmod 775 root-blesser
-chmod -R g-w root-blesser/StartupItems
-sudo chown root.admin root-blesser
-sudo chown -R root.wheel root-blesser/StartupItems
+find $R -name .svn -exec rm -rf '{}' ';' -prune
+
+chmod -R g+w $R
+sudo chown -R root.admin $R
+
+### set up root for fsdriver package
+
+R=root-fsdriver
+
+mkdir $R
+mkdir $R/efi
+mkdir $R/efi/tools
+cp -R ../dist/efi/tools/drivers $R/efi/tools/
+
+find $R -name .svn -exec rm -rf '{}' ';' -prune
+
+chmod -R g+w $R
+sudo chown -R root.admin $R
+
+### set up root for blesser package
+
+R=root-blesser
+
+mkdir $R
+mkdir $R/StartupItems
+cp -R ../dist/rEFItBlesser $R/StartupItems/
+
+find $R -name .svn -exec rm -rf '{}' ';' -prune
+
+chmod 775 $R
+chmod -R g-w $R/StartupItems
+sudo chown root.admin $R
+sudo chown -R root.wheel $R/StartupItems
 
 # EOF
