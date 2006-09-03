@@ -103,7 +103,8 @@ EG_IMAGE * egDecodeICNS(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN Ic
     UINT8               *SrcPtr;
     EG_PIXEL            *DestPtr;
     
-    if (FileData[0] != 'i' || FileData[1] != 'c' || FileData[2] != 'n' || FileData[3] != 's') {
+    if (FileDataLength < 8 || FileData == NULL ||
+        FileData[0] != 'i' || FileData[1] != 'c' || FileData[2] != 'n' || FileData[3] != 's') {
         // not an icns file...
         return NULL;
     }

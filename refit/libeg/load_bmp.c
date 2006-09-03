@@ -86,7 +86,7 @@ EG_IMAGE * egDecodeBMP(IN UINT8 *FileData, IN UINTN FileDataLength, IN UINTN Ico
     UINTN               Index, BitIndex;
     
     // read and check header
-    if (FileDataLength < sizeof(BMP_IMAGE_HEADER))
+    if (FileDataLength < sizeof(BMP_IMAGE_HEADER) || FileData == NULL)
         return NULL;
     BmpHeader = (BMP_IMAGE_HEADER *) FileData;
     if (BmpHeader->CharB != 'B' || BmpHeader->CharM != 'M')
