@@ -295,7 +295,8 @@ static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC Sty
     SCROLL_STATE State;
     EFI_STATUS Status;
     EFI_INPUT_KEY key;
-    UINTN index;
+    UINTN index, i;
+    CHAR16 Shortcut;
     BOOLEAN HaveTimeout = FALSE;
     UINTN TimeoutCountdown = 0;
     CHAR16 *TimeoutMessage;
@@ -386,6 +387,21 @@ static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC Sty
                 break;
             case '+':
                 MenuExit = MENU_EXIT_DETAILS;
+                break;
+            default:
+                Shortcut = key.UnicodeChar;
+                if (Shortcut >= 'a' && Shortcut <= 'z')
+                    Shortcut -= ('a' - 'A');
+                if (Shortcut) {
+                    for (i = 0; i < Screen->EntryCount; i++) {
+                        if (Screen->Entries[i]->ShortcutDigit == Shortcut ||
+                            Screen->Entries[i]->ShortcutLetter == Shortcut) {
+                            State.CurrentSelection = i;
+                            MenuExit = MENU_EXIT_ENTER;
+                            break;
+                        }
+                    }
+                }
                 break;
         }
     }

@@ -65,9 +65,9 @@ typedef struct {
 #define TAG_LEGACY (4)
 #define TAG_TOOL   (5)
 
-static REFIT_MENU_ENTRY MenuEntryReset  = { L"Restart Computer", TAG_RESET, 1, NULL, NULL, NULL };
-static REFIT_MENU_ENTRY MenuEntryAbout  = { L"About rEFIt", TAG_ABOUT, 1, NULL, NULL, NULL };
-static REFIT_MENU_ENTRY MenuEntryReturn = { L"Return to Main Menu", TAG_RETURN, 0, NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryReset  = { L"Restart Computer", TAG_RESET, 1, 0, 'R', NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryAbout  = { L"About rEFIt", TAG_ABOUT, 1, 0, 'A', NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryReturn = { L"Return to Main Menu", TAG_RETURN, 0, 0, 0, NULL, NULL, NULL };
 
 static REFIT_MENU_SCREEN MainMenu       = { L"Main Menu", NULL, 0, NULL, 0, NULL, 0, L"Automatic boot" };
 static REFIT_MENU_SCREEN AboutMenu      = { L"About", NULL, 0, NULL, 0, NULL, 0, NULL };
@@ -157,6 +157,7 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
 {
     CHAR16          *FileName, *OSIconName;
     CHAR16          IconFileName[256];
+    CHAR16          ShortcutLetter;
     UINTN           LoaderKind;
     LOADER_ENTRY    *Entry, *SubEntry;
     REFIT_MENU_SCREEN *SubScreen;
@@ -185,25 +186,31 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
     // detect specific loaders
     OSIconName = NULL;
     LoaderKind = 0;
+    ShortcutLetter = 0;
     if (StriCmp(LoaderPath, MACOSX_LOADER_PATH) == 0) {
         OSIconName = L"mac";
         Entry->UseGraphicsMode = TRUE;
         LoaderKind = 1;
+        ShortcutLetter = 'M';
     } else if (StriCmp(FileName, L"diags.efi") == 0) {
         OSIconName = L"hwtest";
     } else if (StriCmp(FileName, L"e.efi") == 0 ||
                StriCmp(FileName, L"elilo.efi") == 0) {
         OSIconName = L"elilo,linux";
         LoaderKind = 2;
+        ShortcutLetter = 'L';
     } else if (StriCmp(FileName, L"cdboot.efi") == 0 ||
                StriCmp(FileName, L"bootmgr.efi") == 0 ||
                StriCmp(FileName, L"Bootmgfw.efi") == 0) {
         OSIconName = L"win";
+        ShortcutLetter = 'W';
     } else if (StriCmp(FileName, L"xom.efi") == 0) {
         OSIconName = L"xom,win";
         Entry->UseGraphicsMode = TRUE;
         LoaderKind = 3;
+        ShortcutLetter = 'W';
     }
+    Entry->me.ShortcutLetter = ShortcutLetter;
     if (Entry->me.Image == NULL)
         Entry->me.Image = LoadOSIcon(OSIconName, L"unknown", FALSE);
     
@@ -580,11 +587,14 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
     LEGACY_ENTRY            *Entry, *SubEntry;
     REFIT_MENU_SCREEN       *SubScreen;
     CHAR16                  *VolDesc;
+    CHAR16                  ShortcutLetter = 0;
     
     if (LoaderTitle == NULL) {
-        if (Volume->OSName != NULL)
+        if (Volume->OSName != NULL) {
             LoaderTitle = Volume->OSName;
-        else
+            if (LoaderTitle[0] == 'W' || LoaderTitle[0] == 'L')
+                ShortcutLetter = LoaderTitle[0];
+        } else
             LoaderTitle = L"Legacy OS";
     }
     if (Volume->VolName != NULL)
@@ -597,6 +607,7 @@ static LEGACY_ENTRY * AddLegacyEntry(IN CHAR16 *LoaderTitle, IN REFIT_VOLUME *Vo
     Entry->me.Title        = PoolPrint(L"Boot %s from %s", LoaderTitle, VolDesc);
     Entry->me.Tag          = TAG_LEGACY;
     Entry->me.Row          = 0;
+    Entry->me.ShortcutLetter = ShortcutLetter;
     Entry->me.Image        = LoadOSIcon(Volume->OSIconName, L"legacy", FALSE);
     if (GlobalConfig.HideBadges == 0 ||
         (GlobalConfig.HideBadges == 1 && Volume->DiskKind != DISK_KIND_INTERNAL))
@@ -681,7 +692,8 @@ static VOID StartTool(IN LOADER_ENTRY *Entry)
     FinishExternalScreen();
 }
 
-static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, EG_IMAGE *Image, BOOLEAN UseGraphicsMode)
+static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle, IN EG_IMAGE *Image,
+                                   IN CHAR16 ShortcutLetter, IN BOOLEAN UseGraphicsMode)
 {
     LOADER_ENTRY *Entry;
     
@@ -690,6 +702,7 @@ static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle
     Entry->me.Title = PoolPrint(L"Start %s", LoaderTitle);
     Entry->me.Tag = TAG_TOOL;
     Entry->me.Row = 1;
+    Entry->me.ShortcutLetter = ShortcutLetter;
     Entry->me.Image = Image;
     Entry->LoaderPath = StrDuplicate(LoaderPath);
     Entry->DevicePath = FileDevicePath(SelfLoadedImage->DeviceHandle, Entry->LoaderPath);
@@ -721,11 +734,11 @@ static VOID ScanTool(VOID)
     if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_SHELL)) {
         SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
         if (FileExists(SelfRootDir, FileName)) {
-            AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
+            AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), 'S', FALSE);
         } else {
             StrCpy(FileName, L"\\efi\\tools\\shell.efi");
             if (FileExists(SelfRootDir, FileName)) {
-                AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), FALSE);
+                AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), 'S', FALSE);
             }
         }
     }
@@ -733,13 +746,13 @@ static VOID ScanTool(VOID)
     // look for the GPT/MBR sync tool
     StrCpy(FileName, L"\\efi\\tools\\gptsync.efi");
     if (FileExists(SelfRootDir, FileName)) {
-        AddToolEntry(FileName, L"Partitioning Tool", BuiltinIcon(BUILTIN_ICON_TOOL_PART), FALSE);
+        AddToolEntry(FileName, L"Partitioning Tool", BuiltinIcon(BUILTIN_ICON_TOOL_PART), 'P', FALSE);
     }
     
     // look for rescue Linux
     StrCpy(FileName, L"\\efi\\rescue\\elilo.efi");
     if (SelfVolume != NULL && FileExists(SelfRootDir, FileName)) {
-        Entry = AddToolEntry(FileName, L"Rescue Linux", BuiltinIcon(BUILTIN_ICON_TOOL_RESCUE), FALSE);
+        Entry = AddToolEntry(FileName, L"Rescue Linux", BuiltinIcon(BUILTIN_ICON_TOOL_RESCUE), 0, FALSE);
         
         if (UGAWidth == 1440 && UGAHeight == 900)
             Entry->LoadOptions = L"-d 0 i17";
@@ -917,6 +930,10 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
         MenuEntryReset.Image = BuiltinIcon(BUILTIN_ICON_FUNC_RESET);
         AddMenuEntry(&MainMenu, &MenuEntryReset);
     }
+    
+    // assign shortcut keys
+    for (i = 0; i < MainMenu.EntryCount && MainMenu.Entries[i]->Row == 0 && i < 9; i++)
+        MainMenu.Entries[i]->ShortcutDigit = '1' + i;
     
     // wait for user ACK when there were errors
     FinishTextScreen(FALSE);
