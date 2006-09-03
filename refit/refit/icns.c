@@ -95,12 +95,12 @@ EG_IMAGE * LoadOSIcon(IN CHAR16 *OSIconName OPTIONAL, IN CHAR16 *FallbackIconNam
         }
         if (OSIconName[Index] == 0)
             NextIndex = Index;
+        
+        // construct full path
         if (Index > StartIndex + 15)   // prevent buffer overflow
             continue;
         CopyMem(CutoutName, OSIconName + StartIndex, (Index - StartIndex) * sizeof(CHAR16));
         CutoutName[Index - StartIndex] = 0;
-        
-        // construct full path
         SPrint(FileName, 255, L"icons\\%s_%s.icns",
                BootLogo ? L"boot" : L"os", CutoutName);
         
