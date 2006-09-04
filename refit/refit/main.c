@@ -91,6 +91,7 @@ static VOID AboutRefit(VOID)
 }
 
 static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
+                                IN EFI_DEVICE_PATH *AltDevicePath OPTIONAL,
                                 IN CHAR16 *LoadOptions, IN CHAR16 *LoadOptionsPrefix,
                                 IN CHAR16 *ImageTitle)
 {
@@ -104,6 +105,9 @@ static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
     
     // load the image into memory
     ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
+    if (Status == EFI_NOT_FOUND && AltDevicePath != NULL) {
+        ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, AltDevicePath, NULL, 0, &ChildImageHandle);
+    }
     SPrint(ErrorInfo, 255, L"while loading %s", ImageTitle);
     if (CheckError(Status, ErrorInfo))
         goto bailout;
@@ -149,7 +153,7 @@ bailout:
 static VOID StartLoader(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode, L"Booting OS");
-    StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
+    StartEFIImage(Entry->DevicePath, NULL, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
     FinishExternalScreen();
 }
 
@@ -452,15 +456,6 @@ static VOID ScanLoader(VOID)
 // legacy boot functions
 //
 
-static UINT8 LegacyLoaderDevicePathData[] = {
-    0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
-    0xFF, 0xFF, 0xF9, 0xFF, 0x00, 0x00, 0x00, 0x00,
-    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
-    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
-    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
-};
-
 static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN PartitionIndex)
 {
     EFI_STATUS          Status;
@@ -558,6 +553,25 @@ static EFI_STATUS ActivateMbrPartition(IN EFI_BLOCK_IO *BlockIO, IN UINTN Partit
     return EFI_SUCCESS;
 }
 
+// early 2006 Core Duo / Core Solo models
+static UINT8 LegacyLoaderDevicePath1Data[] = {
+    0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0xFF, 0xFF, 0xF9, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
+    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
+    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
+};
+// mid-2006 Mac Pro (and probably other Core 2 models)
+static UINT8 LegacyLoaderDevicePath2Data[] = {
+    0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0xFF, 0xFF, 0xF7, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
+    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
+    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
+};
+
 static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
     EFI_STATUS          Status;
@@ -575,7 +589,8 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     if (Entry->Volume->IsMbrPartition)
         ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
     
-    Status = StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePathData,
+    Status = StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePath1Data,
+                           (EFI_DEVICE_PATH *)LegacyLoaderDevicePath2Data,
                            Entry->LoadOptions, NULL, L"legacy loader");
     if (Status == EFI_NOT_FOUND)
         Print(L"\nPlease make sure that you have the latest firmware update installed.\n");
@@ -687,7 +702,7 @@ static VOID ScanLegacy(VOID)
 static VOID StartTool(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
-    StartEFIImage(Entry->DevicePath, Entry->LoadOptions, Basename(Entry->LoaderPath),
+    StartEFIImage(Entry->DevicePath, NULL, Entry->LoadOptions, Basename(Entry->LoaderPath),
                   Basename(Entry->LoaderPath));
     FinishExternalScreen();
 }
@@ -781,7 +796,7 @@ static VOID ScanDriverDir(IN CHAR16 *Path)
             continue;   // skip this
         
         SPrint(FileName, 255, L"%s\\%s", Path, DirEntry->FileName);
-        Status = StartEFIImage(FileDevicePath(SelfLoadedImage->DeviceHandle, FileName),
+        Status = StartEFIImage(FileDevicePath(SelfLoadedImage->DeviceHandle, FileName), NULL,
                                L"", DirEntry->FileName, DirEntry->FileName);
     }
     Status = DirIterClose(&DirIter);
