@@ -87,6 +87,7 @@ typedef struct {
     EFI_BLOCK_IO        *BlockIO;
     UINT64              BlockIOOffset;
     EFI_BLOCK_IO        *WholeDiskBlockIO;
+    EFI_DEVICE_PATH     *WholeDiskDevicePath;
     MBR_PARTITION_INFO  *MbrPartitionTable;
 } REFIT_VOLUME;
 
@@ -101,6 +102,8 @@ extern REFIT_VOLUME     **Volumes;
 extern UINTN            VolumesCount;
 
 EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle);
+VOID UninitRefitLib(VOID);
+EFI_STATUS ReinitRefitLib(VOID);
 
 VOID CreateList(OUT VOID ***ListPtr, OUT UINTN *ElementCount, IN UINTN InitialElementCount);
 VOID AddListElement(IN OUT VOID ***ListPtr, IN OUT UINTN *ElementCount, IN VOID *NewElement);

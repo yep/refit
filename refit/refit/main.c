@@ -130,12 +130,18 @@ static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
         Print(L"Using load options '%s'\n", LoadOptions);
     }
     
+    // close open file handles
+    UninitRefitLib();
+    
     // turn control over to the image
     // TODO: (optionally) re-enable the EFI watchdog timer!
     ReturnStatus = Status = BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
     SPrint(ErrorInfo, 255, L"returned from %s", ImageTitle);
     CheckError(Status, ErrorInfo);
+    
+    // re-open file handles
+    ReinitRefitLib();
     
 bailout_unload:
     // unload the image, we don't care if it works or not...

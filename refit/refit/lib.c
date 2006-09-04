@@ -48,6 +48,13 @@ REFIT_VOLUME     *SelfVolume = NULL;
 REFIT_VOLUME     **Volumes = NULL;
 UINTN            VolumesCount = 0;
 
+// functions
+
+static EFI_STATUS FinishInitRefitLib(VOID);
+
+static VOID UninitVolumes(VOID);
+static VOID ReinitVolumes(VOID);
+
 //
 // self recognition stuff
 //
@@ -77,9 +84,6 @@ EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle)
     }
     */
     
-    SelfRootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
-    // TODO: error checking here
-    
     // find the current directory
     DevicePathAsString = DevicePathToStr(SelfLoadedImage->FilePath);
     if (DevicePathAsString != NULL) {
@@ -90,6 +94,52 @@ EFI_STATUS InitRefitLib(IN EFI_HANDLE ImageHandle)
     } else
         BaseDirectory[0] = 0;
     SelfDirPath = StrDuplicate(BaseDirectory);
+    
+    return FinishInitRefitLib();
+}
+
+VOID UninitRefitLib(VOID)
+{
+    // called before running external programs to close open file handles
+    
+    UninitVolumes();
+    
+    if (SelfDir != NULL) {
+        SelfDir->Close(SelfDir);
+        SelfDir = NULL;
+    }
+    
+    if (SelfRootDir != NULL) {
+        SelfRootDir->Close(SelfRootDir);
+        SelfRootDir = NULL;
+    }
+}
+
+EFI_STATUS ReinitRefitLib(VOID)
+{
+    // called after running external programs to re-open file handles
+    
+    EFI_STATUS  Status;
+    
+    ReinitVolumes();
+    
+    if (SelfVolume != NULL && SelfVolume->RootDir != NULL)
+        SelfRootDir = SelfVolume->RootDir;
+    
+    return FinishInitRefitLib();
+}
+
+static EFI_STATUS FinishInitRefitLib(VOID)
+{    
+    EFI_STATUS  Status;
+    
+    if (SelfRootDir == NULL) {
+        SelfRootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
+        if (SelfRootDir == NULL) {
+            CheckError(EFI_LOAD_ERROR, L"while (re)opening our installation volume");
+            return EFI_LOAD_ERROR;
+        }
+    }
     
     Status = SelfRootDir->Open(SelfRootDir, &SelfDir, SelfDirPath, EFI_FILE_MODE_READ, 0);
     if (CheckFatalError(Status, L"while opening our installation directory"))
@@ -296,7 +346,7 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
     BOOLEAN                 Bootable;
     
     // get device path
-    Volume->DevicePath = DevicePathFromHandle(Volume->DeviceHandle);
+    Volume->DevicePath = DuplicateDevicePath(DevicePathFromHandle(Volume->DeviceHandle));
 #if REFIT_DEBUG > 0
     if (Volume->DevicePath != NULL) {
         Print(L"* %s\n", DevicePathToStr(Volume->DevicePath));
@@ -363,8 +413,14 @@ static VOID ScanVolume(IN OUT REFIT_VOLUME *Volume)
             if (!EFI_ERROR(Status)) {
                 //Print(L"  - original handle: %08x - disk handle: %08x\n", (UINT32)DeviceHandle, (UINT32)WholeDiskHandle);
                 
+                // get the device path for later
+                Status = BS->HandleProtocol(WholeDiskHandle, &DevicePathProtocol, (VOID **) &DiskDevicePath);
+                if (!EFI_ERROR(Status)) {
+                    Volume->WholeDiskDevicePath = DuplicateDevicePath(DiskDevicePath);
+                }
+                
                 // look at the BlockIO protocol
-                Status = BS->HandleProtocol(WholeDiskHandle, &BlockIoProtocol, (VOID **) &(Volume->WholeDiskBlockIO));
+                Status = BS->HandleProtocol(WholeDiskHandle, &BlockIoProtocol, (VOID **) &Volume->WholeDiskBlockIO);
                 if (!EFI_ERROR(Status)) {
                     
                     // check the media block size
@@ -591,6 +647,69 @@ VOID ScanVolumes(VOID)
             FreePool(SectorBuffer2);
         }
         
+    }
+}
+
+static VOID UninitVolumes(VOID)
+{
+    REFIT_VOLUME            *Volume;
+    UINTN                   VolumeIndex;
+    
+    for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
+        Volume = Volumes[VolumeIndex];
+        
+        if (Volume->RootDir != NULL) {
+            Volume->RootDir->Close(Volume->RootDir);
+            Volume->RootDir = NULL;
+        }
+        
+        Volume->DeviceHandle = NULL;
+        Volume->BlockIO = NULL;
+        Volume->WholeDiskBlockIO = NULL;
+    }
+}
+
+static VOID ReinitVolumes(VOID)
+{
+    EFI_STATUS              Status;
+    REFIT_VOLUME            *Volume;
+    UINTN                   VolumeIndex;
+    EFI_DEVICE_PATH         *RemainingDevicePath;
+    EFI_HANDLE              DeviceHandle, WholeDiskHandle;
+    
+    for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
+        Volume = Volumes[VolumeIndex];
+        
+        if (Volume->DevicePath != NULL) {
+            // get the handle for that path
+            RemainingDevicePath = Volume->DevicePath;
+            Status = BS->LocateDevicePath(&BlockIoProtocol, &RemainingDevicePath, &DeviceHandle);
+            
+            if (!EFI_ERROR(Status)) {
+                Volume->DeviceHandle = DeviceHandle;
+                
+                // get the root directory
+                Volume->RootDir = LibOpenRoot(Volume->DeviceHandle);
+                
+            } else
+                CheckError(Status, L"from LocateDevicePath");
+        }
+        
+        if (Volume->WholeDiskDevicePath != NULL) {
+            // get the handle for that path
+            RemainingDevicePath = Volume->WholeDiskDevicePath;
+            Status = BS->LocateDevicePath(&BlockIoProtocol, &RemainingDevicePath, &WholeDiskHandle);
+            
+            if (!EFI_ERROR(Status)) {
+                // get the BlockIO protocol
+                Status = BS->HandleProtocol(WholeDiskHandle, &BlockIoProtocol, (VOID **) &Volume->WholeDiskBlockIO);
+                if (EFI_ERROR(Status)) {
+                    Volume->WholeDiskBlockIO = NULL;
+                    CheckError(Status, L"from HandleProtocol");
+                }
+            } else
+                CheckError(Status, L"from LocateDevicePath");
+        }
     }
 }
 
