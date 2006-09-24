@@ -77,6 +77,8 @@ static fsw_status_t fsw_ext2_volume_mount(struct fsw_ext2_volume *vol)
     fsw_status_t    status;
     void            *buffer;
     fsw_u32         blocksize;
+    fsw_u32         groupcnt, groupno, gdesc_per_block, gdesc_bno, gdesc_index;
+    struct ext2_group_desc *gdesc;
     int             i;
     struct fsw_string s;
     
@@ -128,7 +130,24 @@ static fsw_status_t fsw_ext2_volume_mount(struct fsw_ext2_volume *vol)
     if (status)
         return status;
     
-    // FUTURE: read the group descriptors, store the inode table offset for each one
+    // read the group descriptors to get inode table offsets
+    groupcnt = ((vol->sb->s_inodes_count - 2) / vol->sb->s_inodes_per_group) + 1;
+    gdesc_per_block = (vol->g.phys_blocksize / sizeof(struct ext2_group_desc));
+    
+    status = fsw_alloc(sizeof(fsw_u32) * groupcnt, &vol->inotab_bno);
+    if (status)
+        return status;
+    for (groupno = 0; groupno < groupcnt; groupno++) {
+        // get the block group descriptor
+        gdesc_bno = (vol->sb->s_first_data_block + 1) + groupno / gdesc_per_block;
+        gdesc_index = groupno % gdesc_per_block;
+        status = fsw_block_get(vol, gdesc_bno, 1, (void **)&buffer);
+        if (status)
+            return status;
+        gdesc = ((struct ext2_group_desc *)(buffer)) + gdesc_index;
+        vol->inotab_bno[groupno] = gdesc->bg_inode_table;
+        fsw_block_release(vol, gdesc_bno, buffer);
+    }
     
     // setup the root dnode
     status = fsw_dnode_create_root(vol, EXT2_ROOT_INO, &vol->g.root);
@@ -150,6 +169,8 @@ static void fsw_ext2_volume_free(struct fsw_ext2_volume *vol)
 {
     if (vol->sb)
         fsw_free(vol->sb);
+    if (vol->inotab_bno)
+        fsw_free(vol->inotab_bno);
 }
 
 /**
@@ -174,9 +195,7 @@ static fsw_status_t fsw_ext2_volume_stat(struct fsw_ext2_volume *vol, struct fsw
 static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_ext2_dnode *dno)
 {
     fsw_status_t    status;
-    fsw_u32         groupno, gdesc_bno, gdesc_index;
-    struct ext2_group_desc *gdesc;
-    fsw_u32         ino_in_group, ino_bno, ino_index;
+    fsw_u32         groupno, ino_in_group, ino_bno, ino_index;
     fsw_u8          *buffer;
     
     if (dno->raw)
@@ -184,24 +203,12 @@ static fsw_status_t fsw_ext2_dnode_fill(struct fsw_ext2_volume *vol, struct fsw_
     
     FSW_MSG_DEBUG((FSW_MSGSTR("fsw_ext2_dnode_fill: inode %d\n"), dno->g.dnode_id));
     
-    // get the block group descriptor
-    groupno = (dno->g.dnode_id - 1) / vol->sb->s_inodes_per_group;
-    gdesc_bno = (vol->sb->s_first_data_block + 1) +
-        groupno / (vol->g.phys_blocksize / sizeof(struct ext2_group_desc));
-    gdesc_index = groupno % (vol->g.phys_blocksize / sizeof(struct ext2_group_desc));
-    status = fsw_block_get(vol, gdesc_bno, 3, (void **)&buffer);
-    if (status)
-        return status;
-    gdesc = ((struct ext2_group_desc *)(buffer)) + gdesc_index;
-    // TODO: in the future, read and keep the bg_inode_table field of all block
-    //  groups when mounting the file system (optimization)
-    
     // read the inode block
+    groupno = (dno->g.dnode_id - 1) / vol->sb->s_inodes_per_group;
     ino_in_group = (dno->g.dnode_id - 1) % vol->sb->s_inodes_per_group;
-    ino_bno = gdesc->bg_inode_table +
+    ino_bno = vol->inotab_bno[groupno] +
         ino_in_group / (vol->g.phys_blocksize / vol->inode_size);
     ino_index = ino_in_group % (vol->g.phys_blocksize / vol->inode_size);
-    fsw_block_release(vol, gdesc_bno, buffer);
     status = fsw_block_get(vol, ino_bno, 2, (void **)&buffer);
     if (status)
         return status;
