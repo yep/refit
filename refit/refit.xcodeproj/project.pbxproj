@@ -152,6 +152,8 @@
 		9DF64A230A7770E400F2D76F /* fsw_reiserfs_disk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_reiserfs_disk.h; sourceTree = "<group>"; };
 		9DF64A240A7770E400F2D76F /* fsw_reiserfs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_reiserfs.c; sourceTree = "<group>"; };
 		9DF64A250A7770E400F2D76F /* fsw_reiserfs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_reiserfs.h; sourceTree = "<group>"; };
+		9DF7CD5C0B1A804D002AEA16 /* showpart.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = showpart.c; sourceTree = "<group>"; };
+		9DF7CD790B1A84C7002AEA16 /* lib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lib.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -394,6 +396,8 @@
 			children = (
 				9DF0AAB50A0AA07300058459 /* gptsync.c */,
 				9DF0AAB60A0AA07300058459 /* gptsync.h */,
+				9DF7CD5C0B1A804D002AEA16 /* showpart.c */,
+				9DF7CD790B1A84C7002AEA16 /* lib.c */,
 				9DF0AACF0A0AA60700058459 /* os_efi.c */,
 				9DF0AB0E0A0C88F300058459 /* os_unix.c */,
 			);
