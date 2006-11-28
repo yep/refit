@@ -7,7 +7,7 @@ LOCAL_CPPFLAGS  = -I. -I../include -DEFI32
 LOCAL_LDFLAGS   = 
 LOCAL_LIBS      = 
 
-OBJS            = gptsync.o os_efi.o
+OBJS            = gptsync.o lib.o os_efi.o
 TARGET          = gptsync.efi
 
 all: $(TARGET)

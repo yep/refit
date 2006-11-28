@@ -53,6 +53,7 @@ all : dirs $(LIBS) $(OBJECTS)
 
 OBJECTS = $(OBJECTS) \
     $(BUILD_DIR)\$(BASE_NAME).obj \
+    $(BUILD_DIR)\lib.obj \
     $(BUILD_DIR)\os_efi.obj \
 
 #
@@ -60,6 +61,7 @@ OBJECTS = $(OBJECTS) \
 #
 
 $(BUILD_DIR)\$(BASE_NAME).obj : $(*B).c $(INC_DEPS)
+$(BUILD_DIR)\lib.obj	      : $(*B).c $(INC_DEPS)
 $(BUILD_DIR)\os_efi.obj	      : $(*B).c $(INC_DEPS)
 
 #
