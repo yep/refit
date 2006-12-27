@@ -93,7 +93,8 @@ static VOID AboutRefit(VOID)
 static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
                                 IN EFI_DEVICE_PATH *AltDevicePath OPTIONAL,
                                 IN CHAR16 *LoadOptions, IN CHAR16 *LoadOptionsPrefix,
-                                IN CHAR16 *ImageTitle)
+                                IN CHAR16 *ImageTitle,
+                                OUT UINTN *ErrorInStep)
 {
     EFI_STATUS              Status, ReturnStatus;
     EFI_HANDLE              ChildImageHandle;
@@ -102,6 +103,8 @@ static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
     CHAR16                  *FullLoadOptions = NULL;
     
     Print(L"Starting %s\n", ImageTitle);
+    if (ErrorInStep != NULL)
+        *ErrorInStep = 0;
     
     // load the image into memory
     ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
@@ -109,14 +112,20 @@ static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
         ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, AltDevicePath, NULL, 0, &ChildImageHandle);
     }
     SPrint(ErrorInfo, 255, L"while loading %s", ImageTitle);
-    if (CheckError(Status, ErrorInfo))
+    if (CheckError(Status, ErrorInfo)) {
+        if (ErrorInStep != NULL)
+            *ErrorInStep = 1;
         goto bailout;
+    }
     
     // set load options
     if (LoadOptions != NULL) {
         ReturnStatus = Status = BS->HandleProtocol(ChildImageHandle, &LoadedImageProtocol, (VOID **) &ChildLoadedImage);
-        if (CheckError(Status, L"while getting a LoadedImageProtocol handle"))
+        if (CheckError(Status, L"while getting a LoadedImageProtocol handle")) {
+            if (ErrorInStep != NULL)
+                *ErrorInStep = 2;
             goto bailout_unload;
+        }
         
         if (LoadOptionsPrefix != NULL) {
             FullLoadOptions = PoolPrint(L"%s %s ", LoadOptionsPrefix, LoadOptions);
@@ -138,7 +147,10 @@ static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
     ReturnStatus = Status = BS->StartImage(ChildImageHandle, NULL, NULL);
     // control returns here when the child image calls Exit()
     SPrint(ErrorInfo, 255, L"returned from %s", ImageTitle);
-    CheckError(Status, ErrorInfo);
+    if (CheckError(Status, ErrorInfo)) {
+        if (ErrorInStep != NULL)
+            *ErrorInStep = 3;
+    }
     
     // re-open file handles
     ReinitRefitLib();
@@ -159,7 +171,8 @@ bailout:
 static VOID StartLoader(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode, L"Booting OS");
-    StartEFIImage(Entry->DevicePath, NULL, Entry->LoadOptions, Basename(Entry->LoaderPath), Basename(Entry->LoaderPath));
+    StartEFIImage(Entry->DevicePath, NULL, Entry->LoadOptions,
+                  Basename(Entry->LoaderPath), Basename(Entry->LoaderPath), NULL);
     FinishExternalScreen();
 }
 
@@ -582,6 +595,7 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
     EFI_STATUS          Status;
     EG_IMAGE            *BootLogoImage;
+    UINTN               ErrorInStep = 0;
     
     BeginExternalScreen(TRUE, L"Booting Legacy OS");
     
@@ -597,9 +611,14 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     
     Status = StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePath1Data,
                            (EFI_DEVICE_PATH *)LegacyLoaderDevicePath2Data,
-                           Entry->LoadOptions, NULL, L"legacy loader");
-    if (Status == EFI_NOT_FOUND)
-        Print(L"\nPlease make sure that you have the latest firmware update installed.\n");
+                           Entry->LoadOptions, NULL, L"legacy loader", &ErrorInStep);
+    if (Status == EFI_NOT_FOUND) {
+        if (ErrorInStep == 1)
+            Print(L"\nPlease make sure that you have the latest firmware update installed.\n");
+        else if (ErrorInStep == 3)
+            Print(L"\nThe firmware refused to boot from the selected volume. Note that external\n"
+                  L"hard drives are not well-supported by Apple's firmware for legacy OS booting.\n");
+    }
     FinishExternalScreen();
 }
 
@@ -709,7 +728,7 @@ static VOID StartTool(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
     StartEFIImage(Entry->DevicePath, NULL, Entry->LoadOptions, Basename(Entry->LoaderPath),
-                  Basename(Entry->LoaderPath));
+                  Basename(Entry->LoaderPath), NULL);
     FinishExternalScreen();
 }
 
@@ -803,7 +822,7 @@ static VOID ScanDriverDir(IN CHAR16 *Path)
         
         SPrint(FileName, 255, L"%s\\%s", Path, DirEntry->FileName);
         Status = StartEFIImage(FileDevicePath(SelfLoadedImage->DeviceHandle, FileName), NULL,
-                               L"", DirEntry->FileName, DirEntry->FileName);
+                               L"", DirEntry->FileName, DirEntry->FileName, NULL);
     }
     Status = DirIterClose(&DirIter);
     if (Status != EFI_NOT_FOUND) {
