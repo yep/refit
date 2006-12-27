@@ -43,4 +43,5 @@ all :
 	cd $(SOURCE_DIR)\fsw
 	nmake -f fsw_ext2.mak all
 	nmake -f fsw_reiserfs.mak all
+	nmake -f fsw_iso9660.mak all
 	cd $(SOURCE_DIR)

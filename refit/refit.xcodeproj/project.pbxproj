@@ -35,6 +35,7 @@
 		9D574B2609E907BF00EFE8D2 /* lib.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9D574B1D09E907BE00EFE8D2 /* lib.h */; };
 		9D574B2809E907BF00EFE8D2 /* menu.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B1F09E907BE00EFE8D2 /* menu.c */; };
 		9D574B2909E907BF00EFE8D2 /* screen.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D574B2009E907BE00EFE8D2 /* screen.c */; };
+		9D62CFE20B400CEF0041D3FC /* fsw_iso9660.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D62CFA80B3EBDED0041D3FC /* fsw_iso9660.c */; };
 		9DF0A9EF0A09C40900058459 /* efiConsoleControl.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9E40A09C40900058459 /* efiConsoleControl.h */; };
 		9DF0A9F00A09C40900058459 /* efiUgaDraw.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9E50A09C40900058459 /* efiUgaDraw.h */; };
 		9DF0A9F10A09C40900058459 /* egemb_font.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 9DF0A9E60A09C40900058459 /* egemb_font.h */; };
@@ -105,6 +106,8 @@
 		9D59EE150A5714A7004E3134 /* fsw_ext2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_ext2.c; sourceTree = "<group>"; };
 		9D59EE470A579B1D004E3134 /* fsw_core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_core.h; sourceTree = "<group>"; };
 		9D59EE480A579B1D004E3134 /* fsw_core.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_core.c; sourceTree = "<group>"; };
+		9D62CFA80B3EBDED0041D3FC /* fsw_iso9660.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fsw_iso9660.c; sourceTree = "<group>"; };
+		9D62CFA90B3EBDED0041D3FC /* fsw_iso9660.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_iso9660.h; sourceTree = "<group>"; };
 		9DA115EC0A472D9800C2D0F4 /* fs_ext2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fs_ext2.c; sourceTree = "<group>"; };
 		9DA115ED0A472D9800C2D0F4 /* fs_ext2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fs_ext2.h; sourceTree = "<group>"; };
 		9DA116010A472E9100C2D0F4 /* fs_ext2.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = fs_ext2.mak; sourceTree = "<group>"; };
@@ -248,6 +251,8 @@
 				9DF64A230A7770E400F2D76F /* fsw_reiserfs_disk.h */,
 				9DF64A250A7770E400F2D76F /* fsw_reiserfs.h */,
 				9DF64A240A7770E400F2D76F /* fsw_reiserfs.c */,
+				9D62CFA90B3EBDED0041D3FC /* fsw_iso9660.h */,
+				9D62CFA80B3EBDED0041D3FC /* fsw_iso9660.c */,
 				9D0308280A7A1AC8001EDFBC /* lsroot.c */,
 			);
 			path = fsw;
@@ -512,6 +517,7 @@
 				9D0308330A7A1BF6001EDFBC /* fsw_posix.c in Sources */,
 				9D0308340A7A1BF9001EDFBC /* lsroot.c in Sources */,
 				9D0309520A7A3711001EDFBC /* fsw_reiserfs.c in Sources */,
+				9D62CFE20B400CEF0041D3FC /* fsw_iso9660.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

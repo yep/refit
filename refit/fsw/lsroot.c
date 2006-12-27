@@ -38,7 +38,9 @@
 #include "fsw_posix.h"
 
 
+extern struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(ext2);
 extern struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(reiserfs);
+extern struct fsw_fstype_table FSW_FSTYPE_TABLE_NAME(iso9660);
 
 int main(int argc, char **argv)
 {
@@ -51,12 +53,15 @@ int main(int argc, char **argv)
         return 1;
     }
     
-    vol = fsw_posix_mount(argv[1], &FSW_FSTYPE_TABLE_NAME(reiserfs));
+    //vol = fsw_posix_mount(argv[1], &FSW_FSTYPE_TABLE_NAME(ext2));
+    //vol = fsw_posix_mount(argv[1], &FSW_FSTYPE_TABLE_NAME(reiserfs));
+    vol = fsw_posix_mount(argv[1], &FSW_FSTYPE_TABLE_NAME(iso9660));
     if (vol == NULL) {
         printf("Mounting failed.\n");
         return 1;
     }
-    dir = fsw_posix_opendir(vol, "/drivers/net/");
+    //dir = fsw_posix_opendir(vol, "/drivers/net/");
+    dir = fsw_posix_opendir(vol, "/");
     if (dir == NULL) {
         printf("opendir call failed.\n");
         return 1;
