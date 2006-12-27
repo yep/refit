@@ -227,6 +227,29 @@ static UINTN analyze(VOID)
     
     new_mbr_part_count = 0;
     
+    // determine correct MBR types for GPT partitions
+    if (gpt_part_count == 0) {
+        Print(L"Status: No GPT partitions defined, nothing to sync.\n");
+        return 0;
+    }
+    for (i = 0; i < gpt_part_count; i++) {
+        gpt_parts[i].mbr_type = gpt_parts[i].gpt_parttype->mbr_type;
+        if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA ||
+            (i > 0 && gpt_parts[i].mbr_type == 0xef)) {
+            // need to look at data in the partition; second condition is
+            // for tables broken by GNU parted
+            detected_parttype = 0;
+            status = detect_mbrtype_fs(gpt_parts[i].start_lba, &detected_parttype, &fsname);
+            if (detected_parttype)
+                gpt_parts[i].mbr_type = detected_parttype;
+            else if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA)
+                gpt_parts[i].mbr_type = 0x0b;  // fallback: FAT32
+        }
+        // NOTE: mbr_type may still be 0 if content detection fails for exotic GPT types or file systems
+        // TODO: for the parted ESP workaround, check if there was another ESP before instead of
+        //  just checking 'i > 0'
+    }
+    
     // check for common scenarios
     if (mbr_part_count == 0) {
         // current MBR is empty
@@ -237,7 +260,7 @@ static UINTN analyze(VOID)
     }
     if (action == ACTION_NONE && mbr_part_count > 0) {
         if (mbr_parts[0].mbr_type == 0xee &&
-            gpt_parts[0].gpt_parttype->mbr_type == 0xef &&
+            gpt_parts[0].mbr_type == 0xef &&
             mbr_parts[0].start_lba == 1 &&
             mbr_parts[0].end_lba == gpt_parts[0].end_lba) {
             // The Apple Way, "EFI Protective" covering the tables and the ESP
@@ -251,7 +274,7 @@ static UINTN analyze(VOID)
                 for (i = 1; i < mbr_part_count; i++) {
                     if (mbr_parts[i].start_lba != gpt_parts[i].start_lba ||
                         mbr_parts[i].end_lba   != gpt_parts[i].end_lba ||
-                        (gpt_parts[i].gpt_parttype->mbr_type && mbr_parts[i].mbr_type != gpt_parts[i].gpt_parttype->mbr_type))
+                        (gpt_parts[i].mbr_type && mbr_parts[i].mbr_type != gpt_parts[i].mbr_type))
                         // position or type has changed
                         action = ACTION_REWRITE;
                 }
@@ -265,7 +288,7 @@ static UINTN analyze(VOID)
         for (i = 0; i < mbr_part_count; i++) {
             if (mbr_parts[i].start_lba != gpt_parts[i].start_lba ||
                 mbr_parts[i].end_lba   != gpt_parts[i].end_lba ||
-                (gpt_parts[i].gpt_parttype->mbr_type && mbr_parts[i].mbr_type != gpt_parts[i].gpt_parttype->mbr_type))
+                (gpt_parts[i].mbr_type && mbr_parts[i].mbr_type != gpt_parts[i].mbr_type))
                 // position or type has changed -> better don't touch
                 action = ACTION_NONE;
         }
@@ -289,7 +312,7 @@ static UINTN analyze(VOID)
     new_mbr_parts[0].mbr_type  = 0xee;
     new_mbr_part_count = 1;
     
-    if (gpt_parts[0].gpt_parttype->mbr_type == 0xef) {
+    if (gpt_parts[0].mbr_type == 0xef) {
         new_mbr_parts[0].end_lba = gpt_parts[0].end_lba;
         i = 1;
     } else {
@@ -307,27 +330,24 @@ static UINTN analyze(VOID)
         new_mbr_parts[new_mbr_part_count].index     = new_mbr_part_count;
         new_mbr_parts[new_mbr_part_count].start_lba = gpt_parts[i].start_lba;
         new_mbr_parts[new_mbr_part_count].end_lba   = gpt_parts[i].end_lba;
-        new_mbr_parts[new_mbr_part_count].mbr_type  = gpt_parts[i].gpt_parttype->mbr_type;
+        new_mbr_parts[new_mbr_part_count].mbr_type  = gpt_parts[i].mbr_type;
         new_mbr_parts[new_mbr_part_count].active    = FALSE;
         
         // find matching partition in the old MBR table
         for (k = 0; k < mbr_part_count; k++) {
             if (mbr_parts[k].start_lba == gpt_parts[i].start_lba) {
+                // keep type if not detected
                 if (new_mbr_parts[new_mbr_part_count].mbr_type == 0)
                     new_mbr_parts[new_mbr_part_count].mbr_type = mbr_parts[k].mbr_type;
+                // keep active flag
                 new_mbr_parts[new_mbr_part_count].active = mbr_parts[k].active;
                 break;
             }
         }
         
-        if (new_mbr_parts[new_mbr_part_count].mbr_type == 0) {
-            // detect the actual file system on the partition
-            detected_parttype = 0;
-            status = detect_mbrtype_fs(new_mbr_parts[new_mbr_part_count].start_lba, &detected_parttype, &fsname);
-            if (detected_parttype == 0)
-                detected_parttype = 0x0b;  // fallback: FAT32
-            new_mbr_parts[new_mbr_part_count].mbr_type = detected_parttype;
-        }
+        if (new_mbr_parts[new_mbr_part_count].mbr_type == 0)
+            // final fallback: set to a (hopefully) unused type
+            new_mbr_parts[new_mbr_part_count].mbr_type = 0xc0;
         
         new_mbr_part_count++;
     }
@@ -344,10 +364,10 @@ static UINTN analyze(VOID)
         
         // set active on the first matching partition
         for (i = 0; i < new_mbr_part_count; i++) {
-            if ((iter >= 0 && (new_mbr_parts[i].mbr_type == 0x07 ||
-                               new_mbr_parts[i].mbr_type == 0x0b ||
-                               new_mbr_parts[i].mbr_type == 0x0c)) ||
-                (iter >= 1 && (new_mbr_parts[i].mbr_type == 0x83)) ||
+            if ((iter >= 0 && (new_mbr_parts[i].mbr_type == 0x07 ||    // NTFS
+                               new_mbr_parts[i].mbr_type == 0x0b ||    // FAT32
+                               new_mbr_parts[i].mbr_type == 0x0c)) ||  // FAT32 (LBA)
+                (iter >= 1 && (new_mbr_parts[i].mbr_type == 0x83)) ||  // Linux
                 (iter >= 2 && i > 0)) {
                 new_mbr_parts[i].active = TRUE;
                 break;
@@ -395,7 +415,7 @@ UINTN gptsync(VOID)
     status = check_mbr();   // check MBR for consistency
     if (status != 0)
         return status;
-    status = analyze();     // analyze the situation
+    status = analyze();     // analyze the situation & compose new MBR table
     if (status != 0)
         return status;
     if (new_mbr_part_count == 0)

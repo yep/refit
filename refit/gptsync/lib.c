@@ -230,7 +230,6 @@ UINTN read_gpt(VOID)
     entry_size  = header->entry_size;
     entry_count = header->entry_count;
     
-    Print(L" #      Start LBA      End LBA  Type\n");
     for (i = 0; i < entry_count; i++) {
         if (((i * entry_size) % 512) == 0) {
             status = read_sector(entry_lba, sector);
@@ -242,6 +241,9 @@ UINTN read_gpt(VOID)
         
         if (guids_are_equal(entry->type_guid, empty_guid))
             continue;
+        if (gpt_part_count == 0) {
+            Print(L" #      Start LBA      End LBA  Type\n");
+        }
         
         gpt_parts[gpt_part_count].index     = i;
         gpt_parts[gpt_part_count].start_lba = entry->start_lba;
@@ -258,6 +260,10 @@ UINTN read_gpt(VOID)
               gpt_parts[gpt_part_count].gpt_parttype->name);
         
         gpt_part_count++;
+    }
+    if (gpt_part_count == 0) {
+        Print(L" No partitions defined\n");
+        return 0;
     }
     
     return 0;
