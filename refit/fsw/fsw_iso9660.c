@@ -315,7 +315,7 @@ static fsw_status_t fsw_iso9660_dir_lookup(struct fsw_iso9660_volume *vol, struc
     // setup a dnode for the child item
     status = fsw_dnode_create(dno, dirrec_buffer.ino, FSW_DNODE_TYPE_UNKNOWN, &dirrec_buffer.name, child_dno_out);
     if (status == FSW_SUCCESS)
-        fsw_memcpy(&dno->dirrec, dirrec, sizeof(struct iso9660_dirrec));
+        fsw_memcpy(&(*child_dno_out)->dirrec, dirrec, sizeof(struct iso9660_dirrec));
     
 errorexit:
     fsw_shandle_close(&shand);
@@ -359,7 +359,7 @@ static fsw_status_t fsw_iso9660_dir_read(struct fsw_iso9660_volume *vol, struct 
     // setup a dnode for the child item
     status = fsw_dnode_create(dno, dirrec_buffer.ino, FSW_DNODE_TYPE_UNKNOWN, &dirrec_buffer.name, child_dno_out);
     if (status == FSW_SUCCESS)
-        fsw_memcpy(&dno->dirrec, dirrec, sizeof(struct iso9660_dirrec));
+        fsw_memcpy(&(*child_dno_out)->dirrec, dirrec, sizeof(struct iso9660_dirrec));
     
     return status;
 }
