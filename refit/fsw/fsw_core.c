@@ -68,10 +68,9 @@ fsw_status_t fsw_mount(void *host_data,
     struct fsw_volume *vol;
     
     // allocate memory for the structure
-    status = fsw_alloc(fstype_table->volume_struct_size, &vol);
+    status = fsw_alloc_zero(fstype_table->volume_struct_size, (void **)&vol);
     if (status)
         return status;
-    fsw_memzero(vol, fstype_table->volume_struct_size);
     
     // initialize fields
     vol->phys_blocksize = 512;
@@ -327,10 +326,9 @@ fsw_status_t fsw_dnode_create_root(struct fsw_volume *vol, fsw_u32 dnode_id, str
     struct fsw_dnode *dno;
     
     // allocate memory for the structure
-    status = fsw_alloc(vol->fstype_table->dnode_struct_size, &dno);
+    status = fsw_alloc_zero(vol->fstype_table->dnode_struct_size, (void **)&dno);
     if (status)
         return status;
-    fsw_memzero(dno, vol->fstype_table->dnode_struct_size);
     
     // fill the structure
     dno->vol = vol;
@@ -382,10 +380,9 @@ fsw_status_t fsw_dnode_create(struct fsw_dnode *parent_dno, fsw_u32 dnode_id, in
     }
     
     // allocate memory for the structure
-    status = fsw_alloc(vol->fstype_table->dnode_struct_size, &dno);
+    status = fsw_alloc_zero(vol->fstype_table->dnode_struct_size, (void **)&dno);
     if (status)
         return status;
-    fsw_memzero(dno, vol->fstype_table->dnode_struct_size);
     
     // fill the structure
     dno->vol = vol;
