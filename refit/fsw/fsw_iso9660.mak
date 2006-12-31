@@ -68,7 +68,7 @@ INC_DEPS = $(INC_DEPS) fsw_base.h fsw_efi_base.h fsw_core.h fsw_efi.h fsw_iso966
 $(BUILD_DIR)\fsw_efi.obj    : $(*B).c $(INC_DEPS)
 $(BUILD_DIR)\fsw_efi_lib.obj : $(*B).c $(INC_DEPS)
 $(BUILD_DIR)\fsw_core.obj   : $(*B).c $(INC_DEPS)
-$(BUILD_DIR)\fsw_lib.obj    : $(*B).c $(INC_DEPS)
+$(BUILD_DIR)\fsw_lib.obj    : $(*B).c $(INC_DEPS) fsw_strfunc.h
 $(BUILD_DIR)\fsw_iso9660.obj : $(*B).c $(INC_DEPS)
 
 #
