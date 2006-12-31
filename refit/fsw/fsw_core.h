@@ -54,6 +54,81 @@
 /** Indicates that the block cache entry is empty. */
 #define FSW_INVALID_BNO (~0UL)
 
+
+//
+// Byte-swapping macros
+//
+
+
+/**
+ * \name Byte Order Macros
+ * Implements big endian vs. little endian awareness and conversion.
+ */
+/*@{*/
+
+typedef fsw_u16             fsw_u16_le;
+typedef fsw_u16             fsw_u16_be;
+typedef fsw_u32             fsw_u32_le;
+typedef fsw_u32             fsw_u32_be;
+typedef fsw_u64             fsw_u64_le;
+typedef fsw_u64             fsw_u64_be;
+
+#define FSW_SWAPVALUE_U16(v) ((((fsw_u16)(v) & 0xff00) >> 8) | \
+                              (((fsw_u16)(v) & 0x00ff) << 8))
+#define FSW_SWAPVALUE_U32(v) ((((fsw_u32)(v) & 0xff000000UL) >> 24) | \
+                              (((fsw_u32)(v) & 0x00ff0000UL) >> 8)  | \
+                              (((fsw_u32)(v) & 0x0000ff00UL) << 8)  | \
+                              (((fsw_u32)(v) & 0x000000ffUL) << 24))
+#define FSW_SWAPVALUE_U64(v) ((((fsw_u64)(v) & 0xff00000000000000ULL) >> 56) | \
+                              (((fsw_u64)(v) & 0x00ff000000000000ULL) >> 40) | \
+                              (((fsw_u64)(v) & 0x0000ff0000000000ULL) >> 24) | \
+                              (((fsw_u64)(v) & 0x000000ff00000000ULL) >> 8)  | \
+                              (((fsw_u64)(v) & 0x00000000ff000000ULL) << 8)  | \
+                              (((fsw_u64)(v) & 0x0000000000ff0000ULL) << 24) | \
+                              (((fsw_u64)(v) & 0x000000000000ff00ULL) << 40) | \
+                              (((fsw_u64)(v) & 0x00000000000000ffULL) << 56))
+
+#ifdef FSW_LITTLE_ENDIAN
+
+#define fsw_u16_le_swap(v) (v)
+#define fsw_u16_be_swap(v) FSW_SWAPVALUE_U16(v)
+#define fsw_u32_le_swap(v) (v)
+#define fsw_u32_be_swap(v) FSW_SWAPVALUE_U32(v)
+#define fsw_u64_le_swap(v) (v)
+#define fsw_u64_be_swap(v) FSW_SWAPVALUE_U64(v)
+
+#define fsw_u16_le_sip(var)
+#define fsw_u16_be_sip(var) (var = FSW_SWAPVALUE_U16(var))
+#define fsw_u32_le_sip(var)
+#define fsw_u32_be_sip(var) (var = FSW_SWAPVALUE_U32(var))
+#define fsw_u64_le_sip(var)
+#define fsw_u64_be_sip(var) (var = FSW_SWAPVALUE_U64(var))
+
+#else
+#ifdef FSW_BIG_ENDIAN
+
+#define fsw_u16_le_swap(v) FSW_SWAPVALUE_U16(v)
+#define fsw_u16_be_swap(v) (v)
+#define fsw_u32_le_swap(v) FSW_SWAPVALUE_U32(v)
+#define fsw_u32_be_swap(v) (v)
+#define fsw_u64_le_swap(v) FSW_SWAPVALUE_U64(v)
+#define fsw_u64_be_swap(v) (v)
+
+#define fsw_u16_le_sip(var) (var = FSW_SWAPVALUE_U16(var))
+#define fsw_u16_be_sip(var)
+#define fsw_u32_le_sip(var) (var = FSW_SWAPVALUE_U32(var))
+#define fsw_u32_be_sip(var)
+#define fsw_u64_le_sip(var) (var = FSW_SWAPVALUE_U64(var))
+#define fsw_u64_be_sip(var)
+
+#else
+#fail Neither FSW_BIG_ENDIAN nor FSW_LITTLE_ENDIAN are defined
+#endif
+#endif
+
+/*@}*/
+
+
 //
 // The following evil hack avoids a lot of casts between generic and fstype-specific
 // structures.
@@ -109,8 +184,17 @@ enum {
     FSW_STRING_TYPE_EMPTY,
     FSW_STRING_TYPE_ISO88591,
     FSW_STRING_TYPE_UTF8,
-    FSW_STRING_TYPE_UTF16
+    FSW_STRING_TYPE_UTF16,
+    FSW_STRING_TYPE_UTF16_SWAPPED
 };
+
+#ifdef FSW_LITTLE_ENDIAN
+#define FSW_STRING_TYPE_UTF16_LE FSW_STRING_TYPE_UTF16
+#define FSW_STRING_TYPE_UTF16_BE FSW_STRING_TYPE_UTF16_SWAPPED
+#else
+#define FSW_STRING_TYPE_UTF16_LE FSW_STRING_TYPE_UTF16_SWAPPED
+#define FSW_STRING_TYPE_UTF16_BE FSW_STRING_TYPE_UTF16
+#endif
 
 /** Static initializer for an empty string. */
 #define FSW_STRING_INIT { FSW_STRING_TYPE_EMPTY, 0, 0, NULL }

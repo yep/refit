@@ -45,6 +45,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define FSW_LITTLE_ENDIAN (1)
+// TODO: use info from the headers to define FSW_LITTLE_ENDIAN or FSW_BIG_ENDIAN
+
 
 // types
 

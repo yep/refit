@@ -42,6 +42,8 @@
 #include <efi.h>
 #include <efilib.h>
 
+#define FSW_LITTLE_ENDIAN (1)
+
 
 // types, reuse EFI types
 
