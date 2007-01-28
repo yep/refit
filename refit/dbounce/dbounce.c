@@ -42,11 +42,16 @@
 #include "efiConsoleControl.h"
 
 
+// Paths to search for. You can override these from the compiler command
+// line to build dbounce for a different loader.
 #ifndef DRIVER_DIR
 #define DRIVER_DIR L"\\efi\\tools\\drivers"
 #endif
 #ifndef CHAINLOADER
 #define CHAINLOADER L"\\efi\\refit\\refit.efi"
+#endif
+#ifndef FALLBACKSHELL
+#define FALLBACKSHELL L"\\efi\\tools\\shell.efi"
 #endif
 
 
@@ -55,6 +60,46 @@ EFI_GUID gEfiConsoleControlProtocolGuid = EFI_CONSOLE_CONTROL_PROTOCOL_GUID;
 EFI_HANDLE              SelfImageHandle;
 EFI_LOADED_IMAGE        *SelfLoadedImage;
 
+
+//
+// Console stuff
+//
+
+static BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where)
+{
+    CHAR16 ErrorName[64];
+    
+    if (!EFI_ERROR(Status))
+        return FALSE;
+    
+    StatusToString(ErrorName, Status);
+    //ST->ConOut->SetAttribute(ST->ConOut, ATTR_ERROR);
+    Print(L"Error: %s %s\n", ErrorName, where);
+    //ST->ConOut->SetAttribute(ST->ConOut, ATTR_BASIC);
+    
+    return TRUE;
+}
+
+static EFI_STATUS WaitForKeyOrReset(VOID)
+{
+    EFI_STATUS          Status;
+    EFI_INPUT_KEY       key;
+    UINTN               index;
+    
+    for(;;) {
+        Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &key);
+        if (Status == EFI_NOT_READY)
+            BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
+        else
+            break;
+    }
+    if (!EFI_ERROR(Status)) {
+        if (key.ScanCode == SCAN_ESC)
+            RT->ResetSystem(EfiResetCold, EFI_SUCCESS, 0, NULL);
+    }
+    
+    return Status;
+}
 
 //
 // directory iteration
@@ -202,6 +247,9 @@ CHAR16 * Basename(IN CHAR16 *Path)
     return FileName;
 }
 
+//
+// run an EFI binary
+//
 
 static EFI_STATUS RunImage(IN EFI_HANDLE DeviceHandle, IN CHAR16 *FilePath)
 {
@@ -219,10 +267,8 @@ static EFI_STATUS RunImage(IN EFI_HANDLE DeviceHandle, IN CHAR16 *FilePath)
     // load the image into memory
     Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &LoaderHandle);
     FreePool(DevicePath);
-    if (EFI_ERROR(Status)) {
-        Print(L"Can not load the file '%s'\n", FilePath);
+    if (EFI_ERROR(Status))
         return Status;
-    }
     
     // start it!
     BS->StartImage(LoaderHandle, NULL, NULL);
@@ -230,12 +276,17 @@ static EFI_STATUS RunImage(IN EFI_HANDLE DeviceHandle, IN CHAR16 *FilePath)
     return EFI_SUCCESS;
 }
 
+//
+// driver loading
+//
+
 static EFI_STATUS LoadAllDrivers(IN EFI_HANDLE DeviceHandle, IN EFI_FILE *RootDir, IN CHAR16 *DirPath)
 {
     EFI_STATUS              Status;
     REFIT_DIR_ITER          DirIter;
     EFI_FILE_INFO           *DirEntry;
     CHAR16                  FilePath[256];
+    CHAR16                  ErrorMsg[256];
     
     // look through contents of the directory
     DirIterOpen(RootDir, DirPath, &DirIter);
@@ -245,11 +296,13 @@ static EFI_STATUS LoadAllDrivers(IN EFI_HANDLE DeviceHandle, IN EFI_FILE *RootDi
         
         SPrint(FilePath, 255, L"%s\\%s", DirPath, DirEntry->FileName);
         Status = RunImage(DeviceHandle, FilePath);
+        SPrint(ErrorMsg, 255, L"while loading %s", DirEntry->FileName);
+        CheckError(Status, ErrorMsg);
     }
     Status = DirIterClose(&DirIter);
     if (Status != EFI_NOT_FOUND) {
-        SPrint(FilePath, 255, L"while scanning for drivers");
-        //CheckError(Status, FilePath);
+        SPrint(ErrorMsg, 255, L"while scanning for drivers");
+        CheckError(Status, ErrorMsg);
         return Status;
     }
     
@@ -323,6 +376,10 @@ Done:
     return Status;
 }
 
+//
+// volume searching
+//
+
 static EFI_STATUS CheckVolumeForPath(IN EFI_HANDLE VolumeDeviceHandle,
                                      IN CHAR16 *Path,
                                      OUT EFI_FILE **RootDirOut)
@@ -332,7 +389,7 @@ static EFI_STATUS CheckVolumeForPath(IN EFI_HANDLE VolumeDeviceHandle,
     EFI_FILE    *TestFile;
     
     // open volume
-    RootDir = LibOpenRoot(SelfLoadedImage->DeviceHandle);
+    RootDir = LibOpenRoot(VolumeDeviceHandle);
     if (RootDir == NULL) {
         Print(L"Can't open volume.\n");
         return EFI_NOT_FOUND;
@@ -368,9 +425,7 @@ static EFI_STATUS FindVolumeWithPath(IN CHAR16 *Path,
     
     // iterate over all volumes
     Status = LibLocateHandle(ByProtocol, &FileSystemProtocol, NULL, &HandleCount, &Handles);
-    if (Status == EFI_NOT_FOUND)
-        return Status;  // no filesystems. strange, but true...
-    if (EFI_ERROR(Status)) //CheckError(Status, L"while listing all file systems"))
+    if (CheckError(Status, L"while listing all file systems"))
         return Status;
     for (HandleIndex = 0; HandleIndex < HandleCount; HandleIndex++) {
         
@@ -419,7 +474,7 @@ DBounceMain (IN EFI_HANDLE           ImageHandle,
     // load all drivers from drivers directory
     Status = FindVolumeWithPath(DRIVER_DIR, &DeviceHandle, &RootDir);
     if (EFI_ERROR(Status)) {
-        Print(L"Can't find a volume containing '" DRIVER_DIR L"'.\n");
+        Print(L"Warning: Can't find a volume containing '" DRIVER_DIR L"'.\n");
     } else {
         Status = LoadAllDrivers(DeviceHandle, RootDir, DRIVER_DIR);
         RootDir->Close(RootDir);
@@ -430,13 +485,32 @@ DBounceMain (IN EFI_HANDLE           ImageHandle,
     // load chainloaded loader
     Status = FindVolumeWithPath(CHAINLOADER, &DeviceHandle, &RootDir);
     if (EFI_ERROR(Status)) {
-        Print(L"Can't find a volume containing '" CHAINLOADER L"'.\n");
+        Print(L"Error: Can't find a volume containing '" CHAINLOADER L"'.\n");
     } else {
         RootDir->Close(RootDir);
+        
         Status = RunImage(DeviceHandle, CHAINLOADER);
-        if (EFI_ERROR(Status))
-            Print(L"Error loading '" CHAINLOADER L"'.\n");
+        CheckError(Status, L"while loading '" CHAINLOADER L"'.\n");
+        // NOTE: The loader is not supposed to return to us if
+        //  it succeeds in loading an OS.
     }
+    
+    // fall back to the EFI shell
+    Status = FindVolumeWithPath(FALLBACKSHELL, &DeviceHandle, &RootDir);
+    if (EFI_ERROR(Status)) {
+        Print(L"Error: Can't find a volume containing '" FALLBACKSHELL L"'.\n");
+    } else {
+        RootDir->Close(RootDir);
+        
+        Print(L"\nPress ESC to reboot or any other key to start the EFI Shell.\n\n");
+        WaitForKeyOrReset();
+        
+        Status = RunImage(DeviceHandle, FALLBACKSHELL);
+        CheckError(Status, L"while loading '" FALLBACKSHELL L"'.\n");
+    }
+    
+    Print(L"\nPress ESC to reboot or any other key to return control to the firmware.\n\n");
+    WaitForKeyOrReset();
     
     return Status;
 }
