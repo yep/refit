@@ -4,9 +4,14 @@
 
 There are three different build environments that you can use to build
 the rEFIt EFI components. The recommended (and traditional) way is
-with Intel's EFI Application Toolkit. Recently, it has become possible
-to build rEFIt with gnu-efi on Linux, and with the newly developed
-cross-platform 'efironment' package.
+with Intel's EFI Application Toolkit. This environment is used to
+build the released binaries, and it is the only one guaranteed to
+work. It may also be possible to build rEFIt with gnu-efi on Linux,
+and with the newly developed cross-platform 'efironment' package.
+
+The Mac OS X components are built with Xcode. The Xcode project file
+also contains targets to do a test-build for some of the EFI
+components, but this will not generate working EFI binaries.
 
  With the EFI Application Toolkit
 ----------------------------------
