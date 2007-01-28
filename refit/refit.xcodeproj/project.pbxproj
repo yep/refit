@@ -76,10 +76,12 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		8D1107320486CEB800E47090 /* Partition Inspector.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Partition Inspector.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D48FCF10B4516F7001800E8 /* build.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build.bat; sourceTree = "<group>"; };
+		9D466A580B4FC22E0038B56A /* dbounce.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dbounce.c; sourceTree = "<group>"; };
+		9D466A590B4FC23A0038B56A /* dbounce.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = dbounce.mak; sourceTree = "<group>"; };
+		9D48FCF10B4516F7001800E8 /* build.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; lineEnding = 2; path = build.bat; sourceTree = "<group>"; };
 		9D48FCF20B4516F7001800E8 /* Make.common */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Make.common; sourceTree = "<group>"; };
-		9D48FCF30B4516F7001800E8 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = refit.mak; sourceTree = "<group>"; };
-		9D48FCF40B451724001800E8 /* dumpprot.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = dumpprot.mak; sourceTree = "<group>"; };
+		9D48FCF30B4516F7001800E8 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = refit.mak; sourceTree = "<group>"; };
+		9D48FCF40B451724001800E8 /* dumpprot.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = dumpprot.mak; sourceTree = "<group>"; };
 		9D48FCF50B451724001800E8 /* dumpprot.mkefi */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = dumpprot.mkefi; sourceTree = "<group>"; };
 		9D48FCFA0B451747001800E8 /* dumpprot.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dumpprot.c; sourceTree = "<group>"; };
 		9D48FCFB0B451747001800E8 /* mkprot.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = mkprot.py; sourceTree = "<group>"; };
@@ -107,16 +109,16 @@
 		9D48FD110B4517A1001800E8 /* lsroot.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lsroot.c; sourceTree = "<group>"; };
 		9D48FD120B4517B8001800E8 /* design.dox */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = design.dox; sourceTree = "<group>"; };
 		9D48FD130B4517B8001800E8 /* Doxyfile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Doxyfile; sourceTree = "<group>"; };
-		9D48FD140B4517B8001800E8 /* fsw_ext2.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = fsw_ext2.mak; sourceTree = "<group>"; };
-		9D48FD150B4517B8001800E8 /* fsw_iso9660.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = fsw_iso9660.mak; sourceTree = "<group>"; };
-		9D48FD160B4517B8001800E8 /* fsw_reiserfs.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = fsw_reiserfs.mak; sourceTree = "<group>"; };
+		9D48FD140B4517B8001800E8 /* fsw_ext2.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = fsw_ext2.mak; sourceTree = "<group>"; };
+		9D48FD150B4517B8001800E8 /* fsw_iso9660.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = fsw_iso9660.mak; sourceTree = "<group>"; };
+		9D48FD160B4517B8001800E8 /* fsw_reiserfs.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = fsw_reiserfs.mak; sourceTree = "<group>"; };
 		9D48FD170B4517DF001800E8 /* gptsync.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = gptsync.c; sourceTree = "<group>"; };
 		9D48FD180B4517DF001800E8 /* gptsync.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gptsync.h; sourceTree = "<group>"; };
 		9D48FD190B4517DF001800E8 /* lib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lib.c; sourceTree = "<group>"; };
 		9D48FD1A0B4517DF001800E8 /* os_efi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_efi.c; sourceTree = "<group>"; };
 		9D48FD1B0B4517DF001800E8 /* os_unix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = os_unix.c; sourceTree = "<group>"; };
 		9D48FD1C0B4517DF001800E8 /* showpart.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = showpart.c; sourceTree = "<group>"; };
-		9D48FD1D0B4517F2001800E8 /* gptsync.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = gptsync.mak; sourceTree = "<group>"; };
+		9D48FD1D0B4517F2001800E8 /* gptsync.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = gptsync.mak; sourceTree = "<group>"; };
 		9D48FD1E0B4517F2001800E8 /* Makefile.gnuefi */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.gnuefi; sourceTree = "<group>"; };
 		9D48FD1F0B4517F2001800E8 /* Makefile.unix */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.unix; sourceTree = "<group>"; };
 		9D48FD230B4517FD001800E8 /* gptsync.8 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = gptsync.8; sourceTree = "<group>"; };
@@ -135,7 +137,7 @@
 		9D48FD300B45183F001800E8 /* mkegemb.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = mkegemb.py; sourceTree = "<group>"; };
 		9D48FD310B45183F001800E8 /* screen.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = screen.c; sourceTree = "<group>"; };
 		9D48FD320B45183F001800E8 /* text.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = text.c; sourceTree = "<group>"; };
-		9D48FD390B451864001800E8 /* libeg.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = libeg.mak; sourceTree = "<group>"; };
+		9D48FD390B451864001800E8 /* libeg.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = libeg.mak; sourceTree = "<group>"; };
 		9D48FD3A0B451864001800E8 /* libeg.mkefi */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = libeg.mkefi; sourceTree = "<group>"; };
 		9D48FD3B0B451864001800E8 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9D48FD3C0B451880001800E8 /* config.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = config.c; sourceTree = "<group>"; };
@@ -146,10 +148,10 @@
 		9D48FD410B451880001800E8 /* menu.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = menu.c; sourceTree = "<group>"; };
 		9D48FD420B451880001800E8 /* screen.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = screen.c; sourceTree = "<group>"; };
 		9D48FD490B451892001800E8 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		9D48FD4A0B451892001800E8 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = refit.mak; sourceTree = "<group>"; };
+		9D48FD4A0B451892001800E8 /* refit.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = refit.mak; sourceTree = "<group>"; };
 		9D48FD4B0B451892001800E8 /* refit.mkefi */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = refit.mkefi; sourceTree = "<group>"; };
 		9D48FD4D0B4518D3001800E8 /* dumpfv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dumpfv.c; sourceTree = "<group>"; };
-		9D48FD530B4519B6001800E8 /* dumpfv.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = dumpfv.mak; sourceTree = "<group>"; };
+		9D48FD530B4519B6001800E8 /* dumpfv.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = dumpfv.mak; sourceTree = "<group>"; };
 		9D48FD5B0B451ABF001800E8 /* refit-check */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "refit-check"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D48FD7B0B451BAA001800E8 /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = index.html; path = fsw/doc/html/index.html; sourceTree = "<group>"; };
 		9D48FD980B452015001800E8 /* lsroot */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = lsroot; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -273,6 +275,22 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		9D466A4E0B4FC1F20038B56A /* dbounce */ = {
+			isa = PBXGroup;
+			children = (
+				9D466A580B4FC22E0038B56A /* dbounce.c */,
+			);
+			path = dbounce;
+			sourceTree = "<group>";
+		};
+		9D466A4F0B4FC1FA0038B56A /* dbounce */ = {
+			isa = PBXGroup;
+			children = (
+				9D466A590B4FC23A0038B56A /* dbounce.mak */,
+			);
+			path = dbounce;
+			sourceTree = "<group>";
+		};
 		9D48FCC50B4514C5001800E8 /* Source */ = {
 			isa = PBXGroup;
 			children = (
@@ -282,6 +300,7 @@
 				9D48FCCD0B45153B001800E8 /* partinsp */,
 				9D48FCCB0B451529001800E8 /* dumpprot */,
 				9D48FD4C0B4518C0001800E8 /* dumpfv */,
+				9D466A4E0B4FC1F20038B56A /* dbounce */,
 				9D48FCC90B451516001800E8 /* fsw */,
 				9D48FCCC0B451533001800E8 /* include */,
 			);
@@ -298,6 +317,7 @@
 				9D48FCE20B451621001800E8 /* gptsync */,
 				9D48FCE10B45161A001800E8 /* dumpprot */,
 				9D48FD500B451979001800E8 /* dumpfv */,
+				9D466A4F0B4FC1FA0038B56A /* dbounce */,
 				9D48FCE00B451614001800E8 /* fsw */,
 				9D48FCF20B4516F7001800E8 /* Make.common */,
 			);

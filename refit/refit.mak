@@ -36,6 +36,10 @@ all :
 	nmake -f dumpfv.mak all
 	cd $(SOURCE_DIR)
 
+	cd $(SOURCE_DIR)\dbounce
+	nmake -f dbounce.mak all
+	cd $(SOURCE_DIR)
+
 #	cd $(SOURCE_DIR)\fs_ext2
 #	nmake -f fs_ext2.mak all
 #	cd $(SOURCE_DIR)
