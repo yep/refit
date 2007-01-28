@@ -2,7 +2,7 @@
  * refit/lib.c
  * General library functions
  *
- * Copyright (c) 2006 Christoph Pfisterer
+ * Copyright (c) 2006-2007 Christoph Pfisterer
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -119,7 +119,7 @@ EFI_STATUS ReinitRefitLib(VOID)
 {
     // called after running external programs to re-open file handles
     
-    EFI_STATUS  Status;
+    //EFI_STATUS  Status;
     
     ReinitVolumes();
     
@@ -852,15 +852,15 @@ EFI_STATUS DirIterClose(IN OUT REFIT_DIR_ITER *DirIter)
 
 CHAR16 * Basename(IN CHAR16 *Path)
 {
-    CHAR16 *FileName;
-    UINTN  i;
+    CHAR16  *FileName;
+    UINTN   i;
     
     FileName = Path;
     
     if (Path != NULL) {
-        for (i = StrLen(Path); i >= 0; i--) {
-            if (Path[i] == '\\' || Path[i] == '/') {
-                FileName = Path + i + 1;
+        for (i = StrLen(Path); i > 0; i--) {
+            if (Path[i-1] == '\\' || Path[i-1] == '/') {
+                FileName = Path + i;
                 break;
             }
         }
