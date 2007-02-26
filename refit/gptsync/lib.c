@@ -2,7 +2,7 @@
  * gptsync/lib.c
  * Platform-independent code common to gptsync and showpart
  *
- * Copyright (c) 2006 Christoph Pfisterer
+ * Copyright (c) 2006-2007 Christoph Pfisterer
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -307,7 +307,7 @@ UINTN detect_mbrtype_fs(UINT64 partlba, UINTN *parttype, CHARN **fsname)
     UINTN   sectsize, clustersize, reserved, fatcount, dirsize, sectcount, fatsize, clustercount;
     
     *fsname = STR("Unknown");
-    // NOTE: parttype default value is supplied by the caller
+    *parttype = 0;
     
     // READ sector 0 / offset 0K
     status = read_sector(partlba, sector);
@@ -381,6 +381,7 @@ UINTN detect_mbrtype_fs(UINT64 partlba, UINTN *parttype, CHARN **fsname)
                 *parttype = 0x0c;
                 *fsname = STR("FAT32");
             }
+            // TODO: check if 0e and 0c are okay to use, maybe we should use 06 and 0b instead...
             return 0;
         }
     }

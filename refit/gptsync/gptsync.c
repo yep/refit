@@ -2,7 +2,7 @@
  * gptsync/gptsync.c
  * Platform-independent code for syncing GPT and MBR
  *
- * Copyright (c) 2006 Christoph Pfisterer
+ * Copyright (c) 2006-2007 Christoph Pfisterer
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -218,12 +218,12 @@ static UINTN check_gpt(VOID)
 
 static UINTN analyze(VOID)
 {
-    UINTN   action = ACTION_NONE;
-    UINTN   i, k, iter, detected_parttype;
+    UINTN   action;
+    UINTN   i, k, iter, count_active, detected_parttype;
     CHARN   *fsname;
     UINT64  min_start_lba;
     UINTN   status;
-    BOOLEAN have_active;
+    BOOLEAN have_esp;
     
     new_mbr_part_count = 0;
     
@@ -232,25 +232,35 @@ static UINTN analyze(VOID)
         Print(L"Status: No GPT partitions defined, nothing to sync.\n");
         return 0;
     }
+    have_esp = FALSE;
     for (i = 0; i < gpt_part_count; i++) {
         gpt_parts[i].mbr_type = gpt_parts[i].gpt_parttype->mbr_type;
-        if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA ||
-            (i > 0 && gpt_parts[i].mbr_type == 0xef)) {
-            // need to look at data in the partition; second condition is
-            // for tables broken by GNU parted
-            detected_parttype = 0;
+        if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA) {
+            // Basic Data: need to look at data in the partition
             status = detect_mbrtype_fs(gpt_parts[i].start_lba, &detected_parttype, &fsname);
             if (detected_parttype)
                 gpt_parts[i].mbr_type = detected_parttype;
-            else if (gpt_parts[i].gpt_parttype->kind == GPT_KIND_BASIC_DATA)
+            else
                 gpt_parts[i].mbr_type = 0x0b;  // fallback: FAT32
+        } else if (gpt_parts[i].mbr_type == 0xef) {
+            // EFI System Partition: GNU parted can put this on any partition,
+            // need to detect file systems
+            status = detect_mbrtype_fs(gpt_parts[i].start_lba, &detected_parttype, &fsname);
+            if (!have_esp && (detected_parttype == 0x01 || detected_parttype == 0x0e || detected_parttype == 0x0c))
+                ;  // seems to be a legitimate ESP, don't change
+            else if (detected_parttype)
+                gpt_parts[i].mbr_type = detected_parttype;
+            else if (have_esp)    // make sure there's no more than one ESP per disk
+                gpt_parts[i].mbr_type = 0x83;  // fallback: Linux
         }
         // NOTE: mbr_type may still be 0 if content detection fails for exotic GPT types or file systems
-        // TODO: for the parted ESP workaround, check if there was another ESP before instead of
-        //  just checking 'i > 0'
+        
+        if (gpt_parts[i].mbr_type == 0xef)
+            have_esp = TRUE;
     }
     
     // check for common scenarios
+    action = ACTION_NONE;
     if (mbr_part_count == 0) {
         // current MBR is empty
         action = ACTION_REWRITE;
@@ -279,6 +289,13 @@ static UINTN analyze(VOID)
                         action = ACTION_REWRITE;
                 }
             }
+            // check number of active partitions
+            count_active = 0;
+            for (i = 0; i < mbr_part_count; i++)
+                if (mbr_parts[i].active)
+                    count_active++;
+            if (count_active!= 1)
+                action = ACTION_REWRITE;
         }
     }
     if (action == ACTION_NONE && mbr_part_count > 0 && mbr_parts[0].mbr_type == 0xef) {
@@ -326,6 +343,7 @@ static UINTN analyze(VOID)
     }
     
     // add other GPT partitions until the table is full
+    // TODO: in the future, prioritize partitions by kind
     for (; i < gpt_part_count && new_mbr_part_count < 4; i++) {
         new_mbr_parts[new_mbr_part_count].index     = new_mbr_part_count;
         new_mbr_parts[new_mbr_part_count].start_lba = gpt_parts[i].start_lba;
@@ -352,26 +370,43 @@ static UINTN analyze(VOID)
         new_mbr_part_count++;
     }
     
-    // if no partition is active, pick one
+    // make sure there's exactly one active partition
     for (iter = 0; iter < 3; iter++) {
         // check
-        have_active = FALSE;
+        count_active = 0;
         for (i = 0; i < new_mbr_part_count; i++)
             if (new_mbr_parts[i].active)
-                have_active = TRUE;
-        if (have_active)
+                count_active++;
+        if (count_active == 1)
             break;
         
         // set active on the first matching partition
-        for (i = 0; i < new_mbr_part_count; i++) {
-            if ((iter >= 0 && (new_mbr_parts[i].mbr_type == 0x07 ||    // NTFS
-                               new_mbr_parts[i].mbr_type == 0x0b ||    // FAT32
-                               new_mbr_parts[i].mbr_type == 0x0c)) ||  // FAT32 (LBA)
-                (iter >= 1 && (new_mbr_parts[i].mbr_type == 0x83)) ||  // Linux
-                (iter >= 2 && i > 0)) {
-                new_mbr_parts[i].active = TRUE;
-                break;
+        if (count_active == 0) {
+            for (i = 0; i < new_mbr_part_count; i++) {
+                if ((iter >= 0 && (new_mbr_parts[i].mbr_type == 0x07 ||    // NTFS
+                                   new_mbr_parts[i].mbr_type == 0x0b ||    // FAT32
+                                   new_mbr_parts[i].mbr_type == 0x0c)) ||  // FAT32 (LBA)
+                    (iter >= 1 && (new_mbr_parts[i].mbr_type == 0x83)) ||  // Linux
+                    (iter >= 2 && i > 0)) {
+                    new_mbr_parts[i].active = TRUE;
+                    break;
+                }
             }
+        } else if (count_active > 1 && iter == 0) {
+            // too many active partitions, try deactivating the ESP / EFI Protective entry
+            if ((new_mbr_parts[0].mbr_type == 0xee || new_mbr_parts[0].mbr_type == 0xef) &&
+                new_mbr_parts[0].active) {
+                new_mbr_parts[0].active = FALSE;
+            }
+        } else if (count_active > 1 && iter > 0) {
+            // too many active partitions, deactivate all but the first one
+            count_active = 0;
+            for (i = 0; i < new_mbr_part_count; i++)
+                if (new_mbr_parts[i].active) {
+                    if (count_active > 0)
+                        new_mbr_parts[i].active = FALSE;
+                    count_active++;
+                }
         }
     }
     
