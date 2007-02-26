@@ -2,7 +2,7 @@
  * refit/main.c
  * Main code for the boot menu
  *
- * Copyright (c) 2006 Christoph Pfisterer
+ * Copyright (c) 2006-2007 Christoph Pfisterer
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,15 +59,17 @@ typedef struct {
 
 #define MACOSX_LOADER_PATH      L"\\System\\Library\\CoreServices\\boot.efi"
 
-#define TAG_RESET  (1)
-#define TAG_ABOUT  (2)
-#define TAG_LOADER (3)
-#define TAG_LEGACY (4)
-#define TAG_TOOL   (5)
+#define TAG_ABOUT    (1)
+#define TAG_RESET    (2)
+#define TAG_SHUTDOWN (3)
+#define TAG_TOOL     (4)
+#define TAG_LOADER   (5)
+#define TAG_LEGACY   (6)
 
-static REFIT_MENU_ENTRY MenuEntryReset  = { L"Restart Computer", TAG_RESET, 1, 0, 'R', NULL, NULL, NULL };
-static REFIT_MENU_ENTRY MenuEntryAbout  = { L"About rEFIt", TAG_ABOUT, 1, 0, 'A', NULL, NULL, NULL };
-static REFIT_MENU_ENTRY MenuEntryReturn = { L"Return to Main Menu", TAG_RETURN, 0, 0, 0, NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryAbout    = { L"About rEFIt", TAG_ABOUT, 1, 0, 'A', NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryReset    = { L"Restart Computer", TAG_RESET, 1, 0, 'R', NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryShutdown = { L"Shut Down Computer", TAG_SHUTDOWN, 1, 0, 'U', NULL, NULL, NULL };
+static REFIT_MENU_ENTRY MenuEntryReturn   = { L"Return to Main Menu", TAG_RETURN, 0, 0, 0, NULL, NULL, NULL };
 
 static REFIT_MENU_SCREEN MainMenu       = { L"Main Menu", NULL, 0, NULL, 0, NULL, 0, L"Automatic boot" };
 static REFIT_MENU_SCREEN AboutMenu      = { L"About", NULL, 0, NULL, 0, NULL, 0, NULL };
@@ -80,9 +82,9 @@ static VOID AboutRefit(VOID)
 {
     if (AboutMenu.EntryCount == 0) {
         AboutMenu.TitleImage = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
-        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.8");
+        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.9");
         AddMenuInfoLine(&AboutMenu, L"");
-        AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006 Christoph Pfisterer");
+        AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006-2007 Christoph Pfisterer");
         AddMenuInfoLine(&AboutMenu, L"Portions Copyright (c) Intel Corporation and others");
         AddMenuEntry(&AboutMenu, &MenuEntryReturn);
     }
@@ -967,6 +969,8 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_FUNCS)) {
         MenuEntryAbout.Image = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
         AddMenuEntry(&MainMenu, &MenuEntryAbout);
+        MenuEntryShutdown.Image = BuiltinIcon(BUILTIN_ICON_FUNC_SHUTDOWN);
+        AddMenuEntry(&MainMenu, &MenuEntryShutdown);
         MenuEntryReset.Image = BuiltinIcon(BUILTIN_ICON_FUNC_RESET);
         AddMenuEntry(&MainMenu, &MenuEntryReset);
     }
@@ -986,9 +990,15 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
         
         switch (ChosenEntry->Tag) {
             
-            case TAG_RESET:    // Reboot
+            case TAG_RESET:    // Restart
                 TerminateScreen();
                 RT->ResetSystem(EfiResetCold, EFI_SUCCESS, 0, NULL);
+                MainLoopRunning = FALSE;   // just in case we get this far
+                break;
+                
+            case TAG_SHUTDOWN: // Shut Down
+                TerminateScreen();
+                RT->ResetSystem(EfiResetShutdown, EFI_SUCCESS, 0, NULL);
                 MainLoopRunning = FALSE;   // just in case we get this far
                 break;
                 

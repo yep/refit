@@ -2,7 +2,7 @@
  * refit/lib.h
  * General header file
  *
- * Copyright (c) 2006 Christoph Pfisterer
+ * Copyright (c) 2006-2007 Christoph Pfisterer
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -191,13 +191,14 @@ EG_IMAGE * BuiltinIcon(IN UINTN Id);
 
 #define BUILTIN_ICON_FUNC_ABOUT     (0)
 #define BUILTIN_ICON_FUNC_RESET     (1)
-#define BUILTIN_ICON_TOOL_SHELL     (2)
-#define BUILTIN_ICON_TOOL_PART      (3)
-#define BUILTIN_ICON_TOOL_RESCUE    (4)
-#define BUILTIN_ICON_VOL_INTERNAL   (5)
-#define BUILTIN_ICON_VOL_EXTERNAL   (6)
-#define BUILTIN_ICON_VOL_OPTICAL    (7)
-#define BUILTIN_ICON_COUNT          (8)
+#define BUILTIN_ICON_FUNC_SHUTDOWN  (2)
+#define BUILTIN_ICON_TOOL_SHELL     (3)
+#define BUILTIN_ICON_TOOL_PART      (4)
+#define BUILTIN_ICON_TOOL_RESCUE    (5)
+#define BUILTIN_ICON_VOL_INTERNAL   (6)
+#define BUILTIN_ICON_VOL_EXTERNAL   (7)
+#define BUILTIN_ICON_VOL_OPTICAL    (8)
+#define BUILTIN_ICON_COUNT          (9)
 
 //
 // menu module

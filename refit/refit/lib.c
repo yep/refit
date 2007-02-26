@@ -292,6 +292,9 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
             
         }
         
+        // NOTE: If you add an operating system with a name that starts with 'W' or 'L', you
+        //  need to fix AddLegacyEntry in main.c.
+        
 #if REFIT_DEBUG > 0
         Print(L"  Result of bootcode detection: %s %s (%s)\n",
               Volume->HasBootCode ? L"bootable" : L"non-bootable",
