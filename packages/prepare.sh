@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo rm -rf root-main root-fsdriver root-blesser
+sudo rm -rf root-main root-fsdriver root-blesser root-partinsp
 
 ### set up root for main package
 
@@ -46,5 +46,17 @@ chmod 775 $R
 chmod -R g-w $R/StartupItems
 sudo chown root.admin $R
 sudo chown -R root.wheel $R/StartupItems
+
+### set up root for partinsp package
+
+R=root-partinsp
+
+mkdir $R
+cp -R "../dist/Partition Inspector.app" $R/
+
+find $R -name .svn -exec rm -rf '{}' ';' -prune
+
+chmod -R g+w $R
+sudo chown -R root.admin $R
 
 # EOF
