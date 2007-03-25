@@ -9,10 +9,10 @@ fi
 
 VERSION="$1"
 if [ "$VERSION" = "s" ]; then
-  REPOBASE="https://svn.sourceforge.net/svnroot/refit/trunk"
+  REPOBASE="https://refit.svn.sourceforge.net/svnroot/refit/trunk"
   VERSION="snapshot-$(date '+%Y%m%d')"
 else
-  REPOBASE="https://svn.sourceforge.net/svnroot/refit/tags/release-$VERSION"
+  REPOBASE="https://refit.svn.sourceforge.net/svnroot/refit/tags/release-$VERSION"
 fi
 
 WORKDIR="/tmp/refit-$VERSION"
