@@ -154,7 +154,7 @@
 		9D48FD530B4519B6001800E8 /* dumpfv.mak */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; lineEnding = 2; path = dumpfv.mak; sourceTree = "<group>"; };
 		9D48FD5B0B451ABF001800E8 /* refit-check */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "refit-check"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D48FD7B0B451BAA001800E8 /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = index.html; path = fsw/doc/html/index.html; sourceTree = "<group>"; };
-		9D48FD980B452015001800E8 /* lsroot */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "compiled.mach-o.executable"; path = lsroot; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D48FD980B452015001800E8 /* lsroot */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = lsroot; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D48FDBC0B4521A1001800E8 /* Analyzer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Analyzer.h; sourceTree = "<group>"; };
 		9D48FDBD0B4521A1001800E8 /* Analyzer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Analyzer.m; sourceTree = "<group>"; };
 		9D48FDBE0B4521A1001800E8 /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -165,10 +165,10 @@
 		9D48FDDC0B4521E5001800E8 /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/MainMenu.nib; sourceTree = "<group>"; };
 		9D48FDE30B4521ED001800E8 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		9D48FE050B452311001800E8 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = /System/Library/Frameworks/Security.framework; sourceTree = "<absolute>"; };
-		9D48FE3F0B4525BA001800E8 /* showpart */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "compiled.mach-o.executable"; path = showpart; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D48FE3F0B4525BA001800E8 /* showpart */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = showpart; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D86CB270B92B85300D8614D /* partinsp.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = partinsp.icns; sourceTree = "<group>"; };
 		9DDE57AD0B45401000B859A7 /* lslr.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lslr.c; sourceTree = "<group>"; };
-		9DDE57BD0B45402500B859A7 /* lslr */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "compiled.mach-o.executable"; path = lslr; sourceTree = BUILT_PRODUCTS_DIR; };
+		9DDE57BD0B45402500B859A7 /* lslr */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = lslr; sourceTree = BUILT_PRODUCTS_DIR; };
 		9DE637DD0B47DC77006BE837 /* mk_fsw_strfunc.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = mk_fsw_strfunc.py; sourceTree = "<group>"; };
 		9DE638040B47F22B006BE837 /* fsw_strfunc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsw_strfunc.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
