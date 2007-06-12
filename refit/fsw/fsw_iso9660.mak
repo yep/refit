@@ -46,7 +46,7 @@ LIBS = $(LIBS) $(SDK_BUILD_DIR)\lib\libefi\libefi.lib
 
 all : dirs $(LIBS) $(OBJECTS)
 	@echo Copying $(BASE_NAME).efi to current directory
-	@copy $(SDK_BIN_DIR)\$(BASE_NAME).efi .
+	@copy $(SDK_BIN_DIR)\$(BASE_NAME).efi $(BASE_NAME)_$(SDK_BUILD_ENV).efi
 
 #
 # Program object files

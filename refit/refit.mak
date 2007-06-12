@@ -24,9 +24,9 @@ all :
 #	nmake -f ebounce.mak all
 #	cd $(SOURCE_DIR)
 
-#	cd $(SOURCE_DIR)\TextMode
-#	nmake -f TextMode.mak all
-#	cd $(SOURCE_DIR)
+	cd $(SOURCE_DIR)\TextMode
+	nmake -f TextMode.mak all
+	cd $(SOURCE_DIR)
 
 	cd $(SOURCE_DIR)\dumpprot
 	nmake -f dumpprot.mak all
