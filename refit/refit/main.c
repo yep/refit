@@ -93,7 +93,8 @@ static VOID AboutRefit(VOID)
 }
 
 static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
-                                IN EFI_DEVICE_PATH *AltDevicePath OPTIONAL,
+                                IN EFI_DEVICE_PATH *Alt2DevicePath OPTIONAL,
+                                IN EFI_DEVICE_PATH *Alt3DevicePath OPTIONAL,
                                 IN CHAR16 *LoadOptions, IN CHAR16 *LoadOptionsPrefix,
                                 IN CHAR16 *ImageTitle,
                                 OUT UINTN *ErrorInStep)
@@ -110,8 +111,11 @@ static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
     
     // load the image into memory
     ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePath, NULL, 0, &ChildImageHandle);
-    if (Status == EFI_NOT_FOUND && AltDevicePath != NULL) {
-        ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, AltDevicePath, NULL, 0, &ChildImageHandle);
+    if (Status == EFI_NOT_FOUND && Alt2DevicePath != NULL) {
+        ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, Alt2DevicePath, NULL, 0, &ChildImageHandle);
+    }
+    if (Status == EFI_NOT_FOUND && Alt3DevicePath != NULL) {
+        ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, Alt3DevicePath, NULL, 0, &ChildImageHandle);
     }
     SPrint(ErrorInfo, 255, L"while loading %s", ImageTitle);
     if (CheckError(Status, ErrorInfo)) {
@@ -173,7 +177,7 @@ bailout:
 static VOID StartLoader(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode, L"Booting OS");
-    StartEFIImage(Entry->DevicePath, NULL, Entry->LoadOptions,
+    StartEFIImage(Entry->DevicePath, NULL, NULL, Entry->LoadOptions,
                   Basename(Entry->LoaderPath), Basename(Entry->LoaderPath), NULL);
     FinishExternalScreen();
 }
@@ -592,6 +596,15 @@ static UINT8 LegacyLoaderDevicePath2Data[] = {
     0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
     0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
 };
+// mid-2007 MBP ("Santa Rosa" based models)
+static UINT8 LegacyLoaderDevicePath3Data[] = {
+    0x01, 0x03, 0x18, 0x00, 0x0B, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0xFF, 0xFF, 0xF8, 0xFF, 0x00, 0x00, 0x00, 0x00,
+    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
+    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
+    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
+};
 
 static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
@@ -613,6 +626,7 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     
     Status = StartEFIImage((EFI_DEVICE_PATH *)LegacyLoaderDevicePath1Data,
                            (EFI_DEVICE_PATH *)LegacyLoaderDevicePath2Data,
+                           (EFI_DEVICE_PATH *)LegacyLoaderDevicePath3Data,
                            Entry->LoadOptions, NULL, L"legacy loader", &ErrorInStep);
     if (Status == EFI_NOT_FOUND) {
         if (ErrorInStep == 1)
@@ -729,7 +743,7 @@ static VOID ScanLegacy(VOID)
 static VOID StartTool(IN LOADER_ENTRY *Entry)
 {
     BeginExternalScreen(Entry->UseGraphicsMode, Entry->me.Title + 6);  // assumes "Start <title>" as assigned below
-    StartEFIImage(Entry->DevicePath, NULL, Entry->LoadOptions, Basename(Entry->LoaderPath),
+    StartEFIImage(Entry->DevicePath, NULL, NULL, Entry->LoadOptions, Basename(Entry->LoaderPath),
                   Basename(Entry->LoaderPath), NULL);
     FinishExternalScreen();
 }
@@ -823,7 +837,7 @@ static VOID ScanDriverDir(IN CHAR16 *Path)
             continue;   // skip this
         
         SPrint(FileName, 255, L"%s\\%s", Path, DirEntry->FileName);
-        Status = StartEFIImage(FileDevicePath(SelfLoadedImage->DeviceHandle, FileName), NULL,
+        Status = StartEFIImage(FileDevicePath(SelfLoadedImage->DeviceHandle, FileName), NULL, NULL,
                                L"", DirEntry->FileName, DirEntry->FileName, NULL);
     }
     Status = DirIterClose(&DirIter);
