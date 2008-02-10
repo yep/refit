@@ -89,7 +89,7 @@ static VOID AboutRefit(VOID)
         AddMenuInfoLine(&AboutMenu, L"");
         AddMenuInfoLine(&AboutMenu, L"Running on:");
         AddMenuInfoLine(&AboutMenu, PoolPrint(L" EFI Revision %d.%02d",
-		    ST->Hdr.Revision >> 16, ST->Hdr.Revision & ((1 << 16) - 1)));
+            ST->Hdr.Revision >> 16, ST->Hdr.Revision & ((1 << 16) - 1)));
 #if defined(EFI32)
         AddMenuInfoLine(&AboutMenu, L" Platform: x86 (32 bit)");
 #elif defined(EFIX64)
@@ -98,7 +98,7 @@ static VOID AboutRefit(VOID)
         AddMenuInfoLine(&AboutMenu, L" Platform: unknown");
 #endif
         AddMenuInfoLine(&AboutMenu, PoolPrint(L" Firmware: %s %d.%02d",
-		    ST->FirmwareVendor, ST->FirmwareRevision >> 16, ST->FirmwareRevision & ((1 << 16) - 1)));
+            ST->FirmwareVendor, ST->FirmwareRevision >> 16, ST->FirmwareRevision & ((1 << 16) - 1)));
         AddMenuEntry(&AboutMenu, &MenuEntryReturn);
     }
     
@@ -199,6 +199,7 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
 {
     CHAR16          *FileName, *OSIconName;
     CHAR16          IconFileName[256];
+    CHAR16          DiagsFileName[256];
     CHAR16          ShortcutLetter;
     UINTN           LoaderKind;
     LOADER_ENTRY    *Entry, *SubEntry;
@@ -292,6 +293,21 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
         SubEntry->UseGraphicsMode = FALSE;
         SubEntry->LoadOptions     = L"-v -s";
         AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        
+        // check for Apple hardware diagnostics
+        StrCpy(DiagsFileName, L"\\System\\Library\\CoreServices\\.diagnostics\\diags.efi");
+        if (FileExists(Volume->RootDir, DiagsFileName)) {
+            Print(L"  - Apple Hardware Test found\n");
+            
+            SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+            SubEntry->me.Title        = L"Run Apple Hardware Test";
+            SubEntry->me.Tag          = TAG_LOADER;
+            SubEntry->LoaderPath      = StrDuplicate(DiagsFileName);
+            SubEntry->VolName         = Entry->VolName;
+            SubEntry->DevicePath      = FileDevicePath(Volume->DeviceHandle, SubEntry->LoaderPath);
+            SubEntry->UseGraphicsMode = TRUE;
+            AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        }
         
     } else if (LoaderKind == 2) {   // entries for elilo
         SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
@@ -480,13 +496,6 @@ static VOID ScanLoader(VOID)
         Status = DirIterClose(&EfiDirIter);
         if (Status != EFI_NOT_FOUND)
             CheckError(Status, L"while scanning the EFI directory");
-        
-        // check for Apple hardware diagnostics
-        StrCpy(FileName, L"\\System\\Library\\CoreServices\\.diagnostics\\diags.efi");
-        if (FileExists(Volume->RootDir, FileName)) {
-            Print(L"  - Apple Hardware Test found\n");
-            AddLoaderEntry(FileName, L"Apple Hardware Test", Volume);
-        }
     }
 }
 
