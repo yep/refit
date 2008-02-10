@@ -2,7 +2,7 @@
  * refit/main.c
  * Main code for the boot menu
  *
- * Copyright (c) 2006-2007 Christoph Pfisterer
+ * Copyright (c) 2006-2008 Christoph Pfisterer
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -82,10 +82,23 @@ static VOID AboutRefit(VOID)
 {
     if (AboutMenu.EntryCount == 0) {
         AboutMenu.TitleImage = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
-        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.10");
+        AddMenuInfoLine(&AboutMenu, L"rEFIt Version 0.11");
         AddMenuInfoLine(&AboutMenu, L"");
-        AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006-2007 Christoph Pfisterer");
+        AddMenuInfoLine(&AboutMenu, L"Copyright (c) 2006-2008 Christoph Pfisterer");
         AddMenuInfoLine(&AboutMenu, L"Portions Copyright (c) Intel Corporation and others");
+        AddMenuInfoLine(&AboutMenu, L"");
+        AddMenuInfoLine(&AboutMenu, L"Running on:");
+        AddMenuInfoLine(&AboutMenu, PoolPrint(L" EFI Revision %d.%02d",
+		    ST->Hdr.Revision >> 16, ST->Hdr.Revision & ((1 << 16) - 1)));
+#if defined(EFI32)
+        AddMenuInfoLine(&AboutMenu, L" Platform: x86 (32 bit)");
+#elif defined(EFIX64)
+        AddMenuInfoLine(&AboutMenu, L" Platform: x86_64 (64 bit)");
+#else
+        AddMenuInfoLine(&AboutMenu, L" Platform: unknown");
+#endif
+        AddMenuInfoLine(&AboutMenu, PoolPrint(L" Firmware: %s %d.%02d",
+		    ST->FirmwareVendor, ST->FirmwareRevision >> 16, ST->FirmwareRevision & ((1 << 16) - 1)));
         AddMenuEntry(&AboutMenu, &MenuEntryReturn);
     }
     
@@ -141,7 +154,7 @@ static EFI_STATUS StartEFIImage(IN EFI_DEVICE_PATH *DevicePath,
         }
         // NOTE: We also include the terminating null in the length for safety.
         ChildLoadedImage->LoadOptions = (VOID *)LoadOptions;
-        ChildLoadedImage->LoadOptionsSize = (StrLen(LoadOptions) + 1) * sizeof(CHAR16);
+        ChildLoadedImage->LoadOptionsSize = ((UINT32)StrLen(LoadOptions) + 1) * sizeof(CHAR16);
         Print(L"Using load options '%s'\n", LoadOptions);
     }
     
@@ -991,7 +1004,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     
     // assign shortcut keys
     for (i = 0; i < MainMenu.EntryCount && MainMenu.Entries[i]->Row == 0 && i < 9; i++)
-        MainMenu.Entries[i]->ShortcutDigit = '1' + i;
+        MainMenu.Entries[i]->ShortcutDigit = (CHAR16)('1' + i);
     
     // wait for user ACK when there were errors
     FinishTextScreen(FALSE);
