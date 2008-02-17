@@ -47,7 +47,7 @@
 
 // global configuration with default values
 
-REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, 0, FALSE, NULL, NULL, NULL };
+REFIT_CONFIG        GlobalConfig = { FALSE, 20, 0, 0, 0, FALSE, NULL, NULL, NULL };
 
 //
 // read a file into a buffer
@@ -327,6 +327,37 @@ VOID ReadConfig(VOID)
         if (StriCmp(TokenList[0], L"timeout") == 0) {
             HandleInt(TokenList, TokenCount, &(GlobalConfig.Timeout));
             
+        } else if (StriCmp(TokenList[0], L"disable") == 0) {
+            for (i = 1; i < TokenCount; i++) {
+                FlagName = TokenList[i];
+                if (StriCmp(FlagName, L"shell") == 0) {
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_SHELL;
+                } else if (StriCmp(FlagName, L"tools") == 0) {
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_TOOLS;
+                } else if (StriCmp(FlagName, L"optical") == 0) {
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_OPTICAL;
+                } else if (StriCmp(FlagName, L"external") == 0) {
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_EXTERNAL;
+                } else if (StriCmp(FlagName, L"internal") == 0) {
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_INTERNAL;
+                } else if (StriCmp(FlagName, L"singleuser") == 0) {
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_SINGLEUSER;
+                } else if (StriCmp(FlagName, L"hwtest") == 0) {
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_HWTEST;
+                } else if (StriCmp(FlagName, L"all") == 0) {
+                    GlobalConfig.DisableFlags = DISABLE_ALL;
+                } else {
+                    Print(L" unknown disable flag: '%s'\n", FlagName);
+                }
+            }
+            
+        } else if (StriCmp(TokenList[0], L"disableopticalboot") == 0) {
+            GlobalConfig.DisableFlags |= DISABLE_FLAG_OPTICAL;
+        } else if (StriCmp(TokenList[0], L"disableexternalboot") == 0) {
+            GlobalConfig.DisableFlags |= DISABLE_FLAG_EXTERNAL;
+        } else if (StriCmp(TokenList[0], L"disableinternalboot") == 0) {
+            GlobalConfig.DisableFlags |= DISABLE_FLAG_INTERNAL;
+            
         } else if (StriCmp(TokenList[0], L"hidebadges") == 0) {
             HandleEnum(TokenList, TokenCount, HideBadgesEnum, 3, &(GlobalConfig.HideBadges));
             
@@ -336,9 +367,9 @@ VOID ReadConfig(VOID)
                 if (StriCmp(FlagName, L"banner") == 0) {
                     GlobalConfig.HideUIFlags |= HIDEUI_FLAG_BANNER;
                 } else if (StriCmp(FlagName, L"shell") == 0) {
-                    GlobalConfig.HideUIFlags |= HIDEUI_FLAG_SHELL;
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_SHELL;
                 } else if (StriCmp(FlagName, L"tools") == 0) {
-                    GlobalConfig.HideUIFlags |= HIDEUI_FLAG_TOOLS;
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_TOOLS;
                 } else if (StriCmp(FlagName, L"funcs") == 0) {
                     GlobalConfig.HideUIFlags |= HIDEUI_FLAG_FUNCS;
                 } else if (StriCmp(FlagName, L"label") == 0) {
@@ -350,7 +381,8 @@ VOID ReadConfig(VOID)
                     if (GlobalConfig.HideBadges < 2)
                         GlobalConfig.HideBadges = 2;
                 } else if (StriCmp(FlagName, L"all") == 0) {
-                    GlobalConfig.HideUIFlags |= HIDEUI_ALL;
+                    GlobalConfig.HideUIFlags = HIDEUI_ALL;
+                    GlobalConfig.DisableFlags |= DISABLE_FLAG_SHELL | DISABLE_FLAG_TOOLS;
                     if (GlobalConfig.HideBadges < 1)
                         GlobalConfig.HideBadges = 1;
                 } else {

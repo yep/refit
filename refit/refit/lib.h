@@ -166,6 +166,7 @@ VOID DebugPause(VOID);
 #else
 #define DebugPause()
 #endif
+VOID EndlessIdleLoop(VOID);
 
 BOOLEAN CheckFatalError(IN EFI_STATUS Status, IN CHAR16 *where);
 BOOLEAN CheckError(IN EFI_STATUS Status, IN CHAR16 *where);
@@ -255,16 +256,24 @@ typedef struct {
     CHAR16  *End16Ptr;
 } REFIT_FILE;
 
+#define DISABLE_FLAG_SHELL      (0x0001)
+#define DISABLE_FLAG_TOOLS      (0x0002)
+#define DISABLE_FLAG_OPTICAL    (0x0004)
+#define DISABLE_FLAG_EXTERNAL   (0x0008)
+#define DISABLE_FLAG_INTERNAL   (0x0010)
+#define DISABLE_FLAG_SINGLEUSER (0x0020)
+#define DISABLE_FLAG_HWTEST     (0x0040)
+#define DISABLE_ALL             ((0xffff) & (~DISABLE_FLAG_INTERNAL))
+
 #define HIDEUI_FLAG_BANNER      (0x0001)
-#define HIDEUI_FLAG_SHELL       (0x0002)
-#define HIDEUI_FLAG_TOOLS       (0x0004)
-#define HIDEUI_FLAG_FUNCS       (0x0008)
-#define HIDEUI_FLAG_LABEL       (0x0010)
-#define HIDEUI_ALL              (0x001f)
+#define HIDEUI_FLAG_FUNCS       (0x0002)
+#define HIDEUI_FLAG_LABEL       (0x0004)
+#define HIDEUI_ALL              (0xffff)
 
 typedef struct {
     BOOLEAN     TextOnly;
     UINTN       Timeout;
+    UINTN       DisableFlags;
     UINTN       HideBadges;
     UINTN       HideUIFlags;
     BOOLEAN     LegacyFirst;

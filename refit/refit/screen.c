@@ -276,6 +276,16 @@ VOID DebugPause(VOID)
 }
 #endif
 
+VOID EndlessIdleLoop(VOID)
+{
+    UINTN index;
+    
+    for (;;) {
+        ReadAllKeyStrokes();
+        BS->WaitForEvent(1, &ST->ConIn->WaitForKey, &index);
+    }
+}
+
 //
 // Error handling
 //

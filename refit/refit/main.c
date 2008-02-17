@@ -283,29 +283,31 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
     
     // loader-specific submenu entries
     if (LoaderKind == 1) {          // entries for Mac OS X
-        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-        SubEntry->me.Title        = L"Boot Mac OS X in verbose mode";
-        SubEntry->me.Tag          = TAG_LOADER;
-        SubEntry->LoaderPath      = Entry->LoaderPath;
-        SubEntry->VolName         = Entry->VolName;
-        SubEntry->DevicePath      = Entry->DevicePath;
-        SubEntry->UseGraphicsMode = FALSE;
-        SubEntry->LoadOptions     = L"-v";
-        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
-        
-        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
-        SubEntry->me.Title        = L"Boot Mac OS X in single user mode";
-        SubEntry->me.Tag          = TAG_LOADER;
-        SubEntry->LoaderPath      = Entry->LoaderPath;
-        SubEntry->VolName         = Entry->VolName;
-        SubEntry->DevicePath      = Entry->DevicePath;
-        SubEntry->UseGraphicsMode = FALSE;
-        SubEntry->LoadOptions     = L"-v -s";
-        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        if (!(GlobalConfig.DisableFlags & DISABLE_FLAG_SINGLEUSER)) {
+            SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+            SubEntry->me.Title        = L"Boot Mac OS X in verbose mode";
+            SubEntry->me.Tag          = TAG_LOADER;
+            SubEntry->LoaderPath      = Entry->LoaderPath;
+            SubEntry->VolName         = Entry->VolName;
+            SubEntry->DevicePath      = Entry->DevicePath;
+            SubEntry->UseGraphicsMode = FALSE;
+            SubEntry->LoadOptions     = L"-v";
+            AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+            
+            SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+            SubEntry->me.Title        = L"Boot Mac OS X in single user mode";
+            SubEntry->me.Tag          = TAG_LOADER;
+            SubEntry->LoaderPath      = Entry->LoaderPath;
+            SubEntry->VolName         = Entry->VolName;
+            SubEntry->DevicePath      = Entry->DevicePath;
+            SubEntry->UseGraphicsMode = FALSE;
+            SubEntry->LoadOptions     = L"-v -s";
+            AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+        }
         
         // check for Apple hardware diagnostics
         StrCpy(DiagsFileName, L"\\System\\Library\\CoreServices\\.diagnostics\\diags.efi");
-        if (FileExists(Volume->RootDir, DiagsFileName)) {
+        if (FileExists(Volume->RootDir, DiagsFileName) && !(GlobalConfig.DisableFlags & DISABLE_FLAG_HWTEST)) {
             Print(L"  - Apple Hardware Test found\n");
             
             SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
@@ -404,13 +406,6 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
     return Entry;
 }
 
-static VOID FreeLoaderEntry(IN LOADER_ENTRY *Entry)
-{
-    FreePool(Entry->me.Title);
-    FreePool(Entry->LoaderPath);
-    FreePool(Entry->DevicePath);
-}
-
 static VOID ScanLoaderDir(IN REFIT_VOLUME *Volume, IN CHAR16 *Path)
 {
     EFI_STATUS              Status;
@@ -458,6 +453,12 @@ static VOID ScanLoader(VOID)
     for (VolumeIndex = 0; VolumeIndex < VolumesCount; VolumeIndex++) {
         Volume = Volumes[VolumeIndex];
         if (Volume->RootDir == NULL || Volume->VolName == NULL)
+            continue;
+        
+        // skip volume if its kind is configured as disabled
+        if ((Volume->DiskKind == DISK_KIND_OPTICAL && (GlobalConfig.DisableFlags & DISABLE_FLAG_OPTICAL)) ||
+            (Volume->DiskKind == DISK_KIND_EXTERNAL && (GlobalConfig.DisableFlags & DISABLE_FLAG_EXTERNAL)) ||
+            (Volume->DiskKind == DISK_KIND_INTERNAL && (GlobalConfig.DisableFlags & DISABLE_FLAG_INTERNAL)))
             continue;
         
         // check for Mac OS X boot loader
@@ -754,6 +755,12 @@ static VOID ScanLegacy(VOID)
                Volume->VolName ? Volume->VolName : L"(no name)");
 #endif
         
+        // skip volume if its kind is configured as disabled
+        if ((Volume->DiskKind == DISK_KIND_OPTICAL && (GlobalConfig.DisableFlags & DISABLE_FLAG_OPTICAL)) ||
+            (Volume->DiskKind == DISK_KIND_EXTERNAL && (GlobalConfig.DisableFlags & DISABLE_FLAG_EXTERNAL)) ||
+            (Volume->DiskKind == DISK_KIND_INTERNAL && (GlobalConfig.DisableFlags & DISABLE_FLAG_INTERNAL)))
+            continue;
+        
         ShowVolume = FALSE;
         HideIfOthersFound = FALSE;
         if (Volume->IsAppleLegacy) {
@@ -813,26 +820,19 @@ static LOADER_ENTRY * AddToolEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTitle
     return Entry;
 }
 
-static VOID FreeToolEntry(IN LOADER_ENTRY *Entry)
-{
-    FreePool(Entry->me.Title);
-    FreePool(Entry->LoaderPath);
-    FreePool(Entry->DevicePath);
-}
-
 static VOID ScanTool(VOID)
 {
     //EFI_STATUS              Status;
     CHAR16                  FileName[256];
     LOADER_ENTRY            *Entry;
     
-    if (GlobalConfig.HideUIFlags & HIDEUI_FLAG_TOOLS)
+    if (GlobalConfig.DisableFlags & DISABLE_FLAG_TOOLS)
         return;
     
     Print(L"Scanning for tools...\n");
     
     // look for the EFI shell
-    if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_SHELL)) {
+    if (!(GlobalConfig.DisableFlags & DISABLE_FLAG_SHELL)) {
         SPrint(FileName, 255, L"%s\\apps\\shell.efi", SelfDirPath);
         if (FileExists(SelfRootDir, FileName)) {
             AddToolEntry(FileName, L"EFI Shell", BuiltinIcon(BUILTIN_ICON_TOOL_SHELL), 'S', FALSE);
@@ -1028,7 +1028,9 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_FUNCS)) {
         MenuEntryAbout.Image = BuiltinIcon(BUILTIN_ICON_FUNC_ABOUT);
         AddMenuEntry(&MainMenu, &MenuEntryAbout);
-        MenuEntryShutdown.Image = BuiltinIcon(BUILTIN_ICON_FUNC_SHUTDOWN);
+    }
+    if (!(GlobalConfig.HideUIFlags & HIDEUI_FLAG_FUNCS) || MainMenu.EntryCount == 0) {
+         MenuEntryShutdown.Image = BuiltinIcon(BUILTIN_ICON_FUNC_SHUTDOWN);
         AddMenuEntry(&MainMenu, &MenuEntryShutdown);
         MenuEntryReset.Image = BuiltinIcon(BUILTIN_ICON_FUNC_RESET);
         AddMenuEntry(&MainMenu, &MenuEntryReset);
@@ -1044,8 +1046,9 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     while (MainLoopRunning) {
         MenuExit = RunMainMenu(&MainMenu, &ChosenEntry);
         
+        // We don't allow exiting the main menu with the Escape key.
         if (MenuExit == MENU_EXIT_ESCAPE)
-            break;
+            continue;
         
         switch (ChosenEntry->Tag) {
             
@@ -1080,18 +1083,10 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
         }
     }
     
-    for (i = 0; i < MainMenu.EntryCount; i++) {
-        if (MainMenu.Entries[i]->Tag == TAG_LOADER) {
-            FreeLoaderEntry((LOADER_ENTRY *)(MainMenu.Entries[i]));
-            FreePool(MainMenu.Entries[i]);
-        } else if (MainMenu.Entries[i]->Tag == TAG_TOOL) {
-            FreeToolEntry((LOADER_ENTRY *)(MainMenu.Entries[i]));
-            FreePool(MainMenu.Entries[i]);
-        }
-    }
-    FreePool(MainMenu.Entries);
+    // If we end up here, things have gone wrong. Try to reboot, and if that
+    // fails, go into an endless loop.
+    RT->ResetSystem(EfiResetCold, EFI_SUCCESS, 0, NULL);
+    EndlessIdleLoop();
     
-    // clear screen completely
-    TerminateScreen();
     return EFI_SUCCESS;
 }
