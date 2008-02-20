@@ -27,6 +27,7 @@ cp -R ../dist/*.rtf* $R/efi/
 rm -rf $R/efi/tools/drivers
 
 find $R -name .svn -exec rm -rf '{}' ';' -prune
+find $R -name .DS_Store -exec rm -rf '{}' ';'
 
 chmod -R g+w $R
 sudo chown -R root:admin $R
@@ -41,6 +42,7 @@ mkdir $R/efi/tools
 cp -R ../dist/efi/tools/drivers $R/efi/tools/
 
 find $R -name .svn -exec rm -rf '{}' ';' -prune
+find $R -name .DS_Store -exec rm -rf '{}' ';'
 
 chmod -R g+w $R
 sudo chown -R root:admin $R
@@ -54,6 +56,7 @@ mkdir $R/StartupItems
 cp -R ../dist/rEFItBlesser $R/StartupItems/
 
 find $R -name .svn -exec rm -rf '{}' ';' -prune
+find $R -name .DS_Store -exec rm -rf '{}' ';'
 
 chmod 775 $R
 chmod -R g-w $R/StartupItems
@@ -68,6 +71,7 @@ mkdir $R
 cp -R "../dist/Partition Inspector.app" $R/
 
 find $R -name .svn -exec rm -rf '{}' ';' -prune
+find $R -name .DS_Store -exec rm -rf '{}' ';'
 
 chmod -R g+w $R
 sudo chown -R root:admin $R
