@@ -1,6 +1,19 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+  echo "You must specify the version number!"
+  exit 1
+fi
+VERSION="$1"
+
 sudo rm -rf root-main root-fsdriver root-blesser root-partinsp
+
+### set up welcome files
+
+for SRCFILE in *.in.rtf ; do
+  DESTFILE="${SRCFILE%.in.rtf}.rtf"
+  sed "s/@VERSION@/$VERSION/" <"$SRCFILE" >"$DESTFILE"
+done
 
 ### set up root for main package
 
@@ -16,7 +29,7 @@ rm -rf $R/efi/tools/drivers
 find $R -name .svn -exec rm -rf '{}' ';' -prune
 
 chmod -R g+w $R
-sudo chown -R root.admin $R
+sudo chown -R root:admin $R
 
 ### set up root for fsdriver package
 
@@ -30,7 +43,7 @@ cp -R ../dist/efi/tools/drivers $R/efi/tools/
 find $R -name .svn -exec rm -rf '{}' ';' -prune
 
 chmod -R g+w $R
-sudo chown -R root.admin $R
+sudo chown -R root:admin $R
 
 ### set up root for blesser package
 
@@ -44,8 +57,8 @@ find $R -name .svn -exec rm -rf '{}' ';' -prune
 
 chmod 775 $R
 chmod -R g-w $R/StartupItems
-sudo chown root.admin $R
-sudo chown -R root.wheel $R/StartupItems
+sudo chown root:admin $R
+sudo chown -R root:wheel $R/StartupItems
 
 ### set up root for partinsp package
 
@@ -57,6 +70,6 @@ cp -R "../dist/Partition Inspector.app" $R/
 find $R -name .svn -exec rm -rf '{}' ';' -prune
 
 chmod -R g+w $R
-sudo chown -R root.admin $R
+sudo chown -R root:admin $R
 
 # EOF
