@@ -37,6 +37,7 @@
 #include "libegint.h"
 
 #include <efiUgaDraw.h>
+#include <efiGraphicsOutput.h>
 #include <efiConsoleControl.h>
 
 // Console defines and variables
@@ -47,6 +48,10 @@ static EFI_CONSOLE_CONTROL_PROTOCOL *ConsoleControl = NULL;
 static EFI_GUID UgaDrawProtocolGuid = EFI_UGA_DRAW_PROTOCOL_GUID;
 static EFI_UGA_DRAW_PROTOCOL *UgaDraw = NULL;
 
+static EFI_GUID GraphicsOutputProtocolGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+static EFI_GRAPHICS_OUTPUT_PROTOCOL *GraphicsOutput = NULL;
+
+static BOOLEAN egHasGraphics = FALSE;
 static UINTN egScreenWidth  = 800;
 static UINTN egScreenHeight = 600;
 
@@ -68,14 +73,24 @@ VOID egInitScreen(VOID)
     if (EFI_ERROR(Status))
         UgaDraw = NULL;
     
+    Status = LibLocateProtocol(&GraphicsOutputProtocolGuid, (VOID **) &GraphicsOutput;
+    if (EFI_ERROR(Status))
+        GraphicsOutput = NULL;
+    
     // get screen size
-    if (UgaDraw != NULL) {
+    egHasGraphics = FALSE;
+    if (GraphicsOutput != NULL) {
+        egScreenWidth = GraphicsOutput->Mode->Info->HorizontalResolution;
+        egScreenHeight = GraphicsOutput->Mode->Info->VerticalResolution;
+        egHasGraphics = TRUE;
+    } else if (UgaDraw != NULL) {
         Status = UgaDraw->GetMode(UgaDraw, &UGAWidth, &UGAHeight, &UGADepth, &UGARefreshRate);
         if (EFI_ERROR(Status)) {
             UgaDraw = NULL;   // graphics not available
         } else {
             egScreenWidth  = UGAWidth;
             egScreenHeight = UGAHeight;
+            egHasGraphics = TRUE;
         }
     }
 }
@@ -90,7 +105,7 @@ VOID egGetScreenSize(OUT UINTN *ScreenWidth, OUT UINTN *ScreenHeight)
 
 BOOLEAN egHasGraphicsMode(VOID)
 {
-    return (UgaDraw != NULL) ? TRUE : FALSE;
+    return egHasGraphics;
 }
 
 BOOLEAN egIsGraphicsModeEnabled(VOID)
@@ -128,31 +143,42 @@ VOID egClearScreen(IN EG_PIXEL *Color)
 {
     EFI_UGA_PIXEL FillColor;
     
-    if (UgaDraw != NULL) {
-        
-        FillColor.Red   = Color->r;
-        FillColor.Green = Color->g;
-        FillColor.Blue  = Color->b;
-        FillColor.Reserved = 0;
-        
+    if (!egHasGraphics)
+        return;
+    
+    FillColor.Red   = Color->r;
+    FillColor.Green = Color->g;
+    FillColor.Blue  = Color->b;
+    FillColor.Reserved = 0;
+    
+    if (GraphicsOutput != NULL) {
+        // EFI_GRAPHICS_OUTPUT_BLT_PIXEL and EFI_UGA_PIXEL have the same
+        // layout, and the header from TianoCore actually defines them
+        // to be the same type.
+        GraphicsOutput->Blt(GraphicsOutput, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *)&FillColor, EfiBltVideoFill,
+                            0, 0, 0, 0, egScreenWidth, egScreenHeight, 0);
+    } else if (UgaDraw != NULL) {
         UgaDraw->Blt(UgaDraw, &FillColor, EfiUgaVideoFill,
                      0, 0, 0, 0, egScreenWidth, egScreenHeight, 0);
-        
     }
 }
 
 VOID egDrawImage(IN EG_IMAGE *Image, IN UINTN ScreenPosX, IN UINTN ScreenPosY)
 {
-    if (UgaDraw != NULL) {
-        
-        if (Image->HasAlpha) {
-            Image->HasAlpha = FALSE;
-            egSetPlane(PLPTR(Image, a), 0, Image->Width * Image->Height);
-        }
-        
+    if (!egHasGraphics)
+        return;
+    
+    if (Image->HasAlpha) {
+        Image->HasAlpha = FALSE;
+        egSetPlane(PLPTR(Image, a), 0, Image->Width * Image->Height);
+    }
+    
+    if (GraphicsOutput != NULL) {
+        GraphicsOutput->Blt(GraphicsOutput, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *)Image->PixelData, EfiBltBufferToVideo,
+                            0, 0, ScreenPosX, ScreenPosY, Image->Width, Image->Height, 0);
+    } else if (UgaDraw != NULL) {
         UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
                      0, 0, ScreenPosX, ScreenPosY, Image->Width, Image->Height, 0);
-        
     }
 }
 
@@ -161,20 +187,24 @@ VOID egDrawImageArea(IN EG_IMAGE *Image,
                      IN UINTN AreaWidth, IN UINTN AreaHeight,
                      IN UINTN ScreenPosX, IN UINTN ScreenPosY)
 {
+    if (!egHasGraphics)
+        return;
+    
     egRestrictImageArea(Image, AreaPosX, AreaPosY, &AreaWidth, &AreaHeight);
     if (AreaWidth == 0)
         return;
     
-    if (UgaDraw != NULL) {
-        
-        if (Image->HasAlpha) {
-            Image->HasAlpha = FALSE;
-            egSetPlane(PLPTR(Image, a), 0, Image->Width * Image->Height);
-        }
-        
+    if (Image->HasAlpha) {
+        Image->HasAlpha = FALSE;
+        egSetPlane(PLPTR(Image, a), 0, Image->Width * Image->Height);
+    }
+    
+    if (GraphicsOutput != NULL) {
+        GraphicsOutput->Blt(GraphicsOutput, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *)Image->PixelData, EfiBltBufferToVideo,
+                            AreaPosX, AreaPosY, ScreenPosX, ScreenPosY, AreaWidth, AreaHeight, Image->Width * 4);
+    } else if (UgaDraw != NULL) {
         UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaBltBufferToVideo,
                      AreaPosX, AreaPosY, ScreenPosX, ScreenPosY, AreaWidth, AreaHeight, Image->Width * 4);
-        
     }
 }
 
@@ -190,7 +220,7 @@ VOID egScreenShot(VOID)
     UINTN           FileDataLength;
     UINTN           Index;
     
-    if (UgaDraw == NULL)
+    if (!egHasGraphics)
         return;
     
     // allocate a buffer for the whole screen
@@ -201,8 +231,13 @@ VOID egScreenShot(VOID)
     }
     
     // get full screen image
-    UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaVideoToBltBuffer,
-                 0, 0, 0, 0, Image->Width, Image->Height, 0);
+    if (GraphicsOutput != NULL) {
+        GraphicsOutput->Blt(GraphicsOutput, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *)Image->PixelData, EfiBltVideoToBltBuffer,
+                            0, 0, 0, 0, Image->Width, Image->Height, 0);
+    } else if (UgaDraw != NULL) {
+        UgaDraw->Blt(UgaDraw, (EFI_UGA_PIXEL *)Image->PixelData, EfiUgaVideoToBltBuffer,
+                     0, 0, 0, 0, Image->Width, Image->Height, 0);
+    }
     
     // encode as BMP
     egEncodeBMP(Image, &FileData, &FileDataLength);
