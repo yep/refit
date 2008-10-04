@@ -73,7 +73,7 @@ VOID egInitScreen(VOID)
     if (EFI_ERROR(Status))
         UgaDraw = NULL;
     
-    Status = LibLocateProtocol(&GraphicsOutputProtocolGuid, (VOID **) &GraphicsOutput;
+    Status = LibLocateProtocol(&GraphicsOutputProtocolGuid, (VOID **) &GraphicsOutput);
     if (EFI_ERROR(Status))
         GraphicsOutput = NULL;
     
