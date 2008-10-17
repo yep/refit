@@ -99,6 +99,7 @@ static VOID AboutRefit(VOID)
 #endif
         AddMenuInfoLine(&AboutMenu, PoolPrint(L" Firmware: %s %d.%02d",
             ST->FirmwareVendor, ST->FirmwareRevision >> 16, ST->FirmwareRevision & ((1 << 16) - 1)));
+        AddMenuInfoLine(&AboutMenu, PoolPrint(L" Screen Output: %s", egScreenDescription()));
         AddMenuEntry(&AboutMenu, &MenuEntryReturn);
     }
     
