@@ -103,6 +103,23 @@ VOID egGetScreenSize(OUT UINTN *ScreenWidth, OUT UINTN *ScreenHeight)
         *ScreenHeight = egScreenHeight;
 }
 
+CHAR16 * egScreenDescription(VOID)
+{
+    if (egHasGraphics) {
+        if (GraphicsOutput != NULL) {
+            return PoolPrint(L"Graphics Output (UEFI), %dx%d",
+                             egScreenWidth, egScreenHeight);
+        } else if (UgaDraw != NULL) {
+            return PoolPrint(L"UGA Draw (EFI 1.10), %dx%d",
+                             egScreenWidth, egScreenHeight);
+        } else {
+            return L"Internal Error";
+        }
+    } else {
+        return L"Text Console";
+    }
+}
+
 BOOLEAN egHasGraphicsMode(VOID)
 {
     return egHasGraphics;

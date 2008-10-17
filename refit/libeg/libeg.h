@@ -76,6 +76,7 @@ typedef struct {
 
 VOID egInitScreen(VOID);
 VOID egGetScreenSize(OUT UINTN *ScreenWidth, OUT UINTN *ScreenHeight);
+CHAR16 * egScreenDescription(VOID);
 BOOLEAN egHasGraphicsMode(VOID);
 BOOLEAN egIsGraphicsModeEnabled(VOID);
 VOID egSetGraphicsModeEnabled(IN BOOLEAN Enable);
