@@ -5,8 +5,7 @@
 ### package source
 
 rm -rf $SRCPKGNAME $SRCPKGNAME.tar $SRCPKGNAME.tar.gz
-svn export -q $REPOBASE $SRCPKGNAME
-rm -rf $SRCPKGNAME/dist/efi/rescue
+svn export -q $REPOBASE/refit $SRCPKGNAME
 tar -cf $SRCPKGNAME.tar $SRCPKGNAME
 gzip -9 $SRCPKGNAME.tar
 
