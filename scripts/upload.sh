@@ -8,7 +8,7 @@ SAFETY=echo
 
 for file in $SRCPKGNAME.tar.gz $BINPKGNAME.tar.gz $DMGNAME.dmg $DMGNAME.cdr.gz ; do
   if [ -f $file ]; then
-    $SAFETY curl -T $file ftp://upload.sourceforge.net/incoming/
+    $SAFETY rsync -avP -e ssh $file frs.sourceforge.net:uploads/
   fi
 done
 
