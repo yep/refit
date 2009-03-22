@@ -123,6 +123,7 @@ static EFI_STATUS StartEFIImageList(IN EFI_DEVICE_PATH **DevicePaths,
         *ErrorInStep = 0;
     
     // load the image into memory
+    ReturnStatus = Status = EFI_NOT_FOUND;  // in case the list is empty
     for (DevicePathIndex = 0; DevicePaths[DevicePathIndex] != NULL; DevicePathIndex++) {
         ReturnStatus = Status = BS->LoadImage(FALSE, SelfImageHandle, DevicePaths[DevicePathIndex], NULL, 0, &ChildImageHandle);
         if (ReturnStatus != EFI_NOT_FOUND)
@@ -666,11 +667,14 @@ static EFI_DEVICE_PATH *LegacyLoaderList[] = {
     NULL
 };
 
+#define MAX_DISCOVERED_PATHS (16)
+
 static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
 {
     EFI_STATUS          Status;
     EG_IMAGE            *BootLogoImage;
     UINTN               ErrorInStep = 0;
+    EFI_DEVICE_PATH     *DiscoveredPathList[MAX_DISCOVERED_PATHS];
     
     BeginExternalScreen(TRUE, L"Booting Legacy OS");
     
@@ -684,7 +688,9 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     if (Entry->Volume->IsMbrPartition)
         ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
     
-    Status = StartEFIImageList(LegacyLoaderList, Entry->LoadOptions, NULL, L"legacy loader", &ErrorInStep);
+    ExtractLegacyLoaderPaths(DiscoveredPathList, MAX_DISCOVERED_PATHS, NULL /* LegacyLoaderList */);
+    
+    Status = StartEFIImageList(DiscoveredPathList, Entry->LoadOptions, NULL, L"legacy loader", &ErrorInStep);
     if (Status == EFI_NOT_FOUND) {
         if (ErrorInStep == 1)
             Print(L"\nPlease make sure that you have the latest firmware update installed.\n");
