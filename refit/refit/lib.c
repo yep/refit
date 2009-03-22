@@ -253,6 +253,12 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
             Volume->OSIconName = L"openbsd";
             Volume->OSName = L"OpenBSD";
             
+        } else if (FindMem(SectorBuffer, 512, "Not a bootxx image", 18) >= 0 ||
+                   *((UINT32 *)(SectorBuffer + 1028)) == 0x7886b6d1) {
+            Volume->HasBootCode = TRUE;
+            Volume->OSIconName = L"netbsd";
+            Volume->OSName = L"NetBSD";
+            
         } else if (FindMem(SectorBuffer, 2048, "NTLDR", 5) >= 0) {
             Volume->HasBootCode = TRUE;
             Volume->OSIconName = L"win";
@@ -264,13 +270,13 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
             Volume->OSName = L"Windows";
             
         } else if (FindMem(SectorBuffer, 512, "CPUBOOT SYS", 11) >= 0 ||
-		   FindMem(SectorBuffer, 512, "KERNEL  SYS", 11) >= 0) {
+                   FindMem(SectorBuffer, 512, "KERNEL  SYS", 11) >= 0) {
             Volume->HasBootCode = TRUE;
             Volume->OSIconName = L"freedos";
             Volume->OSName = L"FreeDOS";
             
         } else if (FindMem(SectorBuffer, 512, "OS2LDR", 6) >= 0 ||
-		   FindMem(SectorBuffer, 512, "OS2BOOT", 7) >= 0) {
+                   FindMem(SectorBuffer, 512, "OS2BOOT", 7) >= 0) {
             Volume->HasBootCode = TRUE;
             Volume->OSIconName = L"ecomstation";
             Volume->OSName = L"eComStation";
