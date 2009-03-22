@@ -47,17 +47,17 @@
 static VOID MyGuidToString(OUT CHAR16 *Buffer, IN EFI_GUID *Guid)
 {
     SPrint (Buffer, 0, L"%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-            Guid->Data1,                    
-            Guid->Data2,
-            Guid->Data3,
-            Guid->Data4[0],
-            Guid->Data4[1],
-            Guid->Data4[2],
-            Guid->Data4[3],
-            Guid->Data4[4],
-            Guid->Data4[5],
-            Guid->Data4[6],
-            Guid->Data4[7]
+            (UINTN)Guid->Data1,                    
+            (UINTN)Guid->Data2,
+            (UINTN)Guid->Data3,
+            (UINTN)Guid->Data4[0],
+            (UINTN)Guid->Data4[1],
+            (UINTN)Guid->Data4[2],
+            (UINTN)Guid->Data4[3],
+            (UINTN)Guid->Data4[4],
+            (UINTN)Guid->Data4[5],
+            (UINTN)Guid->Data4[6],
+            (UINTN)Guid->Data4[7]
             );
 }
 
@@ -133,6 +133,142 @@ PROTOCOL_INFO KnownProtocols[] = {
 #include "protocols.h"
 
 //
+// Extract firmware device path(s) from handle database
+//
+
+static VOID ExtractFirmwareDevicePaths(EFI_DEVICE_PATH **PathList, UINTN MaxPaths)
+{
+    EFI_STATUS          Status;
+    UINTN               HandleCount = 0;
+    UINTN               HandleIndex;
+    EFI_HANDLE          *Handles;
+    EFI_HANDLE          Handle;
+    UINTN               PathCount = 0;
+    UINTN               PathIndex;
+    EFI_LOADED_IMAGE    *LoadedImage;
+    EFI_DEVICE_PATH     *DevicePath;
+    BOOLEAN             Seen;
+
+    MaxPaths--;  // leave space for the terminating NULL pointer
+    PathList[PathCount] = NULL;  // makes it okay to return early without results
+
+    // get all LoadedImage handles
+    Status = LibLocateHandle(ByProtocol, &LoadedImageProtocol, NULL,
+                             &HandleCount, &Handles);
+    if (EFI_ERROR(Status)) {
+        Print(L"Error: Can't get list of handles with LoadedImage protocol.\n");
+        return;
+    }
+    for (HandleIndex = 0; HandleIndex < HandleCount && PathCount < MaxPaths; HandleIndex++) {
+        Handle = Handles[HandleIndex];
+        
+        Status = BS->HandleProtocol(Handle, &LoadedImageProtocol, (VOID **) &LoadedImage);
+        if (EFI_ERROR(Status)) {
+            Print(L"Warning: Can't get LoadedImage protocol.\n");
+            continue;
+        }
+        
+        Status = BS->HandleProtocol(LoadedImage->DeviceHandle, &DevicePathProtocol, (VOID **) &DevicePath);
+        if (EFI_ERROR(Status)) {
+            //Print(L"Warning: Can't get device path for image.\n");
+            continue;
+        }
+        
+        // Check if we have this device path in the list already
+        Seen = FALSE;
+        for (PathIndex = 0; PathIndex < PathCount; PathIndex++) {
+            if (DevicePathSize(DevicePath) != DevicePathSize(PathList[PathIndex]))
+                continue;
+            if (CompareMem(DevicePath, PathList[PathIndex], DevicePathSize(DevicePath)) == 0) {
+                Seen = TRUE;
+                break;
+            }
+        }
+        if (Seen)
+            continue;
+        
+        // Found a new device path!
+        Print(L"Device \"%s\"\n", DevicePathToStr(DevicePath));
+        PathList[PathCount++] = DuplicateDevicePath(DevicePath);
+    }
+    FreePool(Handles);
+
+    PathList[PathCount] = NULL;
+}
+
+static UINT8 LegacyLoaderMediaPathData[] = {
+    0x04, 0x06, 0x14, 0x00, 0xEB, 0x85, 0x05, 0x2B,
+    0xB8, 0xD8, 0xA9, 0x49, 0x8B, 0x8C, 0xE2, 0x1B,
+    0x01, 0xAE, 0xF2, 0xB7, 0x7F, 0xFF, 0x04, 0x00,
+};
+EFI_DEVICE_PATH *LegacyLoaderMediaPath = (EFI_DEVICE_PATH *)LegacyLoaderMediaPathData;
+
+static VOID ExtractLegacyLoaderPaths(EFI_DEVICE_PATH **PathList, UINTN MaxPaths)
+{
+    EFI_STATUS          Status;
+    UINTN               HandleCount = 0;
+    UINTN               HandleIndex;
+    EFI_HANDLE          *Handles;
+    EFI_HANDLE          Handle;
+    UINTN               PathCount = 0;
+    UINTN               PathIndex;
+    EFI_LOADED_IMAGE    *LoadedImage;
+    EFI_DEVICE_PATH     *DevicePath;
+    BOOLEAN             Seen;
+    
+    MaxPaths--;  // leave space for the terminating NULL pointer
+    PathList[PathCount] = NULL;  // makes it okay to return early without results
+    
+    // get all LoadedImage handles
+    Status = LibLocateHandle(ByProtocol, &LoadedImageProtocol, NULL,
+                             &HandleCount, &Handles);
+    if (EFI_ERROR(Status)) {
+        Print(L"Error: Can't get list of handles with LoadedImage protocol.\n");
+        return;
+    }
+    for (HandleIndex = 0; HandleIndex < HandleCount && PathCount < MaxPaths; HandleIndex++) {
+        Handle = Handles[HandleIndex];
+        
+        Status = BS->HandleProtocol(Handle, &LoadedImageProtocol, (VOID **) &LoadedImage);
+        if (EFI_ERROR(Status)) {
+            Print(L"Warning: Can't get LoadedImage protocol.\n");
+            continue;
+        }
+        
+        Status = BS->HandleProtocol(LoadedImage->DeviceHandle, &DevicePathProtocol, (VOID **) &DevicePath);
+        if (EFI_ERROR(Status)) {
+            //Print(L"Warning: Can't get device path for image.\n");
+            continue;
+        }
+        
+        // Only grab memory range nodes
+        if (DevicePathType(DevicePath) != HARDWARE_DEVICE_PATH || DevicePathSubType(DevicePath) != HW_MEMMAP_DP)
+            continue;
+        
+        // Check if we have this device path in the list already
+        // WARNING: This assumes the first node in the device path is unique!
+        Seen = FALSE;
+        for (PathIndex = 0; PathIndex < PathCount; PathIndex++) {
+            if (DevicePathNodeLength(DevicePath) != DevicePathNodeLength(PathList[PathIndex]))
+                continue;
+            if (CompareMem(DevicePath, PathList[PathIndex], DevicePathNodeLength(DevicePath)) == 0) {
+                Seen = TRUE;
+                break;
+            }
+        }
+        if (Seen)
+            continue;
+        
+        // Found a new device path!
+        Print(L"Device \"%s\"\n", DevicePathToStr(DevicePath));
+        PathList[PathCount++] = AppendDevicePath(DevicePath, LegacyLoaderMediaPath);
+    }
+    FreePool(Handles);
+    
+    PathList[PathCount] = NULL;
+}
+
+//
 // main function
 //
 
@@ -152,6 +288,7 @@ efi_main    (IN EFI_HANDLE           ImageHandle,
     VOID                *ProtocolInterface;
     CHAR16              GUIDBuf[64];
     BOOLEAN             Found;
+    EFI_DEVICE_PATH     *FirmwareDevicePaths[16];
     
     InitializeLib(ImageHandle, SystemTable);
     
@@ -165,7 +302,11 @@ efi_main    (IN EFI_HANDLE           ImageHandle,
     for (Index = 0; Index < HandleCount; Index++) {
         
         Handle = HandleBuffer[Index];
+#if defined(EFI64) || defined(EFIX64)
+        Print(L"Handle %02x @ %016x\n", Index, (UINT64)Handle);
+#else
         Print(L"Handle %02x @ %08x\n", Index, (UINT32)Handle);
+#endif
         
         Status = BS->ProtocolsPerHandle(Handle, &ProtocolBuffer, &ProtocolCount);
         if (EFI_ERROR(Status)) {
@@ -215,6 +356,25 @@ efi_main    (IN EFI_HANDLE           ImageHandle,
     }
     
     FreePool (HandleBuffer);
+    
+    
+    Print(L"\nDiscovered firmware image device paths:\n");
+    ExtractFirmwareDevicePaths(FirmwareDevicePaths, 16);
+    for (Index = 0; FirmwareDevicePaths[Index]; Index++) {
+        Print(L"Device path #%d:\n", Index+1);
+        Print(L"%s\n", MyDevicePathToStr(FirmwareDevicePaths[Index]));
+        DumpHex(2, 0, DevicePathSize(FirmwareDevicePaths[Index]), FirmwareDevicePaths[Index]);
+    }
+    
+    
+    Print(L"\nDiscovered legacy loader device paths:\n");
+    ExtractLegacyLoaderPaths(FirmwareDevicePaths, 16);
+    for (Index = 0; FirmwareDevicePaths[Index]; Index++) {
+        Print(L"Device path #%d:\n", Index+1);
+        Print(L"%s\n", MyDevicePathToStr(FirmwareDevicePaths[Index]));
+        DumpHex(2, 0, DevicePathSize(FirmwareDevicePaths[Index]), FirmwareDevicePaths[Index]);
+    }
+    
     
     return EFI_SUCCESS;
 }
