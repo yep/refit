@@ -2,7 +2,7 @@
  * refit/lib.c
  * General library functions
  *
- * Copyright (c) 2006-2007 Christoph Pfisterer
+ * Copyright (c) 2006-2009 Christoph Pfisterer
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
