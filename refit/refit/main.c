@@ -688,7 +688,7 @@ static VOID StartLegacy(IN LEGACY_ENTRY *Entry)
     if (Entry->Volume->IsMbrPartition)
         ActivateMbrPartition(Entry->Volume->WholeDiskBlockIO, Entry->Volume->MbrPartitionIndex);
     
-    ExtractLegacyLoaderPaths(DiscoveredPathList, MAX_DISCOVERED_PATHS, NULL /* LegacyLoaderList */);
+    ExtractLegacyLoaderPaths(DiscoveredPathList, MAX_DISCOVERED_PATHS, LegacyLoaderList);
     
     Status = StartEFIImageList(DiscoveredPathList, Entry->LoadOptions, NULL, L"legacy loader", &ErrorInStep);
     if (Status == EFI_NOT_FOUND) {
