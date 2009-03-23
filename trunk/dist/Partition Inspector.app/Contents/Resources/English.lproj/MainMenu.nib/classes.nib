@@ -1,0 +1,12 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {startAnalysis = id; visitHelpPage = id; visitHomePage = id; }; 
+            CLASS = Analyzer; 
+            LANGUAGE = ObjC; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }
+    ); 
+    IBVersion = 1; 
+}

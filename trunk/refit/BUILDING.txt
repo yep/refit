@@ -1,0 +1,81 @@
+
+ Building rEFIt
+================
+
+There are three different build environments that you can use to build
+the rEFIt EFI components. The recommended (and traditional) way is
+with Intel's EFI Application Toolkit. This environment is used to
+build the released binaries, and it is the only one guaranteed to
+work. It may also be possible to build rEFIt with gnu-efi on Linux,
+and with the newly developed cross-platform 'efironment' package.
+
+The Mac OS X components are built with Xcode. The Xcode project file
+also contains targets to do a test-build for some of the EFI
+components, but this will not generate working EFI binaries.
+
+ With the EFI Application Toolkit
+----------------------------------
+
+Older versions of the EFI Application Toolkit (1.10.*) are available
+directly from Intel at
+<http://www.intel.com/technology/efi/toolkit_overview.htm>. Newer
+versions (2.0.*) are maintained at TianoCore, and can be downloaded at
+<https://efi-toolkit.tianocore.org/>. Both work, but the latest
+release from TianoCore is recommended; only the TianoCore versions
+allow building of 64-bit binaries for current Mac models.
+
+After installing the Toolkit, copy the outer 'refit' directory with
+the source into the Toolkit's root directory. To build rEFIt and its
+tools, open a command prompt window that has the paths set for the
+Visual Studio tools. (Visual Studio installs a Start Menu item for
+this.) Then change to the 'refit' directory (the one where this
+BUILDING.txt file is), and run the appropriate sequence of scripts to
+build 32-bit, 64-bit or "fat" 32/64-bit binaries.
+
+ * Plain 32-bit binaries: Run 'build.bat'. The resulting binaries are
+   copied to each source directory, and are named like
+   'refit_bios32.efi'. Rename them as needed.
+
+ * Plain 64-bit binaries: Run 'build64.bat'. The resulting binaries
+   are copied to each source directory, and are named like
+   'refit_em64t.efi'. Rename them as needed.
+
+ * Fat 32/64-bit binaries: These are required if you want rEFIt to
+   work on all Apple Mac models. First run 'build.bat', then
+   'build64.bat'. You should now have two versions of each
+   binary. Then run 'gluerefit.sh'. (You'll probably have to run this
+   from Mac OS X or Linux, it's a shell script that runs a Python
+   script. Sorry.) This creates the fat binaries in the main refit
+   directory (where you're running the script from).
+
+To build all rEFIt components as part of a complete Toolkit build,
+edit the main 'makefile' appropriately.
+
+ With gnu-efi
+--------------
+
+You can use gnu-efi 3.0a or later to build rEFIt on a Linux
+system. After unpacking the source distribution, check the
+'Make.common' file and make sure the paths to the compiler and gnu-efi
+libraries are correct. (It should work out-of-the-box on a Debian
+system.)
+
+To build refit.efi, first run 'make' in the 'libeg' directory, then
+run 'make' in the 'refit' directory.
+
+ With efironment
+-----------------
+
+As a third alternative, you can use the cross-platform 'efironment'
+build environment. The development of efironment was sparked out of
+frustration with both gnu-efi and Intel's various build environments
+(EFI Application Toolkit, TianoCore). The goal is to have a single,
+up-to-date package that compiles with Visual Studio on Windows as well
+as gcc on Linux (and with some limitations, on Mac OS X).
+
+A current snapshot is available from the rEFIt project's Subversion
+repository. After setting up efironment, you can use the 'mkefi'
+command to build first libeg, the refit.efi itself.
+
+
+EOF
