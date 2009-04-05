@@ -407,11 +407,14 @@ UINTN detect_mbrtype_fs(UINT64 partlba, UINTN *parttype, CHARN **fsname)
         return 0;
     }
     
-    // detect ext2/ext3
+    // detect ext2/ext3/ext4
     signature = *((UINT16 *)(sector + 56));
     if (signature == 0xEF53) {
         *parttype = 0x83;
-        if (*((UINT16 *)(sector + 92)) & 0x0004)
+        if (*((UINT16 *)(sector + 96)) & 0x02C0 ||
+            *((UINT16 *)(sector + 100)) & 0x0078)
+            *fsname = STR("ext4");
+        else if (*((UINT16 *)(sector + 92)) & 0x0004)
             *fsname = STR("ext3");
         else
             *fsname = STR("ext2");
@@ -422,6 +425,13 @@ UINTN detect_mbrtype_fs(UINT64 partlba, UINTN *parttype, CHARN **fsname)
     status = read_sector(partlba + 128, sector);
     if (status != 0)
         return status;
+    
+    // detect btrfs
+    if (CompareMem(sector + 64, "_BHRfS_M", 8) == 0) {
+        *parttype = 0x83;
+        *fsname = STR("btrfs");
+        return 0;
+    }
     
     // detect ReiserFS
     if (CompareMem(sector + 52, "ReIsErFs", 8) == 0 ||

@@ -100,6 +100,9 @@ static UINTN detect_bootcode(UINT64 partlba, CHARN **bootcodename)
                FindMem(sector, 512, "/cdboot\0/CDBOOT\0", 16) >= 0) {
         *bootcodename = STR("OpenBSD");
         
+    } else if (FindMem(sector, 512, "Not a bootxx image", 18) >= 0) {
+        *bootcodename = STR("NetBSD");
+        
     } else if (FindMem(sector, 512, "NTLDR", 5) >= 0) {
         *bootcodename = STR("Windows NTLDR");
         
