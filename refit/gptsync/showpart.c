@@ -87,7 +87,7 @@ static UINTN detect_bootcode(UINT64 partlba, CHARN **bootcodename)
     } else if (FindMem(sector, 512, "ISOLINUX", 8) >= 0) {
         *bootcodename = STR("ISOLINUX");
         
-    } else if (FindMem(sector, 512, "Geom\0Hard Disk\0Read\0 Error\0", 27) >= 0) {
+    } else if (FindMem(sector, 512, "Geom\0Hard Disk\0Read\0 Error", 26) >= 0) {
         *bootcodename = STR("GRUB");
         
     } else if ((*((UINT32 *)(sector + 502)) == 0 &&
