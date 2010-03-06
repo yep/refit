@@ -368,7 +368,8 @@ static VOID ScanVolumeBootcode(IN OUT REFIT_VOLUME *Volume, OUT BOOLEAN *Bootabl
             Volume->OSIconName = L"zeta,beos";
             Volume->OSName = L"ZETA";
             
-        } else if (FindMem(SectorBuffer, 512, "\x04" "beos\x06" "system\x05" "zbeos", 18) >= 0) {
+        } else if (FindMem(SectorBuffer, 512, "\x04" "beos\x06" "system\x05" "zbeos", 18) >= 0 ||
+                   FindMem(SectorBuffer, 512, "\x06" "system\x0c" "haiku_loader", 20) >= 0) {
             Volume->HasBootCode = TRUE;
             Volume->OSIconName = L"haiku,beos";
             Volume->OSName = L"Haiku";
