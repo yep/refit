@@ -52,6 +52,7 @@ typedef struct {
 #define SCROLL_PAGE_DOWN  (3)
 #define SCROLL_FIRST      (4)
 #define SCROLL_LAST       (5)
+#define SCROLL_NONE       (6)
 
 // other menu definitions
 
@@ -259,6 +260,20 @@ static VOID UpdateScroll(IN OUT SCROLL_STATE *State, IN UINTN Movement)
             }
             break;
             
+        case SCROLL_NONE:
+            // The caller has already updated CurrentSelection, but we may
+            // have to scroll to make it visible.
+            if (State->CurrentSelection < State->FirstVisible) {
+                State->PaintAll = TRUE;
+                State->FirstVisible = State->CurrentSelection - (State->MaxVisible >> 1);
+                CONSTRAIN_MIN(State->FirstVisible, 0);
+            } else if (State->CurrentSelection > State->LastVisible) {
+                State->PaintAll = TRUE;
+                State->FirstVisible = State->CurrentSelection - (State->MaxVisible >> 1);
+                CONSTRAIN_MAX(State->FirstVisible, State->MaxFirstVisible);
+            }
+            break;
+            
     }
     
     if (!State->PaintAll && State->CurrentSelection != State->LastSelection)
@@ -286,17 +301,33 @@ VOID FreeMenu(IN REFIT_MENU_SCREEN *Screen)
         FreePool(Screen->Entries);
 }
 
+static INTN FindMenuShortcutEntry(IN REFIT_MENU_SCREEN *Screen, IN CHAR16 Shortcut)
+{
+    UINTN i;
+    if (Shortcut >= 'a' && Shortcut <= 'z')
+        Shortcut -= ('a' - 'A');
+    if (Shortcut) {
+        for (i = 0; i < Screen->EntryCount; i++) {
+            if (Screen->Entries[i]->ShortcutDigit == Shortcut ||
+                Screen->Entries[i]->ShortcutLetter == Shortcut) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
 //
 // generic menu function
 //
 
-static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC StyleFunc, OUT REFIT_MENU_ENTRY **ChosenEntry)
+static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC StyleFunc, IN INTN DefaultEntryIndex, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
     SCROLL_STATE State;
     EFI_STATUS Status;
     EFI_INPUT_KEY key;
-    UINTN index, i;
-    CHAR16 Shortcut;
+    UINTN index;
+    INTN ShortcutEntry;
     BOOLEAN HaveTimeout = FALSE;
     UINTN TimeoutCountdown = 0;
     CHAR16 *TimeoutMessage;
@@ -309,6 +340,11 @@ static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC Sty
     MenuExit = 0;
     
     StyleFunc(Screen, &State, MENU_FUNCTION_INIT, NULL);
+    // override the starting selection with the default index, if any
+    if (DefaultEntryIndex >= 0 && DefaultEntryIndex <= State.MaxIndex) {
+        State.CurrentSelection = DefaultEntryIndex;
+        UpdateScroll(&State, SCROLL_NONE);
+    }
     
     while (!MenuExit) {
         // update the screen
@@ -389,18 +425,10 @@ static UINTN RunGenericMenu(IN REFIT_MENU_SCREEN *Screen, IN MENU_STYLE_FUNC Sty
                 MenuExit = MENU_EXIT_DETAILS;
                 break;
             default:
-                Shortcut = key.UnicodeChar;
-                if (Shortcut >= 'a' && Shortcut <= 'z')
-                    Shortcut -= ('a' - 'A');
-                if (Shortcut) {
-                    for (i = 0; i < Screen->EntryCount; i++) {
-                        if (Screen->Entries[i]->ShortcutDigit == Shortcut ||
-                            Screen->Entries[i]->ShortcutLetter == Shortcut) {
-                            State.CurrentSelection = i;
-                            MenuExit = MENU_EXIT_ENTER;
-                            break;
-                        }
-                    }
+                ShortcutEntry = FindMenuShortcutEntry(Screen, key.UnicodeChar);
+                if (ShortcutEntry >= 0) {
+                    State.CurrentSelection = ShortcutEntry;
+                    MenuExit = MENU_EXIT_ENTER;
                 }
                 break;
         }
@@ -782,15 +810,22 @@ UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
     if (AllowGraphicsMode)
         Style = GraphicsMenuStyle;
     
-    return RunGenericMenu(Screen, Style, ChosenEntry);
+    return RunGenericMenu(Screen, Style, -1, ChosenEntry);
 }
 
-UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry)
+UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, IN CHAR16* DefaultSelection, OUT REFIT_MENU_ENTRY **ChosenEntry)
 {
     MENU_STYLE_FUNC Style = TextMenuStyle;
     MENU_STYLE_FUNC MainStyle = TextMenuStyle;
     REFIT_MENU_ENTRY *TempChosenEntry;
     UINTN MenuExit = 0;
+    UINTN DefaultEntryIndex = -1;
+
+    if (DefaultSelection != NULL) {
+        // Find a menu entry whose shortcut is the first character of DefaultSelection.
+        DefaultEntryIndex = FindMenuShortcutEntry(Screen, DefaultSelection[0]);
+        // If that didn't work, should we scan more characters?  For now, no.
+    }
     
     if (AllowGraphicsMode) {
         Style = GraphicsMenuStyle;
@@ -798,11 +833,11 @@ UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEnt
     }
     
     while (!MenuExit) {
-        MenuExit = RunGenericMenu(Screen, MainStyle, &TempChosenEntry);
+        MenuExit = RunGenericMenu(Screen, MainStyle, DefaultEntryIndex, &TempChosenEntry);
         Screen->TimeoutSeconds = 0;
         
         if (MenuExit == MENU_EXIT_DETAILS && TempChosenEntry->SubScreen != NULL) {
-            MenuExit = RunGenericMenu(TempChosenEntry->SubScreen, Style, &TempChosenEntry);
+            MenuExit = RunGenericMenu(TempChosenEntry->SubScreen, Style, -1, &TempChosenEntry);
             if (MenuExit == MENU_EXIT_ESCAPE || TempChosenEntry->Tag == TAG_RETURN)
                 MenuExit = 0;
         }

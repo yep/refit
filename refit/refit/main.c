@@ -1061,7 +1061,7 @@ RefitMain (IN EFI_HANDLE           ImageHandle,
     FinishTextScreen(FALSE);
     
     while (MainLoopRunning) {
-        MenuExit = RunMainMenu(&MainMenu, &ChosenEntry);
+        MenuExit = RunMainMenu(&MainMenu, GlobalConfig.DefaultSelection, &ChosenEntry);
         
         // We don't allow exiting the main menu with the Escape key.
         if (MenuExit == MENU_EXIT_ESCAPE)

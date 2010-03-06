@@ -242,7 +242,7 @@ VOID AddMenuInfoLine(IN REFIT_MENU_SCREEN *Screen, IN CHAR16 *InfoLine);
 VOID AddMenuEntry(IN REFIT_MENU_SCREEN *Screen, IN REFIT_MENU_ENTRY *Entry);
 VOID FreeMenu(IN REFIT_MENU_SCREEN *Screen);
 UINTN RunMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
-UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, OUT REFIT_MENU_ENTRY **ChosenEntry);
+UINTN RunMainMenu(IN REFIT_MENU_SCREEN *Screen, IN CHAR16* DefaultSelection, OUT REFIT_MENU_ENTRY **ChosenEntry);
 
 //
 // config module
@@ -282,6 +282,7 @@ typedef struct {
     CHAR16      *BannerFileName;
     CHAR16      *SelectionSmallFileName;
     CHAR16      *SelectionBigFileName;
+    CHAR16      *DefaultSelection;
 } REFIT_CONFIG;
 
 extern REFIT_CONFIG GlobalConfig;
