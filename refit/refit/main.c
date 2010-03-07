@@ -285,6 +285,28 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
     
     // loader-specific submenu entries
     if (LoaderKind == 1) {          // entries for Mac OS X
+#if defined(EFIX64)
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Mac OS X with a 64-bit kernel";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"arch=x86_64";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+
+        SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+        SubEntry->me.Title        = L"Boot Mac OS X with a 32-bit kernel";
+        SubEntry->me.Tag          = TAG_LOADER;
+        SubEntry->LoaderPath      = Entry->LoaderPath;
+        SubEntry->VolName         = Entry->VolName;
+        SubEntry->DevicePath      = Entry->DevicePath;
+        SubEntry->UseGraphicsMode = Entry->UseGraphicsMode;
+        SubEntry->LoadOptions     = L"arch=i386";
+        AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+#endif
+        
         if (!(GlobalConfig.DisableFlags & DISABLE_FLAG_SINGLEUSER)) {
             SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
             SubEntry->me.Title        = L"Boot Mac OS X in verbose mode";
@@ -295,6 +317,28 @@ static LOADER_ENTRY * AddLoaderEntry(IN CHAR16 *LoaderPath, IN CHAR16 *LoaderTit
             SubEntry->UseGraphicsMode = FALSE;
             SubEntry->LoadOptions     = L"-v";
             AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+            
+#if defined(EFIX64)
+            SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+            SubEntry->me.Title        = L"Boot Mac OS X in verbose mode (64-bit)";
+            SubEntry->me.Tag          = TAG_LOADER;
+            SubEntry->LoaderPath      = Entry->LoaderPath;
+            SubEntry->VolName         = Entry->VolName;
+            SubEntry->DevicePath      = Entry->DevicePath;
+            SubEntry->UseGraphicsMode = FALSE;
+            SubEntry->LoadOptions     = L"-v arch=x86_64";
+            AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+            
+            SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
+            SubEntry->me.Title        = L"Boot Mac OS X in verbose mode (32-bit)";
+            SubEntry->me.Tag          = TAG_LOADER;
+            SubEntry->LoaderPath      = Entry->LoaderPath;
+            SubEntry->VolName         = Entry->VolName;
+            SubEntry->DevicePath      = Entry->DevicePath;
+            SubEntry->UseGraphicsMode = FALSE;
+            SubEntry->LoadOptions     = L"-v arch=i386";
+            AddMenuEntry(SubScreen, (REFIT_MENU_ENTRY *)SubEntry);
+#endif
             
             SubEntry = AllocateZeroPool(sizeof(LOADER_ENTRY));
             SubEntry->me.Title        = L"Boot Mac OS X in single user mode";
