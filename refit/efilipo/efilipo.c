@@ -56,9 +56,6 @@
 
 #define MODE_CREATE (1)
 
-// variables
-
-
 //
 // error functions
 //
@@ -88,61 +85,8 @@ void errore(const char *msg, ...)
 }
 
 //
-// sector I/O functions
+// helper functions
 //
-
-/*
-UINTN read_sector(UINT64 lba, UINT8 *buffer)
-{
-    off_t   offset;
-    off_t   result_seek;
-    ssize_t result_read;
-    
-    offset = lba * 512;
-    result_seek = lseek(fd, offset, SEEK_SET);
-    if (result_seek != offset) {
-        errore("Seek to %llu failed", offset);
-        return 1;
-    }
-    
-    result_read = read(fd, buffer, 512);
-    if (result_read < 0) {
-        errore("Data read failed at position %llu", offset);
-        return 1;
-    }
-    if (result_read != 512) {
-        errore("Data read fell short at position %llu", offset);
-        return 1;
-    }
-    return 0;
-}
-
-UINTN write_sector(UINT64 lba, UINT8 *buffer)
-{
-    off_t   offset;
-    off_t   result_seek;
-    ssize_t result_write;
-    
-    offset = lba * 512;
-    result_seek = lseek(fd, offset, SEEK_SET);
-    if (result_seek != offset) {
-        errore("Seek to %llu failed", offset);
-        return 1;
-    }
-    
-    result_write = write(fd, buffer, 512);
-    if (result_write < 0) {
-        errore("Data write failed at position %llu", offset);
-        return 1;
-    }
-    if (result_write != 512) {
-        errore("Data write fell short at position %llu", offset);
-        return 1;
-    }
-    return 0;
-}
-*/
-
 
 long parse_arch(const char *name) {
   if (streq(name, "i386"))
@@ -178,6 +122,10 @@ void write_buffer(int fd, void *buffer, unsigned long size) {
     done += written;
   }
 }
+
+//
+// Create a fat EFI binary from several parts
+//
 
 void create_fat(char *output_filename,
                 int input_count,
